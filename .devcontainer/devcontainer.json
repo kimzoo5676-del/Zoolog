@@ -6,6 +6,7 @@
   "shutdownAction": "stopCompose",
   "remoteUser": "vscode",
   "forwardPorts": [5173],
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude",
   "features": {
     "ghcr.io/devcontainers/features/java:1": { "version": "25" },
     "ghcr.io/devcontainers/features/node:1": { "version": "24" },

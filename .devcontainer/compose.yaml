@@ -2,8 +2,11 @@ services:
   app:
     image: mcr.microsoft.com/devcontainers/base:ubuntu26.04
     env_file: .env
+    environment:
+      CLAUDE_CONFIG_DIR: /home/vscode/.claude
     volumes:
       - ..:/workspaces/zoolog:cached
+      - claude-config:/home/vscode/.claude
     command: sleep infinity
 
   db:
@@ -21,3 +24,4 @@ services:
 volumes:
   pgdata:
   weeddata:
+  claude-config:
