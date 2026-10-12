@@ -1,0 +1,66 @@
+# 기술적 결정 기록
+
+무엇을 고를 때 어떤 선택지를 비교했고 왜 골랐는지, 결과가 어땠는지의 기록. 면접의 "왜 그 기술을 썼나요?" 질문 대비
+
+형식: 상황 → 선택지 → 결정과 이유 → 결과 · 한계
+
+---
+
+## 1. 운영 서버: 노트북 셀프 호스팅 → AWS Lightsail (2026-10-12)
+
+- **상황:** 처음에는 개인 노트북 + Tailscale Funnel로 공개할 계획. 노트북이 꺼지면 사이트와 매일 06:00 일정 메일이 멈추는 문제, 노트북 반납 예정
+- **선택지:** 노트북 유지 / EC2 / Lightsail
+- **결정:** Lightsail 서울 $12(2GB, 2 vCPU, SSD 60GB) + 고정 IP
+- **이유:** 월 고정 요금(트래픽 3TB 포함)이라 비용 예측이 쉬움, 1인 비상업 서비스 규모에 충분, 콘솔이 단순
+- **한계:** 버스트형 CPU라 서버에서 빌드하지 않음(빌드는 GitHub Actions), 메모리 2GB가 빠듯함
+
+## 2. 배포 방식: Docker Compose → k3s + Argo CD (GitOps) (2026-10-12)
+
+- **상황:** 처음에는 서버에서 Docker Compose로 실행할 계획. 클라우드 엔지니어 직무 준비로 쿠버네티스와 GitOps를 실제 운영해 보고 싶었음
+- **선택지:** Docker Compose + SSH 배포 / k3s + kubectl 직접 적용 / k3s + Argo CD
+- **결정:** k3s 1대 + Argo CD core
+- **이유:**
+  - Git이 운영 상태의 기준(단일 진실 공급원): 서버에서 손으로 바꾼 것은 Argo CD selfHeal이 Git대로 되돌림
+  - 되돌리기가 `git revert` 한 번
+  - k3s는 쿠버네티스 인증 배포판이라 같은 YAML이 EKS 등에서도 동작, 바이너리 하나로 메모리 사용이 적음
+  - Argo CD는 웹 화면 없는 core 설치로 메모리 절약
+- **결과:** 2GB 서버에서 k3s + Argo CD + 앱 4개가 동작(스왑 2GB 보조). 메모리는 관찰 중
+- **비밀값:** Git에 넣지 않고 서버에서 k8s Secret으로 한 번 생성(Sealed Secrets 등은 규모 대비 과함)
+
+## 3. HTTPS · 화면 제공: Caddy (2026-10-12)
+
+- **선택지:** Spring이 React 빌드를 함께 제공 / Nginx + certbot / Caddy / k3s 기본 Traefik
+- **결정:** Caddy가 HTTPS 인증서 자동 발급·갱신 + 화면 파일 제공, `/api`·로그인 경로만 Spring으로
+- **이유:** 설정 파일 20줄 정도로 인증서 자동화, 정적 파일은 Spring을 거치지 않아 백엔드 부담 감소, 빌드 파일 1년 캐시
+- **같이 바꾼 것:** Spring `forward-headers-strategy: native`(Caddy가 보낸 X-Forwarded-Proto로 https 인식, 없으면 Google 로그인 콜백 주소가 http로 만들어짐)
+
+## 4. 무중단 배포: 화면 서버만 먼저 (2026-10-13)
+
+- **상황:** 처음에는 메모리 때문에 모두 Recreate(옛 파드를 먼저 내리고 새 파드 시작, 배포 중 중단)
+- **결정:** web(Caddy)만 RollingUpdate(maxSurge 1, maxUnavailable 0) + readinessProbe + preStop 5초 + Caddy grace_period 10초. 백엔드는 Recreate 유지
+- **이유:** Caddy는 메모리 상한 128Mi라 배포 순간 2개가 떠도 부담 적음. 백엔드는 640Mi가 추가로 필요해 2GB 서버에서 메모리 부족 위험
+- **결과 (측정):** 배포 중 1초 간격 요청에서 화면 응답 실패 0회(새 버전으로 바뀐 것을 ETag로 확인), API는 약 30초 502
+- **다음 판단 기준:** 며칠 메모리 사용량을 보고 백엔드 RollingUpdate 또는 4GB 플랜 결정. 백엔드 무중단 시 고려할 것: Actuator readiness, 세션(파드 메모리 → 교체 시 재로그인, 여러 개면 Spring Session JDBC), 옛·새 버전 동시 실행에 맞춘 하위 호환 마이그레이션
+
+## 5. 로그인: Google OIDC + 서버 세션 (JWT 아님) (2026-10-12)
+
+- **상황:** 글쓰기와 일정 관리는 소유자 1명만
+- **선택지:** 아이디·비밀번호 직접 구현 / JWT / Google OIDC + 세션
+- **결정:** Spring Security `oauth2Login` + Google OIDC, 서버 세션(JSESSIONID), `OWNER_EMAIL`과 일치하고 `email_verified`인 계정만 로그인 허용
+- **이유:** 비밀번호를 저장하지 않음, 사용자 1명이라 서버 세션이 단순하고 즉시 로그아웃 가능(JWT는 만료 전 무효화가 어려움)
+- **같이 한 것:** CSRF `csrf.spa()`(쿠키 값을 헤더로 보내는 방식), 방문자에게 세션 쿠키를 만들지 않도록 `NullRequestCache`, `/api` 비로그인은 401
+
+## 6. 이미지 저장소: SeaweedFS (MinIO 제외) (2026-10-12)
+
+- **상황:** S3 호환 저장소를 서버 안에 두고 싶었음(비용, 외부 비공개)
+- **결정:** SeaweedFS + AWS SDK for Java v2
+- **이유:** MinIO 커뮤니티판 저장소가 아카이브되어 제외. S3 API를 쓰므로 나중에 AWS S3로 바꿀 때 주소·키만 변경
+- **보안:** 저장소는 외부 비공개, 이미지는 백엔드를 거쳐 업로드·제공(파일 서명으로 형식 판별, 10MB 제한)
+
+## 7. 스키마 관리: Flyway + `ddl-auto: validate` (2026-10-12)
+
+- **이유:** DB 구조 변경을 버전 파일로 기록, 적용된 파일은 수정 금지. Hibernate는 구조를 만들지 않고 검증만 해서 엔티티와 DB 불일치를 시작 시점에 발견
+
+## 8. 프론트 라우팅: React Router 8 Framework 모드 + SPA (2026-10-12)
+
+- **이유:** 라우트 모듈의 `clientLoader`로 화면 데이터 조회, 경로·파라미터 타입 자동 생성(`href()`로 링크 타입 검사), 서버 렌더링 없이 정적 파일로 배포 가능(Caddy가 제공)

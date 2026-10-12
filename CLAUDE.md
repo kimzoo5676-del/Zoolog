@@ -193,6 +193,13 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 목록 제목, 주제 메뉴에 마우스를 올리면 글자가 위로 빠지고 아래에서 같은 글자가 올라옴 (`RollText`, 감싸는 요소에 `roll-trigger` 클래스, 0.45초 `cubic-bezier(0.65, 0, 0.35, 1)`). 메뉴는 동시에 진한 러스트 칸 + 세이지 글자로 바뀜. 움직임 줄이기 설정이면 글자 올림 없이 목록은 밑줄
 - 써 보고 제외한 것 (소유자 판단): 망점 글자를 겹친 포스터형 페이지 머리, 로고 옆 러스트 커서 막대, 바닥글(러스트 면, mijobello식 포함)
 
+## 포트폴리오 기록 (2026-10-13 소유자 요청)
+
+- 소유자는 SW Engineer · Cloud Engineer 취업 준비 중. 이 프로젝트를 GitHub 프로필 · 포트폴리오 블로그(kimzoo5676-del.github.io) · 자소서에 쓸 예정
+- 기능 조각이 끝날 때마다 함께 갱신: `docs/portfolio/decisions.md`(상황 → 선택지 → 결정과 이유 → 결과), `docs/portfolio/troubleshooting.md`(증상 → 원인 → 해결 → 배운 점), 필요하면 `docs/portfolio/resume-notes.md`, `README.md`
+- 수치는 측정한 것만 측정 방법과 함께. 저장소가 공개라 비밀값 · 서버 IP · 개인 정보 금지
+- 서버 관리 명령 정리: `docs/kubectl-cheatsheet.md`
+
 ## Git
 
 - Conventional Commits, 한국어 메시지: `feat`, `fix`, `chore`, `test`, `docs`, `refactor`
