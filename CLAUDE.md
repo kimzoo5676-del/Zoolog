@@ -34,6 +34,8 @@
 - 비밀값은 `.devcontainer/.env` (gitignore 대상): `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`. 키 목록은 `.env.example`에 커밋
 - `.env` 내용, 비밀번호, Spring 기동 로그의 `Using generated security password` 값은 출력·커밋·공유 금지
 - 지금까지 SQL 직접 실행은 Windows PowerShell에서: `docker exec zoolog_devcontainer-db-1 psql -U zoolog -d zoolog -c "..."`
+- 컨테이너 안 DB 직접 접속: psql 클라이언트가 기본 이미지에 없을 수 있음. 필요 시 `sudo apt-get install -y postgresql-client` 후 `PGPASSWORD="$POSTGRES_PASSWORD" psql -h db -U "$POSTGRES_USER" -d "$POSTGRES_DB"`. 환경 변수는 compose의 `env_file`로 app 컨테이너에 주입됨, 값 출력 금지. apt 설치분은 컨테이너 재빌드 시 사라짐
+- 맥북을 나중에 개발 기기로 추가 예정 (Dev Containers로 같은 환경 재현)
 
 ## 명령
 
@@ -71,6 +73,8 @@ npm run lint
 - ERROR 디스패치 허용은 필수: 없으면 404 같은 오류 응답이 `/error` 단계에서 막혀 403으로 바뀜
 - 로그인 미구현. CSRF 기본값 켜짐, 세션/토큰 방식은 로그인 단계에서 결정
 - SeaweedFS(S3)는 절대 Funnel로 외부 공개 금지. 이미지는 백엔드를 거쳐 업로드
+- 이미지 제공: SeaweedFS는 외부 비공개라 presigned URL은 브라우저에서 접근 불가. 프론트에 주는 이미지 URL은 백엔드(또는 같은 도메인 프록시) 경로로 설계
+- 비로그인 요청이 거절되면 Spring Security가 원래 요청을 세션에 저장해 JSESSIONID 발급. 세션 정책은 로그인 단계에서 결정
 
 ## 현재 API
 
@@ -86,6 +90,7 @@ npm run lint
 - API 함수는 `src/api/*.ts`, 타입은 백엔드 DTO와 같은 모양, `response.ok` 검사 후 오류 throw
 - 데이터 조회는 현재 `useEffect` + `ignore` 플래그 패턴. TanStack Query는 화면이 늘어나면 도입 검토
 - 글 본문은 마크다운 원문 저장, 화면에서는 HTML로 렌더링(렌더러 미정)
+- 화면 확인은 사용자가 Windows 브라우저(http://localhost:5173)에서 진행. UI 변경 후에는 확인할 항목을 정리해 요청
 
 ## 디자인
 
@@ -122,4 +127,8 @@ npm run lint
 4. 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드
 5. 홈 쇼릴 애니메이션
 6. 2차 기능 (Gmail 알림, 뉴스 스크랩)
-7. 배포: Tailscale Funnel (443/8443/10000). Spring이 React 빌드를 정적 제공 vs Nginx 앞단은 배포 시 결정
+7. 배포: Tailscale Funnel (443/8443/10000). Spring이 React 빌드를 정적 제공 vs Nginx 앞단은 배포 시 결정. Tailscale Funnel이 HTTPS 인증서를 자동 처리하므로 Caddy의 자동 HTTPS는 중복
+
+## 열린 이슈
+
+- 브라우저 배경이 세이지가 아닌 흰색으로 보인 적 있음, 원인 미확인. 브라우저 콘솔에서 `getComputedStyle(document.body).backgroundColor`가 `rgb(190, 203, 179)`인지 확인 필요
