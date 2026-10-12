@@ -1,6 +1,8 @@
 import { href, Link, NavLink, Outlet } from 'react-router'
 import { fetchCategories } from '../api/category'
+import { AuthShortcut } from '../components/AuthShortcut'
 import { Logo } from '../components/Logo'
+import { PointerFocusReset } from '../components/PointerFocusReset'
 import { RollText } from '../components/RollText'
 import type { Route } from './+types/blog-layout'
 
@@ -40,6 +42,8 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
       <main className="site-main">
         <Outlet />
       </main>
+      <AuthShortcut />
+      <PointerFocusReset />
     </div>
   )
 }

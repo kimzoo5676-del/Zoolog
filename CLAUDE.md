@@ -100,7 +100,8 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - `vite.config.ts`의 `server.host: '127.0.0.1'` 삭제 금지: VS Code 포트 포워딩이 IPv6를 지원하지 않아, 없으면 브라우저가 무한 로딩 (Vite Troubleshooting 문서)
 - 개발 중 API는 Vite 프록시(`/api` → `http://localhost:8080`)로 호출, CORS 설정 불필요
 - `/oauth2`, `/login/oauth2` 프록시는 `changeOrigin: false` 필수: 문자열 단축형은 Host를 8080으로 바꿔 Google 콜백 주소가 `localhost:8080`으로 만들어짐
-- 로그인 화면 `/login` (메뉴에 링크 없음, 소유자가 주소로 직접 접속). Google 로그인 버튼은 라우터 `Link`가 아닌 `<a href>` 전체 페이지 이동
+- 로그인 화면 `/login` (메뉴에 링크 없음, 2026-10-12 소유자 결정). 숨은 진입점(`AuthShortcut`, 화면에서 영문 연속 입력, 입력 칸·한글 조합 중·Ctrl/Alt/Cmd 조합 제외): `login` → 비로그인은 Google 로그인으로 바로 이동, 로그인 상태는 `/login`. `logout` → 로그인 상태면 바로 로그아웃. `/login` 화면은 실패 안내·로그아웃용. 모바일은 주소 직접 입력.
+- `PointerFocusReset`: 마우스로 링크를 눌러 이동하면 포커스 해제 (남은 포커스에 키 입력 시 포커스 테두리가 보이던 문제). 키보드 이동은 포커스 유지 Google 로그인 버튼은 라우터 `Link`가 아닌 `<a href>` 전체 페이지 이동
 - API 함수는 `src/api/*.ts`, 타입은 백엔드 DTO와 같은 모양, `response.ok` 검사 후 오류 throw
 - 라우트 등록은 `src/routes.ts`, 라우트 모듈은 `src/routes/*.tsx`, 문서 뼈대(`<html>`)는 `src/root.tsx`의 `Layout` (`index.html`, `main.tsx` 없음). `appDirectory: 'src'`
 - 라우트 타입은 `import type { Route } from './+types/<파일명>'`. 생성 위치 `.react-router/`(gitignore), `npm run dev`/`typecheck`가 생성
@@ -157,7 +158,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 ## 다음 작업 (순서)
 
 1. (완료) 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
-2. 로그인(진행 중: Google 로그인 구현, 실제 Google 계정 확인 대기) → 글 작성·수정·삭제(소유자 전용)
+2. (완료) Google 로그인 → 다음: 글 작성·수정·삭제(소유자 전용)
 3. 이미지 업로드 (SeaweedFS S3, `post_image.object_key`)
 4. 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드
 5. (완료) 첫 진입 프리로더
