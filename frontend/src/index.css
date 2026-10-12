@@ -15,10 +15,16 @@
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
   line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: break-word;
   color: var(--color-text);
   background-color: var(--color-bg);
+}
+
+h1 {
+  font-weight: 900;
 }
 
 a {
