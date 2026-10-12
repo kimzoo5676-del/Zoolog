@@ -16,6 +16,12 @@ const components: Components = {
       </div>
     )
   },
+  // 이미지: 화면에 가까워질 때 불러오기(lazy), 디코딩은 화면 그리기와 따로(async)
+  img(props) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { node, ...rest } = props
+    return <img {...rest} loading="lazy" decoding="async" />
+  },
 }
 
 type MarkdownContentProps = {

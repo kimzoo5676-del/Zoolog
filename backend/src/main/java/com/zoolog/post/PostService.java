@@ -2,6 +2,7 @@ package com.zoolog.post;
 
 import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
+import com.zoolog.image.ImageService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -14,10 +15,12 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CategoryRepository categoryRepository;
+    private final ImageService imageService;
 
-    public PostService(PostRepository postRepository, CategoryRepository categoryRepository) {
+    public PostService(PostRepository postRepository, CategoryRepository categoryRepository, ImageService imageService) {
         this.postRepository = postRepository;
         this.categoryRepository = categoryRepository;
+        this.imageService = imageService;
     }
 
     public List<PostSummaryResponse> findAll(String categorySlug) {
@@ -37,6 +40,7 @@ public class PostService {
     public PostDetailResponse create(PostRequest request) {
         Category category = getCategory(request.categoryId());
         Post post = postRepository.save(new Post(category, request.title(), request.content()));
+        imageService.syncImages(post);
         return PostDetailResponse.from(post);
     }
 
@@ -45,12 +49,16 @@ public class PostService {
     public PostDetailResponse update(Long id, PostRequest request) {
         Post post = getPostWithCategory(id);
         post.update(getCategory(request.categoryId()), request.title(), request.content());
+        imageService.syncImages(post);
         return PostDetailResponse.from(post);
     }
 
     @Transactional
     public void delete(Long id) {
-        postRepository.delete(getPostWithCategory(id));
+        Post post = getPostWithCategory(id);
+        // 이미지 기록이 글을 참조(FK)하므로 먼저 연결 해제 (저장소 파일은 남김, 정리는 별도)
+        imageService.detachAll(post);
+        postRepository.delete(post);
     }
 
     private Post getPostWithCategory(Long id) {

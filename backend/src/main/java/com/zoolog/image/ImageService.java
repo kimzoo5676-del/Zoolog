@@ -1,0 +1,83 @@
+package com.zoolog.image;
+
+import com.zoolog.post.Post;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@Transactional(readOnly = true)
+public class ImageService {
+
+    static final String URL_PREFIX = "/api/images/";
+    private static final String KEY_PREFIX = "images/";
+    // 본문 마크다운에서 이 사이트에 올린 이미지 주소 찾기 (파일 이름은 UUID.확장자)
+    private static final Pattern IMAGE_URL = Pattern.compile("/api/images/([0-9a-f-]{36}\\.(?:jpg|png|gif|webp))");
+
+    private final ImageStorage storage;
+    private final PostImageRepository postImageRepository;
+
+    public ImageService(ImageStorage storage, PostImageRepository postImageRepository) {
+        this.storage = storage;
+        this.postImageRepository = postImageRepository;
+    }
+
+    // 원본 그대로 저장 (2026-10-12 결정: 가공 없음, 크기 제한은 spring.servlet.multipart 10MB)
+    // 파일 이름은 UUID라 추측 불가·충돌 없음, 같은 주소의 내용이 바뀌지 않으므로 오래 캐시 가능
+    @Transactional
+    public ImageResponse upload(MultipartFile file) {
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "파일을 읽지 못했어요");
+        }
+        ImageType type = ImageType.detect(bytes)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNSUPPORTED_MEDIA_TYPE, "JPEG, PNG, GIF, WebP 이미지만 올릴 수 있어요"));
+        String fileName = UUID.randomUUID() + "." + type.extension;
+        storage.put(KEY_PREFIX + fileName, type.contentType, bytes);
+        postImageRepository.save(new PostImage(KEY_PREFIX + fileName, type.contentType));
+        return new ImageResponse(URL_PREFIX + fileName);
+    }
+
+    // 글 저장 후 호출: 본문에 쓰인 이미지는 이 글과 연결, 이 글에 연결돼 있었지만 본문에서 빠진 이미지는 연결 해제
+    @Transactional
+    public void syncImages(Post post) {
+        Set<String> keys = new HashSet<>();
+        Matcher matcher = IMAGE_URL.matcher(post.getContent());
+        while (matcher.find()) {
+            keys.add(KEY_PREFIX + matcher.group(1));
+        }
+        for (PostImage image : postImageRepository.findAllByPost(post)) {
+            if (!keys.contains(image.getObjectKey())) {
+                image.detach();
+            }
+        }
+        if (!keys.isEmpty()) {
+            postImageRepository.findAllByObjectKeyIn(keys).forEach((image) -> image.attachTo(post));
+        }
+    }
+
+    // 글 삭제 전 호출: 이미지 기록이 글을 참조(FK)하므로 먼저 연결 해제
+    @Transactional
+    public void detachAll(Post post) {
+        List<PostImage> images = postImageRepository.findAllByPost(post);
+        images.forEach(PostImage::detach);
+    }
+
+    public StoredImage load(String fileName) {
+        PostImage image = postImageRepository.findByObjectKey(KEY_PREFIX + fileName)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없어요"));
+        return new StoredImage(image.getContentType(), storage.get(image.getObjectKey()));
+    }
+}

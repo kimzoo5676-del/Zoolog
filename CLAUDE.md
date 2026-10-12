@@ -22,6 +22,7 @@
 - 백엔드: Spring Boot 4.1.1 (Spring Framework 7.0.9, Hibernate 7.4.5, Tomcat 11), Java 25, Gradle 9.7.1 (Groovy DSL)
 - DB: PostgreSQL 18.6, Flyway 마이그레이션
 - 파일 저장소: SeaweedFS 4.45 (`weed mini`, S3 API 포트 8333, 버킷 `zoolog`). MinIO는 저장소 아카이브로 제외
+- S3 클라이언트: AWS SDK for Java v2 (BOM 2.55.14, 2026-10-12 결정). `StorageConfig`가 endpoint `http://storage:8333`(path-style), 환경 변수 접근 키 사용. 버킷이 없으면 서버 시작 시 생성
 - 프론트: React 19.3.0 (package-lock 기준), TypeScript ~6.0.2, Vite 8.3.4, ESLint 10, Node 24
 - 라우팅: React Router 8.4.0 Framework 모드 + SPA 모드(`ssr: false`). v8부터 `react-router-dom` 없음, `react-router` 하나로 import
 - 마크다운: react-markdown 10.1.0 + remark-gfm 4.0.1 (표, 취소선, 체크리스트, 자동 링크)
@@ -69,14 +70,14 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - N+1 방지: 연관 객체가 필요한 조회는 JPQL `join fetch` 사용 (`PostRepository` 참고). DTO 변환은 트랜잭션 안(서비스)에서 완료 (`open-in-view: false`)
 - 스키마는 Flyway가 소유: `src/main/resources/db/migration/V<번호>__<이름>.sql`. 적용된 마이그레이션 수정 금지, 변경은 새 버전 파일로. `ddl-auto: validate`
 - 컬럼 규칙: 시각 `TIMESTAMPTZ NOT NULL`, PK `BIGINT GENERATED ALWAYS AS IDENTITY`, FK마다 인덱스, 값 범위는 CHECK 제약
-- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. V3: `category.parent_id`(NULL이면 큰 주제). 깊이 제한은 `CategoryService.MAX_DEPTH = 3`(2026-10-12 2단계 → 3단계, V3 파일 주석의 "2단계"는 적용된 마이그레이션이라 수정하지 않음). 엔티티 구현 완료: `Category`, `Post`, `Member`
+- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. V3: `category.parent_id`(NULL이면 큰 주제). V4: `post_image.post_id` NULL 허용(작성 중 업로드), `content_type` 추가. 깊이 제한은 `CategoryService.MAX_DEPTH = 3`(2026-10-12 2단계 → 3단계, V3 파일 주석의 "2단계"는 적용된 마이그레이션이라 수정하지 않음). 엔티티 구현 완료: `Category`, `Post`, `Member`, `PostImage`
 - 오류 응답: `spring.mvc.problemdetails.enabled: true`로 RFC 9457 ProblemDetail JSON (`status`, `title`, `detail`, `instance`). `ResponseStatusException(상태, "이유")`의 이유가 `detail`로 전달되어 화면에 그대로 표시. 입력값 검증 실패 문구는 `messages.properties`(`입력값을 확인해 주세요`)
 - 상태 코드: 없는 리소스 404, 요청 본문의 잘못된 참조(없는 주제 id) 400, 중복 409
 - 테스트: `@SpringBootTest` + `@Transactional`(개발 DB 사용, 끝나면 롤백), `@DisplayName`은 한국어 문장, 저장 검증은 `flush()` → `clear()` → 재조회. 롤백으로 생기는 id 빈 번호는 정상
 
 ## 보안 (현재 상태)
 
-- `SecurityConfig` 규칙 순서: ERROR 디스패치 `permitAll` → GET `/api/categories`, `/api/categories/**`, `/api/posts`, `/api/posts/**`, `/api/auth/me` `permitAll` → `anyRequest().authenticated()`
+- `SecurityConfig` 규칙 순서: ERROR 디스패치 `permitAll` → GET `/api/categories`, `/api/categories/**`, `/api/posts`, `/api/posts/**`, `/api/auth/me`, `/api/images/**` `permitAll` → `anyRequest().authenticated()`
 - ERROR 디스패치 허용은 필수: 없으면 404 같은 오류 응답이 `/error` 단계에서 막혀 403으로 바뀜
 - 로그인: Spring Security `oauth2Login` + Google OIDC, 서버 세션(JSESSIONID 쿠키) 방식 (2026-10-12 결정, JWT 아님). scope `openid, email`
 - 흐름: `/oauth2/authorization/google` → Google 동의 화면 → `/login/oauth2/code/google` 콜백 → 성공 `/`, 실패 `/login?error`
@@ -95,6 +96,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - `GET /api/posts/{id}`: 글 상세(본문 마크다운, `categoryId` 포함), 없으면 404
 - 소유자 전용(로그인 + CSRF 헤더): `POST /api/posts` 201 + Location, `PUT /api/posts/{id}` 200, `DELETE /api/posts/{id}` 204 (완전 삭제, 2026-10-12 결정). 요청 본문 `{ categoryId, title(200자 이하), content }`
 - `POST /api/categories` `{ name(50자 이하), parentId? }` 201. 3단계 주제 아래 추가는 400(3단계 제한). slug(주소용 이름)는 이름에서 자동 생성(소문자, 글자·숫자 외 문자 묶음은 하이픈, 한글 유지. 예: `AWS SAA` → `aws-saa`). 이름·slug 중복 409 (Ghost 방식 참고, 2026-10-12 결정)
+- 이미지 (2026-10-12): `POST /api/images`(소유자, multipart `file`, 10MB, JPEG·PNG·GIF·WebP를 파일 서명으로 판별, 아니면 415, 초과 413) → `{ url: "/api/images/{uuid}.{ext}" }`. `GET /api/images/{uuid}.{ext}`(공개, 백엔드가 저장소에서 읽어 전달, `Cache-Control: max-age=31536000, public, immutable`). 원본 그대로 저장(가공 없음). 글 저장 시 본문에 쓰인 이미지 주소를 찾아 `post_image`를 그 글과 연결, 빠지면 연결 해제, 글 삭제 전 연결 해제(FK). 연결 없는 이미지(저장소 파일 포함) 정리는 아직 없음
 - `GET /api/auth/me`: 로그인 상태면 200 `{ email }`, 비로그인이면 204 (방문자 화면 콘솔 오류 방지로 401 대신)
 - 시각 필드는 ISO-8601 UTC 문자열 (예: `2026-10-12T04:05:29.717131Z`)
 
@@ -114,6 +116,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 쓰기 요청: `fetch`에 `csrfHeaders()` 포함, 실패 시 `toApiError`(`src/api/error.ts`)가 ProblemDetail `detail`을 메시지로 사용
 - 소유자 판별: `blog-layout` `clientLoader`가 주제 목록과 `fetchMe`를 함께 조회, 하위 라우트는 `useBlogLayoutData()`로 재사용. 소유자 전용 화면 `clientLoader`는 `requireOwner()` (비로그인 → `/login`)
 - 글 작성 `/posts/new`, 수정 `/posts/:postId/edit`: `PostEditor` (velog 구성 참고, 2026-10-12 결정). 테두리 없는 큰 제목 → 주제 칩(`CategoryPicker`, 라디오) → 원문 textarea | 미리보기 나란히 → 하단 고정 바(나가기, 게시/저장). 라벨 대신 placeholder + `aria-label`. 저장은 라우트 `clientAction` → 성공 시 `redirect`, 실패 시 `{ error }` 반환(입력 유지). 삭제는 글 상세 `clientAction` + `window.confirm`
+- 편집기 이미지: 본문 칸에 끌어놓기·붙여넣기, 하단 바 `이미지` 버튼(파일 선택, 여러 장). 커서 자리에 `![업로드 중: …]()` 표시 → 올라가면 `![](주소)`로 교체, 실패 시 표시 제거 + 하단 바 오류. 올리는 중에는 게시 비활성. 본문 이미지는 `loading="lazy"`, 폭 맞춤
 - 주제 선택(`CategoryPicker`): 고른 경로를 따라 줄이 열림 `CATEGORY`(큰 주제 칩 + `[+]`) → `↳ SUB`(`선택 안 함` + 하위 칩 + `[+]`) → `↳ SECTION`(3단계). 줄 위치로 무엇을 만드는지 구분 (2026-10-12 소유자 결정, 별도 `주제 만들기` 칸은 써 보고 제외). `[+]`는 점선 칩, 누르면 칩이 옆으로 펼쳐지며 입력 칸 등장·`+`가 `×`로 회전(Enter 또는 `↵` 만들기, Esc 또는 `×` 닫기, 소유자 만족). 제출은 숨은 `categoryId` 하나(가장 깊이 고른 주제). 글은 어느 단계에나 가능
 - 주제 메뉴: 머리글에는 큰 주제만, 펼침 메뉴 없음 (2026-10-12 소유자 결정, 펼침은 써 보고 제외). 메뉴를 가리키면(마우스·키보드 포커스) 홈 별자리 지도에서 그 주제 별자리에 불이 들어옴 (`hooks/mapHighlight.ts` Context, `blog-layout`이 제공, `ConstellationMap`이 읽음, 지도 위를 직접 가리킬 때가 우선). 아래 단계 주제 화면이면 큰 주제 메뉴도 활성(`is-active`). 하위 주제로는 주제 화면의 하위 주제 칸(`.subcategory-nav`, 모든 기기)과 지도 별로 이동. 주제 화면 라벨 자리는 상위 경로(`Cloud Engineer / AWS-SAA`)
 - 글쓰기 메뉴는 주제 메뉴가 아닌 로고 옆 칸(`site-write`, 소유자 로그인 시만)
@@ -178,7 +181,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 
 1. (완료) 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
 2. (완료) Google 로그인, 글 작성·수정·삭제(소유자 전용), 편집기에서 주제 추가
-3. 이미지 업로드 (SeaweedFS S3, `post_image.object_key`)
+3. (완료) 이미지 업로드 (SeaweedFS S3, `post_image.object_key`). 남은 일: 연결 없는 이미지 정리, 대체 텍스트(alt) 입력 안내
 4. 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드
 5. (완료) 첫 진입 프리로더
 6. 2차 기능 (Gmail 알림, 뉴스 스크랩)

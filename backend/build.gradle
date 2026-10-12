@@ -25,6 +25,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.flywaydb:flyway-database-postgresql'
+	// S3 호환 저장소(SeaweedFS) 접근: AWS SDK for Java v2 (2026-10-12 결정, endpoint만 바꾸면 실제 S3로 이전 가능)
+	implementation platform('software.amazon.awssdk:bom:2.55.14')
+	implementation 'software.amazon.awssdk:s3'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'

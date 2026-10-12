@@ -5,6 +5,11 @@ spring:
     url: jdbc:postgresql://db:5432/${POSTGRES_DB}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
+  servlet:
+    multipart:
+      # 이미지 원본 크기 제한 (2026-10-12 결정), 넘으면 413
+      max-file-size: 10MB
+      max-request-size: 11MB
   mvc:
     # 오류 응답을 RFC 9457 ProblemDetail(JSON)로. ResponseStatusException의 이유가 detail에 담김
     problemdetails:
@@ -24,3 +29,7 @@ spring:
 
 zoolog:
   owner-email: ${OWNER_EMAIL}
+  # 이미지 저장소 (SeaweedFS S3 API, 컨테이너 안 주소). 외부 공개 금지
+  storage:
+    endpoint: ${S3_ENDPOINT:http://storage:8333}
+    bucket: ${S3_BUCKET}
