@@ -7,7 +7,7 @@
 
 1차
 1. 첫 진입 프리로더: 화면 가운데 `Zoolog`의 Z가 진한 러스트로 차오른 뒤 머리글 로고 자리로 이동, 격자선이 제자리에 그어지고 화면이 걷힘 (원래 "쇼릴"로 적었던 항목, 2026-10-12 프리로더로 결정)
-2. 로그인: 소유자 1명만 작성 권한
+2. 로그인: Google 로그인(OIDC), 소유자 1명만 작성 권한
 3. 공부 글: 마크다운 원문 저장 + 사진, 주제(category) 분류
 4. 방문자 조회: 주제별 목록, 글 상세
 5. 일정 등록: 주로 반복 일정 (예: 06:00 뉴스 스크랩 메일, 07:00 AWS-SAA 공부, 18:00 토익스피킹 공부)
@@ -34,8 +34,9 @@
 - 컨테이너 안 저장소 경로 `/workspaces/zoolog`, DB 주소 `db:5432`
 - Claude Code 로그인·설정 유지: named volume `claude-config` → `/home/vscode/.claude`, `CLAUDE_CONFIG_DIR`로 `.claude.json`도 그 안에 저장. 볼륨 소유자는 `postCreateCommand`의 `chown`으로 맞춤. 볼륨 삭제 시 재로그인 필요
 - `db`, `storage`는 `ports:` 없음(외부 비공개). `forwardPorts`는 5173(Vite)만
-- 비밀값은 `.devcontainer/.env` (gitignore 대상): `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`. 키 목록은 `.env.example`에 커밋
-- `.env` 내용, 비밀번호, Spring 기동 로그의 `Using generated security password` 값은 출력·커밋·공유 금지
+- 비밀값은 `.devcontainer/.env` (gitignore 대상): `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OWNER_EMAIL`. 키 목록은 `.env.example`에 커밋. `.env` 변경은 컨테이너를 다시 만들어야(Rebuild) 반영
+- 테스트는 `build.gradle`의 `test` 작업이 Google 관련 환경 변수를 가짜 값으로 채움 (Google과 통신 안 함)
+- `.env` 내용, 비밀번호, Google 클라이언트 시크릿은 출력·커밋·공유 금지
 - 지금까지 SQL 직접 실행은 Windows PowerShell에서: `docker exec zoolog_devcontainer-db-1 psql -U zoolog -d zoolog -c "..."`
 - 컨테이너 안 DB 직접 접속: psql 클라이언트가 기본 이미지에 없을 수 있음. 필요 시 `sudo apt-get install -y postgresql-client` 후 `PGPASSWORD="$POSTGRES_PASSWORD" psql -h db -U "$POSTGRES_USER" -d "$POSTGRES_DB"`. 환경 변수는 compose의 `env_file`로 app 컨테이너에 주입됨, 값 출력 금지. apt 설치분은 컨테이너 재빌드 시 사라짐
 - 맥북을 나중에 개발 기기로 추가 예정 (Dev Containers로 같은 환경 재현)
@@ -60,7 +61,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 
 ## 백엔드 규칙
 
-- 패키지: 기능별 `com.zoolog.<기능>` (`category`, `post`), 공통은 `com.zoolog.global` (`config`, `entity`)
+- 패키지: 기능별 `com.zoolog.<기능>` (`category`, `post`, `member`, `auth`), 공통은 `com.zoolog.global` (`config`, `entity`)
 - 계층: Controller → Service → Repository. 생성자 주입. DTO는 `record` + `static from(Entity)`
 - 서비스: 클래스에 `@Transactional(readOnly = true)`, 쓰기 메서드만 `@Transactional`
 - 엔티티: `BaseTimeEntity` 상속(JPA Auditing으로 `createdAt`, `updatedAt` 자동, `Instant`), `@GeneratedValue(strategy = GenerationType.IDENTITY)`, `protected` 기본 생성자, setter 없음
@@ -68,30 +69,38 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - N+1 방지: 연관 객체가 필요한 조회는 JPQL `join fetch` 사용 (`PostRepository` 참고). DTO 변환은 트랜잭션 안(서비스)에서 완료 (`open-in-view: false`)
 - 스키마는 Flyway가 소유: `src/main/resources/db/migration/V<번호>__<이름>.sql`. 적용된 마이그레이션 수정 금지, 변경은 새 버전 파일로. `ddl-auto: validate`
 - 컬럼 규칙: 시각 `TIMESTAMPTZ NOT NULL`, PK `BIGINT GENERATED ALWAYS AS IDENTITY`, FK마다 인덱스, 값 범위는 CHECK 제약
-- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. 엔티티 구현 완료: `Category`, `Post`
+- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. 엔티티 구현 완료: `Category`, `Post`, `Member`
 - 없는 리소스: 현재 `ResponseStatusException(HttpStatus.NOT_FOUND)`. 오류 응답 형식 통일 시 `@RestControllerAdvice` 검토
 - 테스트: `@SpringBootTest` + `@Transactional`(개발 DB 사용, 끝나면 롤백), `@DisplayName`은 한국어 문장, 저장 검증은 `flush()` → `clear()` → 재조회. 롤백으로 생기는 id 빈 번호는 정상
 
 ## 보안 (현재 상태)
 
-- `SecurityConfig` 규칙 순서: ERROR 디스패치 `permitAll` → GET `/api/categories`, `/api/categories/**`, `/api/posts`, `/api/posts/**` `permitAll` → `anyRequest().authenticated()`
+- `SecurityConfig` 규칙 순서: ERROR 디스패치 `permitAll` → GET `/api/categories`, `/api/categories/**`, `/api/posts`, `/api/posts/**`, `/api/auth/me` `permitAll` → `anyRequest().authenticated()`
 - ERROR 디스패치 허용은 필수: 없으면 404 같은 오류 응답이 `/error` 단계에서 막혀 403으로 바뀜
-- 로그인 미구현. CSRF 기본값 켜짐, 세션/토큰 방식은 로그인 단계에서 결정
+- 로그인: Spring Security `oauth2Login` + Google OIDC, 서버 세션(JSESSIONID 쿠키) 방식 (2026-10-12 결정, JWT 아님). scope `openid, email`
+- 흐름: `/oauth2/authorization/google` → Google 동의 화면 → `/login/oauth2/code/google` 콜백 → 성공 `/`, 실패 `/login?error`
+- 소유자 판별: `OwnerOidcUserService`가 `email_verified` true + `OWNER_EMAIL` 일치(대소문자 무시)일 때만 로그인 허용, 아니면 로그인 자체 거절. 통과 시 `member`에 `google_sub` 기준 저장·이메일 갱신
+- Google Cloud 콘솔 승인된 리디렉션 URI: 개발 `http://localhost:5173/login/oauth2/code/google`. 배포 시 Funnel 도메인 주소 추가 필요
+- CSRF: `csrf.spa()`. `XSRF-TOKEN` 쿠키(JS 읽기 가능) 값을 쓰기 요청의 `X-XSRF-TOKEN` 헤더로 전송 (`src/api/auth.ts`의 `csrfHeaders()`)
+- `/api/**` 비로그인 거절은 로그인 페이지 리다이렉트 대신 401. `NullRequestCache`로 거절된 요청을 세션에 저장하지 않음(방문자에게 JSESSIONID 발급 안 함)
+- 로그아웃: `POST /api/auth/logout` (CSRF 헤더 필수), 204
 - SeaweedFS(S3)는 절대 Funnel로 외부 공개 금지. 이미지는 백엔드를 거쳐 업로드
 - 이미지 제공: SeaweedFS는 외부 비공개라 presigned URL은 브라우저에서 접근 불가. 프론트에 주는 이미지 URL은 백엔드(또는 같은 도메인 프록시) 경로로 설계
-- 비로그인 요청이 거절되면 Spring Security가 원래 요청을 세션에 저장해 JSESSIONID 발급. 세션 정책은 로그인 단계에서 결정
 
 ## 현재 API
 
 - `GET /api/categories`: 주제 목록, 이름순 (DB 정렬 규칙 en_US.utf8 그대로 유지하기로 결정)
 - `GET /api/posts?category={slug}`: 글 목록, 최신순(`createdAt desc, id desc`), 본문 제외. `category` 생략 시 전체, 없는 slug는 `[]`
 - `GET /api/posts/{id}`: 글 상세(본문 마크다운 포함), 없으면 404
+- `GET /api/auth/me`: 로그인 상태면 200 `{ email }`, 비로그인이면 204 (방문자 화면 콘솔 오류 방지로 401 대신)
 - 시각 필드는 ISO-8601 UTC 문자열 (예: `2026-10-12T04:05:29.717131Z`)
 
 ## 프론트 규칙
 
 - `vite.config.ts`의 `server.host: '127.0.0.1'` 삭제 금지: VS Code 포트 포워딩이 IPv6를 지원하지 않아, 없으면 브라우저가 무한 로딩 (Vite Troubleshooting 문서)
 - 개발 중 API는 Vite 프록시(`/api` → `http://localhost:8080`)로 호출, CORS 설정 불필요
+- `/oauth2`, `/login/oauth2` 프록시는 `changeOrigin: false` 필수: 문자열 단축형은 Host를 8080으로 바꿔 Google 콜백 주소가 `localhost:8080`으로 만들어짐
+- 로그인 화면 `/login` (메뉴에 링크 없음, 소유자가 주소로 직접 접속). Google 로그인 버튼은 라우터 `Link`가 아닌 `<a href>` 전체 페이지 이동
 - API 함수는 `src/api/*.ts`, 타입은 백엔드 DTO와 같은 모양, `response.ok` 검사 후 오류 throw
 - 라우트 등록은 `src/routes.ts`, 라우트 모듈은 `src/routes/*.tsx`, 문서 뼈대(`<html>`)는 `src/root.tsx`의 `Layout` (`index.html`, `main.tsx` 없음). `appDirectory: 'src'`
 - 라우트 타입은 `import type { Route } from './+types/<파일명>'`. 생성 위치 `.react-router/`(gitignore), `npm run dev`/`typecheck`가 생성
@@ -148,7 +157,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 ## 다음 작업 (순서)
 
 1. (완료) 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
-2. 로그인(`member`, 세션/토큰 결정, CSRF) → 글 작성·수정·삭제(소유자 전용)
+2. 로그인(진행 중: Google 로그인 구현, 실제 Google 계정 확인 대기) → 글 작성·수정·삭제(소유자 전용)
 3. 이미지 업로드 (SeaweedFS S3, `post_image.object_key`)
 4. 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드
 5. (완료) 첫 진입 프리로더

@@ -21,6 +21,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.flywaydb:flyway-database-postgresql'
@@ -35,4 +36,8 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	// 테스트는 Google과 통신하지 않음, 설정 자리만 채움
+	environment 'GOOGLE_CLIENT_ID', 'test-client-id'
+	environment 'GOOGLE_CLIENT_SECRET', 'test-client-secret'
+	environment 'OWNER_EMAIL', 'owner@example.com'
 }

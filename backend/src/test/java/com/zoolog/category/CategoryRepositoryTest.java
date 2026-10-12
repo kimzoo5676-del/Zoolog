@@ -22,7 +22,7 @@ class CategoryRepositoryTest {
     @Test
     @DisplayName("주제를 저장하면 생성 시각과 수정 시각이 자동으로 채워진다")
     void savesWithAuditingTimestamps() {
-        Category saved = categoryRepository.save(new Category("AWS-SAA", "aws-saa"));
+        Category saved = categoryRepository.save(new Category("테스트 주제", "test-category"));
         entityManager.flush();
         entityManager.clear();
 

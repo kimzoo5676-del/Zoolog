@@ -6,6 +6,7 @@ export default [
     route('posts', 'routes/posts.tsx'),
     route('posts/:postId', 'routes/post-detail.tsx'),
     route('categories/:slug', 'routes/category-posts.tsx'),
+    route('login', 'routes/login.tsx'),
     route('*', 'routes/not-found.tsx'),
   ]),
 ] satisfies RouteConfig
