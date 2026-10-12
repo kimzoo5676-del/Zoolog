@@ -1,6 +1,6 @@
 # zoolog
 
-개인 일정 비서 + 공개 개발 공부 기록 블로그. 1인 개발, 개인 노트북에서 Tailscale Funnel로 셀프 호스팅(노트북이 켜져 있을 때만 공개, 비상업).
+개인 일정 비서 + 공개 개발 공부 기록 블로그. 1인 개발, AWS Lightsail 서버 1대에서 상시 운영(비상업). 노트북은 개발 전용.
 글쓰기와 일정 관리는 소유자만, 방문자는 읽기만 가능.
 
 ## 기능 범위
@@ -15,7 +15,7 @@
 
 2차
 7. Gmail 일정 알림
-8. 산업 뉴스 스크랩: 매일 기사 선정 메일 + 코멘트 유도 질문 → 소유자가 1~2문장 코멘트 → "뉴스 스크랩" 글로 게시. 공개 글에는 제목 + 원문 링크 + 본인 코멘트만 (기사 본문 복제 금지, 저작권). 네이버 뉴스 검색 API 예정. 선정 방식, 코멘트 입력 방식, 누락일 처리, 06:00 발송 시 노트북 절전 문제는 미정
+8. 산업 뉴스 스크랩: 매일 기사 선정 메일 + 코멘트 유도 질문 → 소유자가 1~2문장 코멘트 → "뉴스 스크랩" 글로 게시. 공개 글에는 제목 + 원문 링크 + 본인 코멘트만 (기사 본문 복제 금지, 저작권). 네이버 뉴스 검색 API 예정. 선정 방식, 코멘트 입력 방식, 누락일 처리는 미정 (06:00 발송 시 노트북 절전 문제는 상시 운영 서버로 해결)
 
 ## 스택 (확인된 버전)
 
@@ -30,7 +30,7 @@
 
 ## 개발 환경
 
-- Windows 11 + WSL2(Ubuntu) + Docker Desktop + VS Code Dev Containers
+- Windows 11 + WSL2(Ubuntu) + Docker Desktop + VS Code Dev Containers (윈도우 노트북은 12월 초 반납 예정)
 - `.devcontainer/compose.yaml` 서비스: `app`(작업 컨테이너), `db`(postgres:18), `storage`(seaweedfs)
 - 컨테이너 안 저장소 경로 `/workspaces/zoolog`, DB 주소 `db:5432`
 - Claude Code 로그인·설정 유지: named volume `claude-config` → `/home/vscode/.claude`, `CLAUDE_CONFIG_DIR`로 `.claude.json`도 그 안에 저장. 볼륨 소유자는 `postCreateCommand`의 `chown`으로 맞춤. 볼륨 삭제 시 재로그인 필요
@@ -40,7 +40,19 @@
 - `.env` 내용, 비밀번호, Google 클라이언트 시크릿은 출력·커밋·공유 금지
 - 지금까지 SQL 직접 실행은 Windows PowerShell에서: `docker exec zoolog_devcontainer-db-1 psql -U zoolog -d zoolog -c "..."`
 - 컨테이너 안 DB 직접 접속: psql 클라이언트가 기본 이미지에 없을 수 있음. 필요 시 `sudo apt-get install -y postgresql-client` 후 `PGPASSWORD="$POSTGRES_PASSWORD" psql -h db -U "$POSTGRES_USER" -d "$POSTGRES_DB"`. 환경 변수는 compose의 `env_file`로 app 컨테이너에 주입됨, 값 출력 금지. apt 설치분은 컨테이너 재빌드 시 사라짐
-- 맥북을 나중에 개발 기기로 추가 예정 (Dev Containers로 같은 환경 재현)
+- 노트북은 개발 전용 (운영은 Lightsail). 윈도우 반납 후 맥북으로 이전, Dev Containers로 같은 환경 재현
+
+## 운영 (배포·호스팅, 2026-10-12 결정)
+
+노트북 + Tailscale Funnel 셀프 호스팅에서 AWS Lightsail로 변경 (노트북이 꺼지면 사이트·06:00 메일이 멈추는 문제 해결)
+
+- 서버: Lightsail 서울 리전(ap-northeast-2) Linux $12 플랜(2GB 메모리, 2 vCPU, SSD 60GB) 1대 + 고정 IP
+- 주소: 가비아 도메인 → 고정 IP. HTTPS 인증서는 Caddy가 자동 발급·갱신
+- 구성: 운영용 Docker Compose (Spring, PostgreSQL, SeaweedFS, Caddy). 외부 공개 포트는 80/443(Caddy)만, PostgreSQL·SeaweedFS는 비공개(`ports:` 없음, 컨테이너 내부 통신만)
+- SSH: Tailscale로만 접속, 공개 SSH 포트(22)는 Lightsail 방화벽에서 닫음
+- 빌드는 서버 밖(노트북 또는 GitHub Actions)에서, 서버는 실행만 (Lightsail은 버스트형 CPU라 빌드로 CPU 크레딧을 쓰지 않도록)
+- 백업: Lightsail 자동 스냅샷 + `pg_dump`
+- 메일 발송: Gmail SMTP 587(STARTTLS) 또는 465(SSL). Lightsail은 25번 포트가 기본 차단
 
 ## 명령
 
@@ -82,11 +94,11 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 로그인: Spring Security `oauth2Login` + Google OIDC, 서버 세션(JSESSIONID 쿠키) 방식 (2026-10-12 결정, JWT 아님). scope `openid, email`
 - 흐름: `/oauth2/authorization/google` → Google 동의 화면 → `/login/oauth2/code/google` 콜백 → 성공 `/`, 실패 `/login?error`
 - 소유자 판별: `OwnerOidcUserService`가 `email_verified` true + `OWNER_EMAIL` 일치(대소문자 무시)일 때만 로그인 허용, 아니면 로그인 자체 거절. 통과 시 `member`에 `google_sub` 기준 저장·이메일 갱신
-- Google Cloud 콘솔 승인된 리디렉션 URI: 개발 `http://localhost:5173/login/oauth2/code/google`. 배포 시 Funnel 도메인 주소 추가 필요
+- Google Cloud 콘솔 승인된 리디렉션 URI: 개발 `http://localhost:5173/login/oauth2/code/google`. 운영 시 `https://{가비아 도메인}/login/oauth2/code/google` 추가 필요
 - CSRF: `csrf.spa()`. `XSRF-TOKEN` 쿠키(JS 읽기 가능) 값을 쓰기 요청의 `X-XSRF-TOKEN` 헤더로 전송 (`src/api/auth.ts`의 `csrfHeaders()`)
 - `/api/**` 비로그인 거절은 로그인 페이지 리다이렉트 대신 401. `NullRequestCache`로 거절된 요청을 세션에 저장하지 않음(방문자에게 JSESSIONID 발급 안 함)
 - 로그아웃: `POST /api/auth/logout` (CSRF 헤더 필수), 204
-- SeaweedFS(S3)는 절대 Funnel로 외부 공개 금지. 이미지는 백엔드를 거쳐 업로드
+- SeaweedFS(S3)는 절대 외부(인터넷) 공개 금지. 운영에서도 Caddy 80/443만 공개. 이미지는 백엔드를 거쳐 업로드
 - 이미지 제공: SeaweedFS는 외부 비공개라 presigned URL은 브라우저에서 접근 불가. 프론트에 주는 이미지 URL은 백엔드(또는 같은 도메인 프록시) 경로로 설계
 
 ## 현재 API
@@ -188,7 +200,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 4. (완료) 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드. 남은 일: 일정 수정 화면
 5. (완료) 첫 진입 프리로더
 6. 2차 기능 (Gmail 알림, 뉴스 스크랩)
-7. 배포: Tailscale Funnel (443/8443/10000). Spring이 React 빌드를 정적 제공 vs Nginx 앞단은 배포 시 결정. Tailscale Funnel이 HTTPS 인증서를 자동 처리하므로 Caddy의 자동 HTTPS는 중복
+7. 배포: AWS Lightsail + 운영용 Docker Compose + Caddy ("운영" 절 참고). React 빌드를 Spring이 정적 제공할지, Caddy가 직접 제공하고 `/api`만 Spring으로 넘길지는 배포 시 결정
 
 ## 열린 이슈
 
