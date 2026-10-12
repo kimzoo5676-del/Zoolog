@@ -90,7 +90,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 
 ## 현재 API
 
-- `GET /api/categories`: 주제 목록(평평한 배열, `parentId` 포함), 이름순 (DB 정렬 규칙 en_US.utf8 그대로 유지하기로 결정). 단계별 트리 묶음은 프론트 `buildCategoryTree`(재귀, `categoryPath`·`descendantIds` 보조)
+- `GET /api/categories`: 주제 목록(평평한 배열, `parentId` 포함), 만든 순서(id 오름차순, 2026-10-12 소유자 결정: 공부 목차 순서대로 만들면 메뉴·그래프·주제 선택에 그 순서가 반영. 이전의 이름순은 폐기). 단계별 트리 묶음은 프론트 `buildCategoryTree`(재귀, `categoryPath`·`descendantIds` 보조)
 - `GET /api/posts?category={slug}`: 글 목록(상위 주제 slug면 아래 모든 단계 주제 글 포함), 최신순(`createdAt desc, id desc`), 본문 제외. `category` 생략 시 전체, 없는 slug는 `[]`
 - `GET /api/posts/{id}`: 글 상세(본문 마크다운, `categoryId` 포함), 없으면 404
 - 소유자 전용(로그인 + CSRF 헤더): `POST /api/posts` 201 + Location, `PUT /api/posts/{id}` 200, `DELETE /api/posts/{id}` 204 (완전 삭제, 2026-10-12 결정). 요청 본문 `{ categoryId, title(200자 이하), content }`

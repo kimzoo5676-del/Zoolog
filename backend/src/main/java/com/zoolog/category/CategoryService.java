@@ -20,8 +20,9 @@ public class CategoryService {
         this.categoryRepository = categoryRepository;
     }
 
+    // 만든 순서 (id 오름차순): 공부 목차 순서대로 만들면 그 순서가 메뉴·그래프·주제 선택에 그대로 반영
     public List<CategoryResponse> findAll() {
-        return categoryRepository.findAll(Sort.by("name")).stream()
+        return categoryRepository.findAll(Sort.by("id")).stream()
                 .map(CategoryResponse::from)
                 .toList();
     }
