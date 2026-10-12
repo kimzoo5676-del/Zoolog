@@ -1,9 +1,10 @@
-import { data, href, Link } from 'react-router'
-import { fetchPost } from '../api/post'
+import { data, Form, href, Link, redirect } from 'react-router'
+import { deletePost, fetchPost } from '../api/post'
 import { Halftone } from '../components/Halftone'
 import { MarkdownContent } from '../components/MarkdownContent'
 import { MetaList } from '../components/MetaList'
 import { RouteError } from '../components/RouteError'
+import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
 import { formatDate } from '../utils/date'
 import type { Route } from './+types/post-detail'
 
@@ -19,8 +20,15 @@ export async function clientLoader({ params, request }: Route.ClientLoaderArgs) 
   return { post }
 }
 
+// 삭제 버튼(소유자 전용) 제출 시 실행. 실패하면 ErrorBoundary가 오류 화면 표시
+export async function clientAction({ params }: Route.ClientActionArgs) {
+  await deletePost(Number(params.postId))
+  return redirect(href('/posts'))
+}
+
 export default function PostDetail({ loaderData }: Route.ComponentProps) {
   const { post } = loaderData
+  const { me } = useBlogLayoutData()
 
   return (
     <article>
@@ -38,6 +46,25 @@ export default function PostDetail({ loaderData }: Route.ComponentProps) {
           { label: 'Date', value: <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time> },
         ]}
       />
+      {me && (
+        <div className="owner-actions">
+          <Link to={href('/posts/:postId/edit', { postId: String(post.id) })} className="button-link">
+            수정
+          </Link>
+          <Form
+            method="post"
+            onSubmit={(event) => {
+              if (!window.confirm('이 글을 삭제할까요? 되돌릴 수 없어요.')) {
+                event.preventDefault()
+              }
+            }}
+          >
+            <button type="submit" className="button-link">
+              삭제
+            </button>
+          </Form>
+        </div>
+      )}
       <Halftone className="post-band" />
       <div className="page-section">
         <MarkdownContent>{post.content}</MarkdownContent>

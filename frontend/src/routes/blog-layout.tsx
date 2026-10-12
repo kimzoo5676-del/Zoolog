@@ -1,4 +1,5 @@
 import { href, Link, NavLink, Outlet } from 'react-router'
+import { fetchMe } from '../api/auth'
 import { fetchCategories } from '../api/category'
 import { AuthShortcut } from '../components/AuthShortcut'
 import { Logo } from '../components/Logo'
@@ -8,19 +9,28 @@ import type { Route } from './+types/blog-layout'
 
 // request.signal: 다른 링크로 이동하면 라우터가 진행 중인 요청을 취소 (기존 ignore 플래그 대체)
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
-  return { categories: await fetchCategories(request.signal) }
+  const [categories, me] = await Promise.all([fetchCategories(request.signal), fetchMe(request.signal)])
+  return { categories, me }
 }
 
 export default function BlogLayout({ loaderData }: Route.ComponentProps) {
-  const { categories } = loaderData
+  const { categories, me } = loaderData
 
   return (
     <div className="site-shell">
       <header className="site-header">
         {/* 첫 글자만 러스트 강조. span으로 나뉜 글자를 "Z oolog"로 띄어 읽지 않도록 aria-label 지정 */}
-        <Link to="/" className="site-title" aria-label="Zoolog">
-          <Logo />
-        </Link>
+        <div className="site-brand">
+          <Link to="/" className="site-title" aria-label="Zoolog">
+            <Logo />
+          </Link>
+          {/* 소유자 로그인 상태에서만 표시. 주제 메뉴와 섞이지 않도록 로고 옆 칸 */}
+          {me && (
+            <NavLink to={href('/posts/new')} className="site-write roll-trigger">
+              <RollText>글쓰기</RollText>
+            </NavLink>
+          )}
+        </div>
         <nav aria-label="주제" className="site-nav">
           <ul className="category-nav">
             <li>

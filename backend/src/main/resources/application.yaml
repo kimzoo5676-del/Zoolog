@@ -5,6 +5,10 @@ spring:
     url: jdbc:postgresql://db:5432/${POSTGRES_DB}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
+  mvc:
+    # 오류 응답을 RFC 9457 ProblemDetail(JSON)로. ResponseStatusException의 이유가 detail에 담김
+    problemdetails:
+      enabled: true
   jpa:
     open-in-view: false
     hibernate:

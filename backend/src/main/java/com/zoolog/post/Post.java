@@ -37,6 +37,12 @@ public class Post extends BaseTimeEntity {
         this.content = content;
     }
 
+    public void update(Category category, String title, String content) {
+        this.category = category;
+        this.title = title;
+        this.content = content;
+    }
+
     public Long getId() {
         return id;
     }

@@ -101,6 +101,11 @@ a {
   background-color: var(--color-accent-strong);
 }
 
+.button-link:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .page-section {
   padding: 2rem var(--cell-pad-x) 4rem;
 }
@@ -249,6 +254,10 @@ a {
   border-bottom: var(--grid-line);
 }
 
+.site-brand {
+  display: flex;
+}
+
 .site-title {
   display: flex;
   align-items: center;
@@ -274,6 +283,25 @@ a {
 .site-nav {
   display: flex;
   margin-left: auto;
+}
+
+/* 소유자 전용 글쓰기 칸: 주제 메뉴 칸과 같은 모양 */
+.site-write {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-right: var(--grid-line);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.site-write[aria-current="page"],
+.site-write:hover {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
 }
 
 .category-nav {
@@ -310,10 +338,18 @@ a {
 
 /* 좁은 화면: 로고 칸 한 줄, 메뉴 칸 한 줄 */
 @media (max-width: 40rem) {
-  .site-title {
+  .site-brand {
     flex-basis: 100%;
-    border-right: 0;
     border-bottom: var(--grid-line);
+  }
+
+  .site-title {
+    flex: 1;
+  }
+
+  .site-title:last-child,
+  .site-write {
+    border-right: 0;
   }
 
   /* 메뉴 칸이 줄 전체를 나눠 채움 */
@@ -652,4 +688,215 @@ a {
 .markdown .task-list-item input {
   margin: 0 0.5em 0 0;
   accent-color: var(--color-accent-strong);
+}
+
+/* ---------- 소유자 전용: 글 상세 수정·삭제 버튼 ---------- */
+
+.owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem var(--cell-pad-x);
+  border-bottom: var(--grid-line);
+}
+
+.owner-actions form {
+  display: contents;
+}
+
+/* ---------- 글 편집기 (PostEditor, velog 구성 참고) ---------- */
+
+/* 화면에는 숨기고 스크린 리더에는 읽힘 */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 테두리 없는 입력 칸: 글자 자체가 화면 구성 (포커스는 깜빡이는 커서로 표시, 소유자 결정으로 외곽선 없음) */
+.editor-title,
+.editor-content,
+.chip-input input {
+  font: inherit;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+}
+
+.editor-title::placeholder,
+.editor-content::placeholder,
+.chip-input input::placeholder {
+  color: var(--color-text);
+  opacity: 0.45;
+}
+
+/* 글 상세 머리 칸과 같은 구성: 러스트 막대 → 큰 제목 */
+.editor-head {
+  padding: clamp(2rem, 5vw, 3.5rem) var(--cell-pad-x) 1.5rem;
+  border-bottom: var(--grid-line);
+}
+
+.editor-head::before {
+  content: "";
+  display: block;
+  width: 3rem;
+  height: 0.375rem;
+  margin-bottom: 1.25rem;
+  background-color: var(--color-accent);
+}
+
+.editor-title {
+  display: block;
+  width: 100%;
+  field-sizing: content; /* 내용 길이에 맞춰 높이 자동 조절 */
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+/* 주제 칩: 얇은 진한 러스트 테두리, 선택·마우스 올림은 진한 러스트 칸 + 세이지 글자 (활성 메뉴와 같은 규칙) */
+.category-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.875rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-text);
+  background: transparent;
+  border: var(--grid-line);
+  cursor: pointer;
+}
+
+.chip input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.chip:hover,
+.chip:has(input:checked) {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+/* 키보드로 칩 사이를 이동할 때만 테두리 표시 */
+.chip:has(input:focus-visible) {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+.chip-add {
+  border-style: dashed;
+}
+
+.chip-input {
+  display: inline-flex;
+  border: var(--grid-line);
+}
+
+.chip-input input {
+  width: 10rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.chip-input .chip {
+  border-width: 0 0 0 1px;
+}
+
+.category-picker .form-error {
+  flex-basis: 100%;
+}
+
+/* 원문 | 미리보기 (좁은 화면은 위아래) */
+.editor-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 60vh;
+  border-bottom: var(--grid-line);
+}
+
+.editor-content {
+  min-height: 50vh;
+  padding: 1.5rem var(--cell-pad-x);
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  line-height: 1.8;
+}
+
+.editor-preview {
+  min-width: 0;
+  padding: 1.5rem var(--cell-pad-x);
+  border-top: var(--grid-line);
+}
+
+@media (min-width: 60rem) {
+  .editor-panes {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .editor-preview {
+    border-top: 0;
+    border-left: var(--grid-line);
+  }
+}
+
+/* 하단 고정 바: 나가기 | 오류 문구 | 게시 */
+.editor-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem var(--cell-pad-x);
+  background-color: var(--color-bg);
+  border-top: var(--grid-line);
+}
+
+.editor-footer .button-solid {
+  margin-left: auto;
+}
+
+.form-error {
+  margin: 0;
+  font-weight: 700;
+}
+
+/* 채운 버튼: 진한 러스트 칸 + 세이지 글자 (4.59:1), 주요 동작(게시, 저장)에만 사용 */
+.button-solid {
+  padding: 0.625rem 1.5rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+  border: var(--grid-line);
+  cursor: pointer;
+}
+
+.button-solid:hover {
+  color: var(--color-text);
+  background-color: transparent;
+}
+
+.button-solid:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }

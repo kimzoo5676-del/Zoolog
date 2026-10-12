@@ -70,7 +70,8 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 스키마는 Flyway가 소유: `src/main/resources/db/migration/V<번호>__<이름>.sql`. 적용된 마이그레이션 수정 금지, 변경은 새 버전 파일로. `ddl-auto: validate`
 - 컬럼 규칙: 시각 `TIMESTAMPTZ NOT NULL`, PK `BIGINT GENERATED ALWAYS AS IDENTITY`, FK마다 인덱스, 값 범위는 CHECK 제약
 - V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. 엔티티 구현 완료: `Category`, `Post`, `Member`
-- 없는 리소스: 현재 `ResponseStatusException(HttpStatus.NOT_FOUND)`. 오류 응답 형식 통일 시 `@RestControllerAdvice` 검토
+- 오류 응답: `spring.mvc.problemdetails.enabled: true`로 RFC 9457 ProblemDetail JSON (`status`, `title`, `detail`, `instance`). `ResponseStatusException(상태, "이유")`의 이유가 `detail`로 전달되어 화면에 그대로 표시. 입력값 검증 실패 문구는 `messages.properties`(`입력값을 확인해 주세요`)
+- 상태 코드: 없는 리소스 404, 요청 본문의 잘못된 참조(없는 주제 id) 400, 중복 409
 - 테스트: `@SpringBootTest` + `@Transactional`(개발 DB 사용, 끝나면 롤백), `@DisplayName`은 한국어 문장, 저장 검증은 `flush()` → `clear()` → 재조회. 롤백으로 생기는 id 빈 번호는 정상
 
 ## 보안 (현재 상태)
@@ -91,7 +92,9 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 
 - `GET /api/categories`: 주제 목록, 이름순 (DB 정렬 규칙 en_US.utf8 그대로 유지하기로 결정)
 - `GET /api/posts?category={slug}`: 글 목록, 최신순(`createdAt desc, id desc`), 본문 제외. `category` 생략 시 전체, 없는 slug는 `[]`
-- `GET /api/posts/{id}`: 글 상세(본문 마크다운 포함), 없으면 404
+- `GET /api/posts/{id}`: 글 상세(본문 마크다운, `categoryId` 포함), 없으면 404
+- 소유자 전용(로그인 + CSRF 헤더): `POST /api/posts` 201 + Location, `PUT /api/posts/{id}` 200, `DELETE /api/posts/{id}` 204 (완전 삭제, 2026-10-12 결정). 요청 본문 `{ categoryId, title(200자 이하), content }`
+- `POST /api/categories` `{ name(50자 이하) }` 201. slug(주소용 이름)는 이름에서 자동 생성(소문자, 글자·숫자 외 문자 묶음은 하이픈, 한글 유지. 예: `AWS SAA` → `aws-saa`). 이름·slug 중복 409 (Ghost 방식 참고, 2026-10-12 결정)
 - `GET /api/auth/me`: 로그인 상태면 200 `{ email }`, 비로그인이면 204 (방문자 화면 콘솔 오류 방지로 401 대신)
 - 시각 필드는 ISO-8601 UTC 문자열 (예: `2026-10-12T04:05:29.717131Z`)
 
@@ -108,6 +111,11 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 데이터 조회는 라우트 모듈의 `clientLoader`, `request.signal`을 API 함수에 전달(다른 화면으로 이동하면 요청 취소). SPA 모드라 서버 `loader`는 사용 안 함. TanStack Query는 화면이 늘어나면 도입 검토
 - 없는 리소스: `clientLoader`에서 `throw data('메시지', { status: 404 })` → 라우트 `ErrorBoundary`에서 `RouteError`로 표시. 오류 화면도 레이아웃(머리글, 주제 메뉴) 안에 표시하려면 라우트마다 `ErrorBoundary` export
 - 링크 경로는 `href('/posts/:postId', { postId })`로 생성 (경로·파라미터 타입 검사)
+- 쓰기 요청: `fetch`에 `csrfHeaders()` 포함, 실패 시 `toApiError`(`src/api/error.ts`)가 ProblemDetail `detail`을 메시지로 사용
+- 소유자 판별: `blog-layout` `clientLoader`가 주제 목록과 `fetchMe`를 함께 조회, 하위 라우트는 `useBlogLayoutData()`로 재사용. 소유자 전용 화면 `clientLoader`는 `requireOwner()` (비로그인 → `/login`)
+- 글 작성 `/posts/new`, 수정 `/posts/:postId/edit`: `PostEditor` (velog 구성 참고, 2026-10-12 결정). 테두리 없는 큰 제목 → 주제 칩(`CategoryPicker`, 라디오) → 원문 textarea | 미리보기 나란히 → 하단 고정 바(나가기, 게시/저장). 라벨 대신 placeholder + `aria-label`. 저장은 라우트 `clientAction` → 성공 시 `redirect`, 실패 시 `{ error }` 반환(입력 유지). 삭제는 글 상세 `clientAction` + `window.confirm`
+- 새 주제: 칩 줄 끝 `+ 새 주제` → 이름 입력 후 Enter(Esc 취소). 추가 후 `revalidate()`로 메뉴·칩 갱신
+- 글쓰기 메뉴는 주제 메뉴가 아닌 로고 옆 칸(`site-write`, 소유자 로그인 시만)
 - 페이지 제목은 React 19 `<title>` 요소를 라우트 컴포넌트에 직접 렌더링 (`meta` export 대신, React Router 문서 권장)
 - 글 본문은 마크다운 원문 저장, 화면에서는 `MarkdownContent`(react-markdown)로 렌더링. 원문 HTML은 글자로 이스케이프되는 기본값 유지, HTML 허용(`rehype-raw`)이 필요하면 `rehype-sanitize` 함께 적용
 - 화면 확인은 사용자가 Windows 브라우저(http://localhost:5173)에서 진행. UI 변경 후에는 확인할 항목을 정리해 요청
@@ -136,7 +144,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 레퍼런스 느낌: 포스터형. 화면을 채우는 아주 굵은 차콜 제목(글자 자체가 그래픽), 러스트 단색(듀오톤, 망점 질감) 비주얼, 얇은 러스트 막대, 그림자·그라데이션 없는 평면 색면, 넓은 세이지 여백, 제목이 이미지 위에 겹침
 - 강한 표현은 프리로더와 큰 제목에 집중, 글 목록·본문은 차분하고 읽기 우선
 - 레퍼런스 포스터 이미지와 구성은 복제 금지, 비주얼은 직접 제작
-- 접근성: `:focus-visible` 차콜 2px 테두리 유지, 프리로더와 글자 올림 효과는 `prefers-reduced-motion`이면 생략
+- 접근성: `:focus-visible` 차콜 2px 테두리 유지 (예외: 편집기의 테두리 없는 입력 칸은 외곽선 없음, 소유자 결정 2026-10-12), 프리로더와 글자 올림 효과는 `prefers-reduced-motion`이면 생략
 - 화면 문구: 소개 문장, 태그라인 같은 꾸밈 문구는 임의로 넣지 않음. 문구는 소유자가 결정
 - 레이아웃 참고: https://mijobello.com (격자선, 칸 구성, 작은 대문자 라벨). 화면 가운데 기둥(`site-shell`)을 진한 러스트 1px 격자선으로 나눔: 머리글(로고 칸 | 메뉴 칸), 페이지 머리 칸, 목록 행(번호 칸 | 제목·정보 칸), 글 정보 칸
 - 글자는 모두 차콜 (로고, 제목, 라벨 포함). 진한 러스트 글자는 써 보고 제외 (2026-10-12 소유자 결정)
@@ -158,7 +166,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 ## 다음 작업 (순서)
 
 1. (완료) 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
-2. (완료) Google 로그인 → 다음: 글 작성·수정·삭제(소유자 전용)
+2. (완료) Google 로그인, 글 작성·수정·삭제(소유자 전용), 편집기에서 주제 추가
 3. 이미지 업로드 (SeaweedFS S3, `post_image.object_key`)
 4. 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드
 5. (완료) 첫 진입 프리로더
