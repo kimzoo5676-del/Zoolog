@@ -78,9 +78,54 @@ class CategoryWriteApiTest {
         assertThat(CategoryService.toSlug("C++ / Java!")).isEqualTo("c-java");
     }
 
+    @Test
+    @DisplayName("상위 주제를 지정하면 하위 주제로 추가된다")
+    void createChild() throws Exception {
+        Category parent = categoryRepository.save(new Category("Test Parent", "test-parent"));
+
+        mockMvc.perform(post("/api/categories").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(childBody("Test Child", parent.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.parentId").value(parent.getId()));
+    }
+
+    @Test
+    @DisplayName("하위 주제 아래에 3단계 주제를 만들 수 있다")
+    void createThirdLevel() throws Exception {
+        Category parent = categoryRepository.save(new Category("Test Parent", "test-parent"));
+        Category child = categoryRepository.save(new Category("Test Child", "test-child", parent));
+
+        mockMvc.perform(post("/api/categories").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(childBody("Test Grandchild", child.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.parentId").value(child.getId()));
+    }
+
+    @Test
+    @DisplayName("3단계 주제 아래에 주제를 만들면 400을 받는다 (3단계 제한)")
+    void rejectsFourthLevel() throws Exception {
+        Category parent = categoryRepository.save(new Category("Test Parent", "test-parent"));
+        Category child = categoryRepository.save(new Category("Test Child", "test-child", parent));
+        Category grandchild = categoryRepository.save(new Category("Test Grandchild", "test-grandchild", child));
+
+        mockMvc.perform(post("/api/categories").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(childBody("Test Fourth", grandchild.getId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("주제는 3단계까지만 만들 수 있어요"));
+    }
+
     private static String body(String name) {
         return """
                 {"name": "%s"}
                 """.formatted(name);
+    }
+
+    private static String childBody(String name, Long parentId) {
+        return """
+                {"name": "%s", "parentId": %d}
+                """.formatted(name, parentId);
     }
 }

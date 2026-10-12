@@ -12,6 +12,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class CategoryService {
 
+    static final int MAX_DEPTH = 3;
+
     private final CategoryRepository categoryRepository;
 
     public CategoryService(CategoryRepository categoryRepository) {
@@ -35,7 +37,26 @@ public class CategoryService {
         if (categoryRepository.existsByName(name) || categoryRepository.existsBySlug(slug)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 있는 주제예요");
         }
-        return CategoryResponse.from(categoryRepository.save(new Category(name, slug)));
+        Category parent = (request.parentId() == null) ? null : getParent(request.parentId());
+        return CategoryResponse.from(categoryRepository.save(new Category(name, slug, parent)));
+    }
+
+    // 3단계까지만 (예: Cloud Engineer > AWS-SAA > 컴퓨팅): 3단계 주제 아래에는 만들 수 없음
+    private Category getParent(Long parentId) {
+        Category parent = categoryRepository.findById(parentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "상위 주제를 찾을 수 없어요"));
+        if (depthOf(parent) >= MAX_DEPTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "주제는 3단계까지만 만들 수 있어요");
+        }
+        return parent;
+    }
+
+    private static int depthOf(Category category) {
+        int depth = 1;
+        for (Category c = category.getParent(); c != null; c = c.getParent()) {
+            depth++;
+        }
+        return depth;
     }
 
     // 주소용 이름(slug): 소문자로 바꾸고 글자·숫자(한글 포함)가 아닌 문자 묶음은 하이픈 하나로 (예: "AWS SAA" → "aws-saa")
