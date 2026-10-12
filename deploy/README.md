@@ -65,6 +65,24 @@ kubectl create namespace argocd
 kubectl apply -n argocd --server-side --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.5/manifests/core-install.yaml
 kubectl -n argocd get pods   # 모두 Running 확인
+
+# core 설치에는 default 프로젝트를 만드는 argocd-server가 없어 직접 생성
+# (없으면 앱이 "Application referencing project default which does not exist"로 Unknown)
+kubectl apply -n argocd -f - <<'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+spec:
+  sourceRepos: ['*']
+  destinations:
+    - namespace: '*'
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+EOF
 ```
 
 - 저장소가 비공개(private)면 Argo CD가 읽을 수 있게 저장소 접근 정보 등록 (GitHub fine-grained 토큰, Contents 읽기):
