@@ -11,5 +11,12 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
 
+  storage:
+    image: chrislusf/seaweedfs:4.45
+    env_file: .env
+    volumes:
+      - weeddata:/data
+
 volumes:
   pgdata:
+  weeddata:
