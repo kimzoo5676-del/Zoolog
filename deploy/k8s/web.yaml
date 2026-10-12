@@ -31,9 +31,13 @@ metadata:
   name: web
 spec:
   replicas: 1
-  # 인증서 PVC(ReadWriteOnce)를 한 파드만 쓰도록 옛 파드를 먼저 내림
+  # 무중단 배포: 새 파드를 먼저 띄워 준비되면 옛 파드를 내림 (배포 순간만 2개, 메모리 상한 128Mi라 부담 적음)
+  # 인증서 PVC는 ReadWriteOnce(노드 단위)라 같은 서버의 두 파드가 함께 쓸 수 있고, Caddy는 저장소 잠금으로 공유를 지원
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: web
@@ -61,6 +65,16 @@ spec:
           ports:
             - containerPort: 80
             - containerPort: 443
+          # 443을 받을 수 있을 때만 요청을 보냄
+          readinessProbe:
+            tcpSocket:
+              port: 443
+            periodSeconds: 5
+          # 종료 신호 전에 몇 초 기다려 서비스 목록에서 빠질 시간을 줌 (그사이 들어온 요청도 처리)
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           resources:
             requests:
               memory: 64Mi

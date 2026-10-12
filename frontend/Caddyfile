@@ -2,6 +2,8 @@
 # DOMAIN, ACME_EMAIL은 k8s Secret(zoolog-env)에서 환경 변수로
 {
 	email {$ACME_EMAIL}
+	# 종료 시 처리 중인 요청을 최대 10초 기다림 (기본값은 무한정, 쿠버네티스 종료 유예 30초 안에 끝나도록)
+	grace_period 10s
 }
 
 {$DOMAIN} {
