@@ -4,3 +4,12 @@ services:
     volumes:
       - ..:/workspaces/zoolog:cached
     command: sleep infinity
+
+  db:
+    image: postgres:18
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql
+
+volumes:
+  pgdata:
