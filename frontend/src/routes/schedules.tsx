@@ -1,41 +1,36 @@
 import { useState } from 'react'
 import { useRevalidator } from 'react-router'
-import { deleteSchedule, fetchBoard, setDone, type BoardItem } from '../api/schedule'
-import { PageHeader } from '../components/PageHeader'
+import { DAYS, deleteSchedule, fetchBoard, setDone, type BoardItem } from '../api/schedule'
+import { HabitCard } from '../components/HabitCard'
+import { ProgressRing } from '../components/ProgressRing'
 import { RouteError } from '../components/RouteError'
 import { ScheduleForm } from '../components/ScheduleForm'
-import { ScheduleGrass } from '../components/ScheduleGrass'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
 import { errorMessage } from '../utils/postForm'
-import { repeatLabel, shortDate } from '../utils/scheduleDates'
+import { addDays, dayOfWeek, isDueOn, repeatLabel } from '../utils/scheduleDates'
 import type { Route } from './+types/schedules'
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   return { board: await fetchBoard(request.signal) }
 }
 
-const WEEKS = 12 // 백엔드 board 기본값과 같게
+const WEEKDAY_LONG = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
 
 // 일정 보드 (2026-10-12 결정: 방문자도 보기, 등록·체크는 소유자)
-// 오늘 칸(오늘 할 일정, 시각순, 체크) → 일정마다 최근 12주 잔디 + 연속 일수
+// 참고: Things 3 Today(하루 일정 한 목록), Apple 피트니스(날짜별 달성 링, 위쪽 주간 줄로 날짜 이동)
+// 구성: 날짜 머리 칸(큰 날짜 + 달성 링) → 주간 줄(월~일, 칸마다 링) → 고른 날 목록(둥근 체크) → 습관 카드 격자
 export default function Schedules({ loaderData }: Route.ComponentProps) {
   const { board } = loaderData
   const { me } = useBlogLayoutData()
   const { revalidate } = useRevalidator()
+  const [selected, setSelected] = useState(board.today)
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // 체크 즉시 화면에 반영(낙관적 업데이트), 서버 응답 뒤 다시 불러와 맞춤
   const [pending, setPending] = useState<Record<string, boolean>>({})
 
-  const todayItems = board.schedules.filter((item) => item.dueToday)
-
-  function isDone(item: BoardItem, date: string) {
-    const key = `${item.schedule.id}:${date}`
-    return key in pending ? pending[key] : item.doneDates.includes(date)
-  }
-
-  // 낙관적 반영으로 바뀐 완료 날짜를 보드 항목에 덮어씀
-  function withPending(item: BoardItem): BoardItem {
+  // 낙관적 반영으로 바뀐 완료 날짜를 덮어쓴 보드 항목
+  const items: BoardItem[] = board.schedules.map((item) => {
     const dates = new Set(item.doneDates)
     for (const [key, done] of Object.entries(pending)) {
       const [id, date] = key.split(':')
@@ -43,15 +38,27 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
       if (done) dates.add(date)
       else dates.delete(date)
     }
-    return { ...item, doneDates: [...dates], doneToday: dates.has(board.today) }
+    return { ...item, doneDates: [...dates] }
+  })
+
+  const dayStats = (date: string) => {
+    const due = items.filter((item) => isDueOn(item.schedule, date))
+    return { due, done: due.filter((item) => item.doneDates.includes(date)).length }
   }
 
-  async function toggle(item: BoardItem, date: string, done: boolean) {
-    const key = `${item.schedule.id}:${date}`
+  // 이번 주 월요일부터 일요일
+  const monday = addDays(board.today, -DAYS.findIndex((d) => d.value === dayOfWeek(board.today)))
+  const week = DAYS.map((d, i) => ({ ...d, date: addDays(monday, i) }))
+  const selectedStats = dayStats(selected)
+  const [, month, day] = selected.split('-')
+  const weekdayIndex = DAYS.findIndex((d) => d.value === dayOfWeek(selected))
+
+  async function toggle(id: number, date: string, done: boolean) {
+    const key = `${id}:${date}`
     setError(null)
     setPending((current) => ({ ...current, [key]: done }))
     try {
-      await setDone(item.schedule.id, date, done)
+      await setDone(id, date, done)
       await revalidate()
     } catch (e) {
       setError(errorMessage(e, '체크하지 못했어요'))
@@ -77,87 +84,113 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <title>일정 | zoolog</title>
-      <PageHeader eyebrow="Schedule" title="일정" />
+      <h1 className="visually-hidden">일정</h1>
 
-      <section className="today" aria-labelledby="today-title">
-        <h2 id="today-title" className="today-title">
-          <span className="picker-label">Today</span> {shortDate(board.today)}
-        </h2>
-        {todayItems.length === 0 ? (
-          <p className="today-empty">오늘은 일정이 없어요.</p>
+      {/* 날짜 머리 칸: 아주 큰 날짜(포스터형) + 그날 달성 링 */}
+      <section className="day-hero" aria-label="고른 날 요약">
+        <div>
+          <p className="picker-label">{selected === board.today ? 'Today' : 'Day'}</p>
+          <p className="day-hero-date">
+            {Number(month)}.{Number(day)}
+          </p>
+          <p className="day-hero-weekday">{WEEKDAY_LONG[weekdayIndex]}</p>
+        </div>
+        <div className="day-hero-ring">
+          <ProgressRing done={selectedStats.done} total={selectedStats.due.length} size={148} stroke={14} />
+          <p className="day-hero-count">
+            <strong>{selectedStats.done}</strong>
+            <span>/ {selectedStats.due.length}</span>
+          </p>
+        </div>
+      </section>
+
+      {/* 주간 줄: 날짜를 고르면 그날 목록으로 (미래 날짜는 고를 수 없음) */}
+      <nav className="week-strip" aria-label="이번 주">
+        {week.map(({ label, date }) => {
+          const stats = dayStats(date)
+          const future = date > board.today
+          return (
+            <button
+              key={date}
+              type="button"
+              className="week-day"
+              aria-pressed={date === selected}
+              aria-label={`${label}요일 ${Number(date.slice(8))}일, ${stats.due.length}개 중 ${stats.done}개 완료`}
+              disabled={future}
+              onClick={() => setSelected(date)}
+            >
+              <span className="week-day-label">{label}</span>
+              <span className="week-day-ring">
+                <ProgressRing done={stats.done} total={stats.due.length} size={44} stroke={5} />
+                <span className="week-day-number">{Number(date.slice(8))}</span>
+              </span>
+            </button>
+          )
+        })}
+      </nav>
+
+      {/* 고른 날 목록: 시각순, 오른쪽 둥근 체크 (Apple 미리 알림 방식) */}
+      <section className="agenda" aria-label="고른 날 일정">
+        {selectedStats.due.length === 0 ? (
+          <p className="agenda-empty">이날은 일정이 없어요.</p>
         ) : (
-          <ul className="today-list">
-            {todayItems.map((item) => {
-              const done = isDone(item, board.today)
+          <ul className="agenda-list">
+            {selectedStats.due.map((item) => {
+              const done = item.doneDates.includes(selected)
               return (
-                <li key={item.schedule.id} className={done ? 'today-row is-done' : 'today-row'}>
+                <li key={item.schedule.id} className={done ? 'agenda-row is-done' : 'agenda-row'}>
+                  <time className="agenda-time">{item.schedule.startTime.slice(0, 5)}</time>
+                  <div className="agenda-main">
+                    <span className="agenda-title">{item.schedule.title}</span>
+                    <span className="agenda-meta">
+                      {repeatLabel(item.schedule.repeatDays)} · {item.streak}일 연속
+                    </span>
+                  </div>
                   {me ? (
                     <button
                       type="button"
-                      className="today-check"
+                      className="agenda-check"
                       aria-pressed={done}
                       aria-label={`${item.schedule.title} ${done ? '완료 취소' : '완료'}`}
-                      onClick={() => void toggle(item, board.today, !done)}
+                      onClick={() => void toggle(item.schedule.id, selected, !done)}
                     >
-                      <span aria-hidden="true">{done ? '✓' : ''}</span>
+                      <span aria-hidden="true">✓</span>
                     </button>
                   ) : (
-                    <span className="today-check" aria-label={done ? '완료' : '미완료'} role="img">
-                      <span aria-hidden="true">{done ? '✓' : ''}</span>
+                    <span className="agenda-check" role="img" aria-label={done ? '완료' : '미완료'}>
+                      <span aria-hidden="true">✓</span>
                     </span>
                   )}
-                  <time className="today-time">{item.schedule.startTime.slice(0, 5)}</time>
-                  <span className="today-name">{item.schedule.title}</span>
                 </li>
               )
             })}
           </ul>
         )}
         {error && (
-          <p className="form-error today-error" role="alert">
+          <p className="form-error agenda-error" role="alert">
             {error}
           </p>
         )}
       </section>
 
-      <ul className="schedule-list">
-        {board.schedules.map((raw) => {
-          const item = withPending(raw)
-          return (
-            <li key={item.schedule.id} className="schedule-row">
-              <div className="schedule-head">
-                <h3 className="schedule-name">
-                  <time>{item.schedule.startTime.slice(0, 5)}</time> {item.schedule.title}
-                </h3>
-                <p className="schedule-meta">
-                  <span>{repeatLabel(item.schedule.repeatDays)}</span>
-                  <span>
-                    연속 <strong>{item.streak}</strong>일
-                  </span>
-                  {me && (
-                    <button type="button" className="text-link" onClick={() => void remove(item)}>
-                      삭제
-                    </button>
-                  )}
-                </p>
-              </div>
-              <ScheduleGrass
+      {/* 습관 카드 격자 */}
+      {items.length > 0 && (
+        <section className="habits" aria-labelledby="habits-title">
+          <h2 id="habits-title" className="habits-title">
+            Habits
+          </h2>
+          <div className="habit-grid">
+            {items.map((item) => (
+              <HabitCard
+                key={item.schedule.id}
                 item={item}
-                from={board.from}
                 today={board.today}
-                weeks={WEEKS}
-                onToggle={me ? (date, done) => void toggle(raw, date, done) : undefined}
+                onToggle={me ? (date, done) => void toggle(item.schedule.id, date, done) : undefined}
+                onDelete={me ? () => void remove(item) : undefined}
               />
-            </li>
-          )
-        })}
-      </ul>
-
-      {board.schedules.length > 0 && (
-        <p className="grass-legend" aria-hidden="true">
-          <span className="grass-cell is-done" /> 완료 <span className="grass-cell is-missed" /> 놓침
-          <span className="grass-cell is-pending" /> 오늘 <span className="grass-cell is-off" /> 쉬는 날
-        </p>
+            ))}
+          </div>
+        </section>
       )}
 
       {me && (

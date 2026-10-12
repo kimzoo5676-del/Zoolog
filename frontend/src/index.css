@@ -1711,6 +1711,11 @@ a {
     top: auto;
     bottom: 0;
   }
+
+  /* 좁은 화면: 지도 아래쪽에 범례·보기 전환 자리를 비워 별이 그 밑에 깔리지 않게 */
+  .constellation-stage > svg {
+    bottom: 3.5rem;
+  }
 }
 
 /* 목록 화면: 페이지 머리 오른쪽에 보기 전환 + 글 수 */
@@ -1721,121 +1726,387 @@ a {
   gap: 1rem 2rem;
 }
 
-/* ---------- 일정 보드: 오늘 칸 → 일정별 잔디 ---------- */
+/* ---------- 일정 보드: 날짜 머리 칸 → 주간 줄 → 그날 목록 → 습관 카드 ---------- */
 
-.today {
-  padding: 1.5rem var(--cell-pad-x) 1.75rem;
-  border-bottom: var(--grid-line);
+/* 달성 링: 옅은 바탕 원 + 러스트 호 */
+.ring-track {
+  stroke: var(--color-surface);
 }
 
-.today-title {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  margin: 0 0 1rem;
-  font-size: 1.25rem;
-  font-weight: 900;
+.ring-value {
+  stroke: var(--color-accent);
+  transition: stroke-dasharray 0.6s var(--ease-in-out-soft);
 }
 
-.today-empty {
-  margin: 0;
-}
-
-.today-list {
-  display: grid;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.today-row {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  font-size: 1.0625rem;
-  font-weight: 700;
-}
-
-/* 체크 칸: 빈 칸은 진한 러스트 테두리, 완료는 진한 러스트 칸 + 세이지 체크 (4.59:1) */
-.today-check {
-  display: grid;
-  place-items: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  padding: 0;
-  font: inherit;
-  font-size: 0.9375rem;
-  font-weight: 900;
-  line-height: 1;
-  color: var(--color-bg);
-  background: transparent;
-  border: 2px solid var(--color-accent-strong);
-  transition: background-color 0.2s ease;
-}
-
-button.today-check {
-  cursor: pointer;
-}
-
-button.today-check:hover {
-  background-color: var(--color-surface);
-}
-
-.today-row.is-done .today-check {
-  background-color: var(--color-accent-strong);
-}
-
-.today-row.is-done .today-name {
-  color: var(--color-text-muted);
-}
-
-.today-time {
-  font-variant-numeric: tabular-nums;
-}
-
-.today-error {
-  margin-top: 0.75rem;
-}
-
-.schedule-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.schedule-row {
+/* 날짜 머리 칸: 포스터형 큰 날짜 + 오른쪽 달성 링 */
+.day-hero {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 1rem 2rem;
-  padding: 1.25rem var(--cell-pad-x);
+  gap: 1.5rem;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--cell-pad-x) 2rem;
   border-bottom: var(--grid-line);
 }
 
-.schedule-name {
+.day-hero p {
   margin: 0;
-  font-size: 1.125rem;
+}
+
+.day-hero-date {
+  font-size: clamp(4.5rem, 14vw, 10rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+
+.day-hero .day-hero-weekday {
+  margin-top: 0.75rem;
+  font-size: 1.25rem;
   font-weight: 800;
 }
 
-.schedule-name time {
-  font-variant-numeric: tabular-nums;
+.day-hero-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
 }
 
-.schedule-meta {
+.day-hero-count {
+  position: absolute;
   display: flex;
-  flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.25rem 1rem;
-  margin: 0.375rem 0 0;
-  font-size: 0.875rem;
+  gap: 0.25rem;
+  font-weight: 800;
 }
 
-.schedule-meta strong {
+.day-hero-count strong {
+  font-size: 2.5rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
+}
+
+/* 주간 줄: 7칸이 화면 폭을 채움, 고른 날은 진한 러스트 칸 */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: var(--grid-line);
+}
+
+.week-day {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 1rem 0.25rem 1.125rem;
+  font: inherit;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.week-day + .week-day {
+  border-left: var(--grid-line);
+}
+
+.week-day:hover:not(:disabled) {
+  background-color: var(--color-surface);
+}
+
+.week-day:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.week-day[aria-pressed="true"] {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+/* 고른 칸 위 링: 세이지 바탕 + 세이지 호 (진한 러스트 위에서 보이도록) */
+.week-day[aria-pressed="true"] .ring-track {
+  stroke: color-mix(in srgb, var(--color-bg) 30%, transparent);
+}
+
+.week-day[aria-pressed="true"] .ring-value {
+  stroke: var(--color-bg);
+}
+
+.week-day-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.week-day-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.week-day-number {
+  position: absolute;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 그날 목록: 넓은 행, 시각 | 제목·정보 | 둥근 체크 */
+.agenda-empty {
+  margin: 0;
+  padding: 2rem var(--cell-pad-x);
+  border-bottom: var(--grid-line);
+}
+
+.agenda-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agenda-row {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  min-height: 5rem;
+  padding: 0.75rem var(--cell-pad-x);
+  border-bottom: var(--grid-line);
+}
+
+.agenda-time {
+  font-size: 1.375rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-main {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.agenda-title {
+  font-size: clamp(1.125rem, 2.2vw, 1.5rem);
+  font-weight: 800;
+  transition: color 0.3s ease;
+}
+
+.agenda-meta {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.agenda-row.is-done .agenda-title {
+  color: var(--color-text-muted);
+}
+
+/* 둥근 체크 (Apple 미리 알림 방식): 빈 원 → 완료하면 러스트로 채워지며 체크가 나타남 */
+.agenda-check {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 900;
+  color: transparent;
+  background: transparent;
+  border: 2px solid var(--color-accent-strong);
+  border-radius: 50%;
+  transition:
+    color 0.25s ease,
+    background-color 0.3s var(--ease-out-soft),
+    scale 0.3s var(--ease-out-soft);
+}
+
+button.agenda-check {
+  cursor: pointer;
+}
+
+button.agenda-check:hover {
+  background-color: var(--color-surface);
+}
+
+button.agenda-check:active {
+  scale: 0.9;
+}
+
+.agenda-row.is-done .agenda-check {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.agenda-error {
+  padding: 0.75rem var(--cell-pad-x);
+}
+
+/* 습관 카드 격자 */
+.habits {
+  border-bottom: var(--grid-line);
+}
+
+.habits-title {
+  margin: 0;
+  padding: clamp(2rem, 5vw, 3rem) var(--cell-pad-x) 1rem;
+  font-size: clamp(2.25rem, 6vw, 3.5rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  border-bottom: var(--grid-line);
+}
+
+.habit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+}
+
+/* 칸 사이 격자선: 오른쪽·아래 선, 바깥은 기둥 테두리와 겹치도록 -1px */
+.habit-card {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  margin: 0 -1px -1px 0;
+  padding: 1.5rem var(--cell-pad-x) 1.75rem;
+  border-right: var(--grid-line);
+  border-bottom: var(--grid-line);
+}
+
+.habit-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.habit-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.habit-numbers {
+  display: flex;
+  gap: 2rem;
+}
+
+.habit-numbers p {
+  display: grid;
+  margin: 0;
+}
+
+.habit-numbers strong {
+  font-size: 2.75rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.habit-numbers span {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+/* 최근 5주 달력: 월~일 7열이 카드 폭을 채움 */
+.habit-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.habit-weekday {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.habit-day {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.habit-day-number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 완료: 진한 러스트 칸 + 세이지 숫자 / 놓침: 옅은 테두리 / 오늘 아직: 점선 / 쉬는 날: 옅은 면 */
+.habit-day.is-done {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.habit-day.is-missed {
+  border-color: var(--color-line);
+}
+
+.habit-day.is-pending {
+  color: var(--color-text);
+  border: 1px dashed var(--color-accent-strong);
+}
+
+.habit-day.is-off {
+  background-color: color-mix(in srgb, var(--color-surface) 60%, transparent);
+}
+
+.habit-day.is-future {
+  visibility: hidden;
+}
+
+button.habit-day {
+  cursor: pointer;
+  transition: scale 0.15s ease;
+}
+
+button.habit-day:hover {
+  scale: 1.08;
+}
+
+.habit-delete {
+  justify-self: start;
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 40rem) {
+  /* 좁은 화면: 링을 날짜 오른쪽에 작게 */
+  .day-hero {
+    flex-wrap: nowrap;
+  }
+
+  .day-hero-ring svg {
+    width: 6rem;
+    height: 6rem;
+  }
+
+  .day-hero-count strong {
+    font-size: 1.75rem;
+  }
+
+  .agenda-row {
+    grid-template-columns: 4rem minmax(0, 1fr) auto;
+  }
+
+  .agenda-time {
+    font-size: 1.125rem;
+  }
+
+  .week-day-label {
+    font-size: 0.6875rem;
+  }
 }
 
 /* 글자 버튼 (삭제 등 덜 중요한 실행) */
@@ -1852,84 +2123,6 @@ button.today-check:hover {
 
 .text-link:hover {
   color: var(--color-text);
-}
-
-/* 잔디: 열 = 주, 행 = 월~일 */
-.grass {
-  --grass-cell: 0.875rem;
-  display: flex;
-  gap: 0.375rem;
-}
-
-.grass-days {
-  display: grid;
-  grid-template-rows: repeat(7, var(--grass-cell));
-  gap: 3px;
-  font-size: 0.625rem;
-  font-weight: 700;
-  line-height: var(--grass-cell);
-}
-
-.grass-grid {
-  display: grid;
-  grid-template-rows: repeat(7, var(--grass-cell));
-  gap: 3px;
-}
-
-.grass-cell {
-  display: inline-block;
-  width: var(--grass-cell);
-  height: var(--grass-cell);
-  padding: 0;
-  background: transparent;
-  border: 0;
-}
-
-/* 완료: 진한 러스트 칸 / 놓침: 테두리만 / 오늘 아직: 점선 / 쉬는 날: 옅은 칸 / 미래: 비움 */
-.grass-cell.is-done {
-  background-color: var(--color-accent-strong);
-}
-
-.grass-cell.is-missed {
-  border: 1px solid var(--color-accent-strong);
-}
-
-.grass-cell.is-pending {
-  border: 1px dashed var(--color-accent-strong);
-}
-
-.grass-cell.is-off {
-  background-color: var(--color-surface);
-}
-
-button.grass-cell {
-  cursor: pointer;
-  transition: scale 0.15s ease;
-}
-
-button.grass-cell:hover {
-  scale: 1.25;
-}
-
-.grass-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
-  margin: 0;
-  padding: 1rem var(--cell-pad-x);
-  font-size: 0.75rem;
-  font-weight: 700;
-  border-bottom: var(--grid-line);
-}
-
-.grass-legend .grass-cell {
-  --grass-cell: 0.75rem;
-  margin-left: 0.75rem;
-}
-
-.grass-legend .grass-cell:first-child {
-  margin-left: 0;
 }
 
 /* 일정 추가 (소유자) */

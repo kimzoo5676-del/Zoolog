@@ -245,7 +245,99 @@ function packClusters(clusters: Cluster[], aspect: number): Map<string, Point> {
   return positions
 }
 
-export function layoutConstellation(categories: Category[], posts: PostSummary[], aspect = 1.8): Constellation {
+// 힘 기반 정리 (force-directed layout, Obsidian 그래프 뷰와 같은 방식)
+// 위 규칙으로 만든 배치를 출발점으로: 선은 스프링처럼 정해진 길이로 당기고, 모든 별은 서로 밀어내며,
+// 약한 끌림이 가운데로 모아 외딴 별자리가 화면 끝으로 밀려나지 않게 함
+// 출발점이 같으면 결과도 같아 새로고침해도 같은 모양
+const RELAX_STEPS = 320
+
+// labelScale: 지도가 화면에서 축소되는 만큼 이름표가 지도 단위로는 커지므로 그 배율 (1이면 축소 없음)
+function sizeOf(node: StarNode, labelScale: number) {
+  // 충돌 반경: 별 크기 + 이름표 폭의 절반 (이름끼리 겹치지 않도록), 글 별은 작게
+  if (node.kind === 'post') return 14
+  const fontSize = node.depth === 1 ? 15 : node.depth === 2 ? 12.5 : 11.5
+  return Math.max(node.depth === 1 ? 46 : 30, ((node.label.length * fontSize * 0.62) / 2 + 8) * labelScale)
+}
+
+function restLength(child: StarNode) {
+  if (child.kind === 'post') return 58
+  return child.depth === 2 ? 170 : 120
+}
+
+function relax(nodes: StarNode[], edges: StarEdge[], aspect: number, labelScale: number) {
+  const index = new Map(nodes.map((n, i) => [n.id, i]))
+  const radius = nodes.map((n) => sizeOf(n, labelScale))
+  const mass = nodes.map((n) => (n.kind === 'post' ? 1 : n.depth === 1 ? 5 : n.depth === 2 ? 3 : 2))
+  const links = edges
+    .map((e) => [index.get(e.from), index.get(e.to)] as const)
+    .filter((l): l is readonly [number, number] => l[0] !== undefined && l[1] !== undefined)
+  // 화면 비율만큼 가로로 덜 당겨 넓은 화면에서는 가로로 퍼지게
+  const stretch = Math.sqrt(aspect)
+
+  for (let step = 0; step < RELAX_STEPS; step++) {
+    const alpha = 1 - step / RELAX_STEPS
+    const fx = new Float64Array(nodes.length)
+    const fy = new Float64Array(nodes.length)
+
+    // 서로 밀어냄 + 겹침 해소
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        let dx = nodes[j].x - nodes[i].x
+        let dy = nodes[j].y - nodes[i].y
+        let d2 = dx * dx + dy * dy
+        if (d2 < 0.01) {
+          dx = 0.1 * (j - i)
+          dy = 0.1
+          d2 = dx * dx + dy * dy
+        }
+        const d = Math.sqrt(d2)
+        const minDistance = radius[i] + radius[j]
+        let push = (900 * mass[i] * mass[j]) / Math.max(d2, 400)
+        if (d < minDistance) push += (minDistance - d) * 0.5
+        const ux = dx / d
+        const uy = dy / d
+        fx[i] -= (ux * push) / mass[i]
+        fy[i] -= (uy * push) / mass[i]
+        fx[j] += (ux * push) / mass[j]
+        fy[j] += (uy * push) / mass[j]
+      }
+    }
+
+    // 선(스프링): 정해진 길이로 당기거나 밀어냄
+    for (const [a, b] of links) {
+      const dx = nodes[b].x - nodes[a].x
+      const dy = nodes[b].y - nodes[a].y
+      const d = Math.max(1, Math.hypot(dx, dy))
+      const pull = (d - restLength(nodes[b])) * 0.12
+      const ux = dx / d
+      const uy = dy / d
+      fx[a] += (ux * pull) / mass[a]
+      fy[a] += (uy * pull) / mass[a]
+      fx[b] -= (ux * pull) / mass[b]
+      fy[b] -= (uy * pull) / mass[b]
+    }
+
+    // 가운데로 약하게 끌어당김
+    for (let i = 0; i < nodes.length; i++) {
+      fx[i] -= (nodes[i].x * 0.012) / stretch
+      fy[i] -= nodes[i].y * 0.012 * stretch
+    }
+
+    // 한 번에 너무 멀리 튀지 않도록 이동 거리 제한, 반복할수록 작게(식힘)
+    for (let i = 0; i < nodes.length; i++) {
+      const limit = 24 * alpha + 1
+      nodes[i].x += Math.max(-limit, Math.min(limit, fx[i] * alpha))
+      nodes[i].y += Math.max(-limit, Math.min(limit, fy[i] * alpha))
+    }
+  }
+}
+
+export function layoutConstellation(
+  categories: Category[],
+  posts: PostSummary[],
+  aspect = 1.8,
+  labelScale = 1,
+): Constellation {
   const postsBySlug = new Map<string, PostSummary[]>()
   for (const post of posts) {
     postsBySlug.set(post.categorySlug, [...(postsBySlug.get(post.categorySlug) ?? []), post])
@@ -265,9 +357,13 @@ export function layoutConstellation(categories: Category[], posts: PostSummary[]
     return { nodes, edges, bounds: { minX: -100, minY: -100, width: 200, height: 200 } }
   }
 
+  relax(nodes, edges, aspect, labelScale)
+
   const pad = 48
-  const minX = Math.min(...nodes.map((n) => n.x)) - pad
-  const maxX = Math.max(...nodes.map((n) => n.x)) + pad
+  // 가로 범위는 주제 이름표 끝까지 (가장자리 별의 이름이 화면 밖으로 잘리지 않도록)
+  const halfLabel = (n: StarNode) => (n.kind === 'post' ? 0 : sizeOf(n, labelScale))
+  const minX = Math.min(...nodes.map((n) => n.x - halfLabel(n))) - pad
+  const maxX = Math.max(...nodes.map((n) => n.x + halfLabel(n))) + pad
   const minY = Math.min(...nodes.map((n) => n.y)) - pad
   const maxY = Math.max(...nodes.map((n) => n.y)) + pad + LABEL_ROOM
 

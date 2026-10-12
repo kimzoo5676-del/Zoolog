@@ -115,10 +115,18 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
   const narrow = size.width > 0 && size.width < 640
   const targetAspect = narrow ? 0.8 : size.height > 0 ? Math.max(1.2, size.width / size.height) : 1.9
   const roundedAspect = Math.round(targetAspect * 4) / 4 // 창 크기를 조금 바꿀 때마다 재배치되지 않도록
-  const { nodes, edges, bounds } = useMemo(
-    () => layoutConstellation(categories, posts, roundedAspect),
-    [categories, posts, roundedAspect],
-  )
+  // 두 번 계산: 먼저 배치해 화면에서 얼마나 축소되는지 잰 뒤, 축소되는 만큼 이름표 자리를 넓혀 다시 배치
+  // (좁은 화면에서 지도가 작아져도 화면 px 고정인 이름끼리 겹치지 않도록)
+  // 창 크기를 조금 바꿀 때마다 재배치되지 않도록 크기는 80px 단위로 반올림해 반영
+  const layoutWidth = Math.round(size.width / 80) * 80
+  const layoutHeight = Math.round(size.height / 80) * 80
+  const { nodes, edges, bounds } = useMemo(() => {
+    const first = layoutConstellation(categories, posts, roundedAspect)
+    if (layoutWidth === 0 || layoutHeight === 0) return first
+    const fit = Math.min(layoutWidth / first.bounds.width, layoutHeight / first.bounds.height)
+    if (fit >= 0.95) return first
+    return layoutConstellation(categories, posts, roundedAspect, Math.min(3, 1 / fit))
+  }, [categories, posts, roundedAspect, layoutWidth, layoutHeight])
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
 
   // 별마다 상위 별 목록 (강조·확대 범위 계산용)
@@ -263,6 +271,28 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
 
   // 글 제목 자리: 확대가 끝난 배율 기준으로 한 번 계산 (확대 중에 자리가 바뀌며 흔들리지 않도록)
   const targetScale = size.width > 0 ? Math.min(size.width / targetBox.w, size.height / targetBox.h) : 1
+
+  // 주제 이름표 정리: 큰 주제부터 차례로 놓고, 이미 놓인 이름과 겹치는 작은 주제 이름은 숨김(가리키면 보임)
+  // 큰 주제 이름은 항상 보임. 확대가 끝난 배율 기준이라 확대 중에 이름이 깜빡이지 않음
+  const crowdedLabels = useMemo(() => {
+    const hidden = new Set<string>()
+    const placed: ReturnType<typeof centeredLabelRect>[] = []
+    const overlaps = (a: (typeof placed)[number], b: (typeof placed)[number]) =>
+      a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+    const categoriesInView = nodes
+      .filter((n) => n.kind !== 'post' && (!focusGroup || focusGroup.has(n.id)))
+      .sort((a, b) => a.depth - b.depth)
+    for (const n of categoriesInView) {
+      const size = STAR[Math.min(3, Math.max(1, n.depth)) as 1 | 2 | 3]
+      const rect = centeredLabelRect(n.x * targetScale, n.y * targetScale, n.label, size.label, size.labelY)
+      if (n.depth > 1 && placed.some((other) => overlaps(rect, other))) {
+        hidden.add(n.id)
+      } else {
+        placed.push(rect)
+      }
+    }
+    return hidden
+  }, [nodes, focusGroup, targetScale])
   const labelPlacements = useMemo(() => {
     if (!showPostLabels || !focusGroup) return new Map<string, LabelPlacement>()
     const group = nodes.filter((n) => focusGroup.has(n.id))
@@ -331,7 +361,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
               px={px}
               lit={lit ? lit.has(node.id) : null}
               faint={!!focusGroup && !focusGroup.has(node.id)}
-              hideLabel={node.depth >= hideLabelsFrom}
+              hideLabel={node.depth >= hideLabelsFrom || crowdedLabels.has(node.id)}
               showLabel={showPostLabels && node.kind === 'post' && !!focusGroup?.has(node.id)}
               labelPlacement={labelPlacements.get(node.id)}
               onActivate={() => setActiveId(node.id)}
