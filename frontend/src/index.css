@@ -7,12 +7,16 @@
   --color-on-accent: #ffffff; /* 러스트 면 위 글자 */
   --color-surface: #b2bea8; /* 세이지에 차콜 8% 섞은 인라인 코드 배경 (차콜 글자 대비 7.52:1, 진한 러스트 글자 금지 4.01:1) */
   --color-line: #889382; /* 세이지에 차콜 35% 섞은 옅은 구분선, 장식 전용 (배경 대비 1.89:1) */
+  --color-text-muted: #4b524a; /* 세이지에 차콜 75%, 선택되지 않은 항목 글자 (배경 대비 4.75:1, 글자 기준 4.5:1을 넘는 가장 옅은 값) */
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --page-width: 72rem; /* 격자 기둥 전체 폭 */
   --content-width: 45rem; /* 본문 한 줄 길이를 읽기 좋은 폭으로 제한 */
   --cell-pad-x: clamp(1rem, 3vw, 2rem); /* 격자 칸 안쪽 좌우 여백 */
   --grid-line: 1px solid var(--color-accent-strong); /* 격자선 */
+  --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1); /* 빠르게 시작해 부드럽게 멈춤 (iOS 시트 계열 곡선) */
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.25, 1); /* 천천히 출발해 가속 후 부드럽게 멈춤, 프리로더와 같은 계열. 크기·위치가 크게 바뀌는 움직임용 */
+  interpolate-size: allow-keywords; /* height: auto 같은 크기 키워드로도 전환 가능 (지원 브라우저만) */
 }
 
 *,
@@ -127,10 +131,14 @@ a {
   display: inline-block;
   overflow: hidden; /* 칸 밖으로 나간 글자를 가림 */
   vertical-align: bottom;
+  /* 줄 높이가 좁은 큰 제목(line-height: 1)에서도 g·y 같은 아래로 내려오는 획이 잘리지 않도록
+     글자 칸에 위아래 여유(padding)를 주고, 같은 만큼 음수 margin으로 상쇄해 레이아웃은 그대로 */
+  margin-block: -0.2em;
 }
 
 .roll-text {
   display: inline-block;
+  padding-block: 0.2em;
   transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
 }
 
@@ -331,7 +339,22 @@ a {
 /* 현재 주제, 마우스를 올린 주제: 진한 러스트 칸 + 세이지 글자 (4.59:1). NavLink가 aria-current="page" 자동 설정
    마우스를 올리면 색이 바뀌면서 글자가 위로 빠지고 아래에서 올라옴 (RollText) */
 .category-nav a[aria-current="page"],
+.category-nav a.is-active,
 .category-nav a:hover {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+/* 주제 화면의 하위 주제 칸: 머리글에는 큰 주제만 있으므로 하위 주제로 가는 길 */
+.subcategory-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem var(--cell-pad-x);
+  border-bottom: var(--grid-line);
+}
+
+.subcategory-nav .chip[aria-current="page"] {
   color: var(--color-bg);
   background-color: var(--color-accent-strong);
 }
@@ -496,9 +519,18 @@ a {
 
 /* ---------- 글 상세: 제목 칸 | 정보 칸 | 망점 띠 | 본문 ---------- */
 
+/* 머리 칸 순서: 보기 전환 → 짧은 러스트 막대(::before) → 제목 */
 .post-header {
-  padding: clamp(2.5rem, 7vw, 5rem) var(--cell-pad-x) 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--cell-pad-x) 2rem;
   border-bottom: var(--grid-line);
+}
+
+.post-view-switch {
+  order: -1;
+  margin-bottom: 1.75rem;
 }
 
 /* 제목 위 짧은 러스트 막대 (장식) */
@@ -512,6 +544,7 @@ a {
 }
 
 .post-title {
+  view-transition-name: post-title;
   max-width: 56rem;
   margin: 0;
   font-size: clamp(2.25rem, 6vw, 4.5rem);
@@ -537,12 +570,10 @@ a {
   text-underline-offset: 0.2em;
 }
 
+/* 정보 칸과 본문 사이 단색 러스트 막대 (망점 띠는 써 보고 제외) */
 .post-band {
-  display: block;
-  width: 100%;
-  height: auto;
-  color: var(--color-accent);
-  border-bottom: var(--grid-line);
+  height: 0.5rem;
+  background-color: var(--color-accent);
 }
 
 /* ---------- 마크다운 본문 (react-markdown 출력) ---------- */
@@ -718,8 +749,7 @@ a {
 
 /* 테두리 없는 입력 칸: 글자 자체가 화면 구성 (포커스는 깜빡이는 커서로 표시, 소유자 결정으로 외곽선 없음) */
 .editor-title,
-.editor-content,
-.chip-input input {
+.editor-content {
   font: inherit;
   color: var(--color-text);
   background: transparent;
@@ -729,8 +759,7 @@ a {
 }
 
 .editor-title::placeholder,
-.editor-content::placeholder,
-.chip-input input::placeholder {
+.editor-content::placeholder {
   color: var(--color-text);
   opacity: 0.45;
 }
@@ -760,15 +789,54 @@ a {
   letter-spacing: -0.04em;
 }
 
-/* 주제 칩: 얇은 진한 러스트 테두리, 선택·마우스 올림은 진한 러스트 칸 + 세이지 글자 (활성 메뉴와 같은 규칙) */
+/* 주제 선택 (CategoryPicker): 줄마다 작은 라벨 | 칩들 | (만들기 글자 버튼)
+   선택은 칩(테두리 칸), 만들기는 밑줄 글자 버튼으로 생김새를 분리 */
 .category-picker {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.picker-row {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.picker-label {
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.picker-options {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: 0.5rem;
-  margin: 1.5rem 0 0;
-  padding: 0;
-  border: 0;
+}
+
+/* 하위 줄: 칩 시작선은 위 줄과 맞추고, 라벨 앞 꺾인 화살표로 큰 주제에서 이어짐을 표시 */
+.picker-row-sub .picker-label::before {
+  content: "↳ ";
+  letter-spacing: 0;
+}
+
+.picker-row-sub + .picker-row-sub .picker-label {
+  padding-left: 0.75rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .picker-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .picker-label {
+    grid-column: 1 / -1;
+  }
 }
 
 .chip {
@@ -779,6 +847,7 @@ a {
   font-size: 0.9375rem;
   font-weight: 700;
   color: var(--color-text);
+  text-decoration: none;
   background: transparent;
   border: var(--grid-line);
   cursor: pointer;
@@ -802,26 +871,161 @@ a {
   outline-offset: 2px;
 }
 
-.chip-add {
+/* "선택 안 함": 다른 칩보다 가볍게 */
+.chip-quiet {
+  font-weight: 500;
   border-style: dashed;
 }
 
-.chip-input {
+/* [+] 칩: 점선 테두리로 선택 칩과 구분. 열리면 실선이 되고 입력 칸이 옆으로 펼쳐짐 */
+.chip-add {
   display: inline-flex;
-  border: var(--grid-line);
+  align-items: stretch;
+  border: 1px dashed var(--color-accent-strong);
+  transition: border-color 0.3s var(--ease-out-soft);
 }
 
-.chip-input input {
-  width: 10rem;
+.chip-add.is-open {
+  border-style: solid;
+}
+
+.chip-add-toggle {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  padding: 0.375rem 0;
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.chip-add-toggle:hover {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+/* + → × : 45도 회전 */
+.chip-add-icon {
+  display: block;
+  line-height: 1;
+  transition: transform 0.5s var(--ease-out-soft);
+}
+
+.is-open .chip-add-icon {
+  transform: rotate(45deg);
+}
+
+/* 폭 0 → 내용 폭: grid 열 0fr → 1fr 전환으로 auto 폭을 부드럽게 */
+.chip-add-field {
+  display: grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 0.5s var(--ease-out-soft);
+}
+
+.is-open .chip-add-field {
+  grid-template-columns: 1fr;
+}
+
+.chip-add-inner {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 입력 칸과 ↵ 버튼은 아래에서 살짝 떠오르며 나타남 */
+.chip-add-inner input,
+.chip-add-submit {
+  opacity: 0;
+  transform: translateY(0.4rem);
+  transition:
+    opacity 0.3s ease,
+    transform 0.5s var(--ease-out-soft);
+}
+
+.is-open .chip-add-inner input,
+.is-open .chip-add-submit {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.08s;
+}
+
+.chip-add-inner input {
+  width: 11rem;
   padding: 0.375rem 0.75rem;
+  font: inherit;
   font-size: 0.9375rem;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--color-accent-strong);
+  outline: none;
 }
 
-.chip-input .chip {
-  border-width: 0 0 0 1px;
+.chip-add-inner input::placeholder {
+  color: var(--color-text);
+  opacity: 0.45;
 }
 
-.category-picker .form-error {
+.chip-add-submit {
+  width: 2.25rem;
+  align-self: stretch;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.chip-add-submit:hover:not(:disabled) {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.chip-add-submit:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+/* 새 칩, SUB 줄: 처음 나타날 때 위에서 살짝 내려오며 선명해짐 (@starting-style: 등장 직전 상태) */
+.chip,
+.picker-row-sub {
+  transition:
+    opacity 0.4s ease,
+    translate 0.5s var(--ease-out-soft),
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+@starting-style {
+  .chip,
+  .picker-row-sub {
+    opacity: 0;
+    translate: 0 -0.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-add,
+  .chip-add-icon,
+  .chip-add-field,
+  .chip-add-inner input,
+  .chip-add-submit,
+  .chip,
+  .picker-row-sub {
+    transition: none;
+  }
+}
+
+.picker-error {
   flex-basis: 100%;
 }
 
@@ -882,6 +1086,7 @@ a {
 /* 채운 버튼: 진한 러스트 칸 + 세이지 글자 (4.59:1), 주요 동작(게시, 저장)에만 사용 */
 .button-solid {
   padding: 0.625rem 1.5rem;
+  white-space: nowrap;
   font: inherit;
   font-size: 0.9375rem;
   font-weight: 800;
@@ -899,4 +1104,605 @@ a {
 .button-solid:disabled {
   cursor: wait;
   opacity: 0.6;
+}
+
+/* "더 보기" 버튼 (PagedPostList) */
+.more-row {
+  display: flex;
+  justify-content: center;
+  padding: 1.25rem var(--cell-pad-x);
+  border-bottom: var(--grid-line);
+}
+
+.more-button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--color-text);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-strong);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.35em;
+  cursor: pointer;
+  transition: text-decoration-thickness 0.2s ease;
+}
+
+.more-button:hover {
+  text-decoration-thickness: 4px;
+}
+
+.more-count {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+}
+
+/* ---------- 홈 별자리 지도 (ConstellationMap) ---------- */
+
+/* 머리글 아래 남은 화면 전체를 지도로: site-shell(행 auto 1fr) → main → 지도 칸 → 무대 순으로 높이를 채움 */
+.site-main:has(> .constellation) {
+  display: flex;
+  flex-direction: column;
+}
+
+.constellation {
+  display: flex;
+  flex: 1;
+  /* 가장자리 별의 이름표가 잘리지 않도록 칸 안쪽 여백 + svg 밖 그리기 허용 */
+  padding: 1rem var(--cell-pad-x);
+  overflow: hidden;
+}
+
+.constellation-stage {
+  position: relative;
+  flex: 1;
+  min-height: 22rem;
+}
+
+.constellation-stage > svg {
+  /* 칸 안에 꽉 채워 고정: svg가 자기 비율로 높이를 키워 화면보다 길어지지 않도록 (칸 높이는 남은 화면이 결정) */
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* 확대한 별자리 밖의 별·선: 아주 흐리게, 이름은 숨김 */
+.star.is-faint,
+.constellation-edges line.is-faint {
+  opacity: 0.12;
+}
+
+.star.is-faint .star-label {
+  opacity: 0;
+}
+
+/* 확대 상태 막대: 지도 왼쪽 위 [← 위로 esc] 전체 / 경로 [목록으로 보기 →]
+   항상 렌더링하고 is-visible로 나타남·사라짐을 전환, 폭은 JS가 잰 내용 폭으로 지정해 부드럽게 늘고 줄어듦 */
+.constellation-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  max-width: 100%;
+  overflow: hidden;
+  background-color: var(--color-bg);
+  border: var(--grid-line);
+  opacity: 0;
+  translate: 0 -0.6rem;
+  pointer-events: none;
+  /* 폭이 바뀌는 속도를 확대 움직임(1.1초)과 비슷하게: 너무 빠르면 "뚝딱" 느낌 */
+  transition:
+    opacity 0.5s ease,
+    translate 0.9s var(--ease-in-out-soft),
+    width 0.9s var(--ease-in-out-soft);
+}
+
+.constellation-bar.is-visible {
+  opacity: 1;
+  translate: 0 0;
+  pointer-events: auto;
+}
+
+.bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: max-content;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+}
+
+.bar-trail button {
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--color-text);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+/* 한 단계 위로: 키 모양 버튼 (Esc와 같은 동작) */
+.bar-up {
+  display: inline-flex;
+  padding: 0;
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.bar-up kbd {
+  padding: 0.125rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  border: 1px solid var(--color-accent-strong);
+  border-bottom-width: 3px; /* 키보드 키처럼 아래 두께 (그림자 대신 평면 테두리) */
+  transition:
+    translate 0.15s ease,
+    border-bottom-width 0.15s ease;
+}
+
+/* 누르는 느낌: 아래 두께만큼 내려앉음 */
+.bar-up:hover kbd,
+.bar-up:active kbd {
+  translate: 0 2px;
+  border-bottom-width: 1px;
+}
+
+/* 터치 기기는 키보드가 없으므로 키 모양 대신 화살표 */
+@media (hover: none) {
+  .bar-up kbd {
+    font-size: 0;
+  }
+
+  .bar-up kbd::before {
+    content: "←";
+    font-size: 0.875rem;
+  }
+}
+
+.bar-trail button:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-strong);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+}
+
+/* 경로: 전체 / 큰 주제 / 하위 / 세부, 현재 위치는 굵게. 새 단계는 살짝 떠오르며 나타남 */
+.bar-trail {
+  display: flex;
+  margin: 0;
+  padding: 0 0.25rem 0 1rem;
+  list-style: none;
+  font-size: 0.875rem;
+  border-left: 1px solid var(--color-line);
+}
+
+.bar-trail li {
+  transition:
+    opacity 0.6s ease,
+    translate 0.9s var(--ease-in-out-soft);
+}
+
+@starting-style {
+  .bar-trail li {
+    opacity: 0;
+    translate: 0.4rem 0;
+  }
+}
+
+.bar-trail li + li::before {
+  content: "/";
+  margin: 0 0.5rem;
+  opacity: 0.5;
+}
+
+.bar-trail [aria-current] {
+  font-weight: 900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-bar,
+  .bar-trail li {
+    transition: none;
+  }
+}
+
+/* 마우스를 올린 글 별: 커지고, 자기 작은 제목은 숨김 (떠오른 큰 제목과 겹치지 않도록)
+   이름표는 등장 애니메이션(label-in)이 투명도를 덮어쓰므로 visibility로 숨김 */
+.star.is-target .star-core {
+  scale: 2.4;
+  transition: scale 0.45s var(--ease-out-soft);
+}
+
+.star.is-target .star-label {
+  visibility: hidden;
+}
+
+/* 가리킨 글 별에서 떠오르는 주제 + 큰 제목. 별 쪽 끝을 기준으로 작게 시작해 커짐 (작은 제목이 있던 쪽으로)
+   큰 제목은 클릭하면 글 화면 제목 자리로 날아감 */
+.hover-title {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 0.125rem;
+  max-width: min(26rem, 70vw);
+  pointer-events: none;
+  animation: title-grow 0.45s var(--ease-out-soft) both;
+}
+
+.hover-title.is-right {
+  translate: 0.875rem -50%;
+  transform-origin: left center;
+}
+
+.hover-title.is-left {
+  justify-items: end;
+  text-align: right;
+  translate: calc(-100% - 0.875rem) -50%;
+  transform-origin: right center;
+}
+
+.hover-title.is-above {
+  justify-items: center;
+  text-align: center;
+  translate: -50% calc(-100% - 0.75rem);
+  transform-origin: center bottom;
+}
+
+.hover-title.is-below {
+  justify-items: center;
+  text-align: center;
+  translate: -50% 0.75rem;
+  transform-origin: center top;
+}
+
+@keyframes title-grow {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+.hover-title-group {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hover-title-text {
+  width: fit-content;
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  /* 글자 외곽선을 세이지로 글자 뒤에 칠함(그래프 이름표와 같은 방식): 선·별 위에서도 읽히게, 그림자 없음 */
+  -webkit-text-stroke: 5px var(--color-bg);
+  paint-order: stroke fill;
+  view-transition-name: post-title;
+}
+
+/* 축소된 지도: 작은 주제 이름은 그 별자리를 가리킬 때만 (이름끼리 겹치지 않도록) */
+.star.is-label-hidden .star-label {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.star.is-label-hidden.is-lit .star-label,
+.star.is-label-hidden:focus-visible .star-label {
+  opacity: 1;
+}
+
+/* 선: 장식용 옅은 러스트 (세이지 대비가 낮아도 정보는 별·이름이 전달) */
+.constellation-edges line {
+  stroke: var(--color-accent);
+  stroke-dasharray: 1;
+  opacity: 0.45;
+  transition: opacity 0.4s var(--ease-out-soft);
+  animation: edge-draw 1.1s var(--ease-out-soft) calc(0.3s + var(--reveal) * 0.9s) both;
+}
+
+.constellation.has-focus .constellation-edges line {
+  opacity: 0.12;
+}
+
+.constellation.has-focus .constellation-edges line.is-lit {
+  opacity: 0.95;
+}
+
+@keyframes edge-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.star {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.4s var(--ease-out-soft);
+}
+
+.constellation.has-focus .star.is-dim {
+  opacity: 0.22;
+}
+
+.star-hit {
+  fill: transparent;
+}
+
+/* 키보드 포커스: 별 둘레 차콜 고리 */
+.star:focus-visible .star-hit {
+  stroke: var(--color-text);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.star-core {
+  /* 고리(stroke)는 currentColor, 면(fill)은 러스트 */
+  color: var(--color-accent);
+  fill: var(--color-accent);
+  transform-box: fill-box;
+  transform-origin: center;
+  /* 등장: 가운데에서 가까운 별부터 바깥으로 물결처럼 커지며 나타남 */
+  animation: star-in 0.9s var(--ease-out-soft) calc(var(--reveal) * 0.9s) both;
+  transition: scale 0.35s var(--ease-out-soft);
+}
+
+.star:hover .star-core,
+.star:focus-visible .star-core,
+.star.is-lit .star-core {
+  scale: 1.45;
+}
+
+/* 작은 별: 등장 뒤 은은하게 반짝임 (별마다 시작 시점이 달라 동시에 깜빡이지 않음) */
+.star-post .star-core {
+  animation:
+    star-in 0.9s var(--ease-out-soft) calc(var(--reveal) * 0.9s) both,
+    twinkle 4.8s ease-in-out calc(1.6s + var(--twinkle) * 0.7s) infinite;
+}
+
+@keyframes star-in {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* 이름표: 세이지 테두리(halo)로 선 위에서도 읽히게 */
+.star-label {
+  fill: var(--color-text);
+  stroke: var(--color-bg);
+  stroke-linejoin: round;
+  paint-order: stroke;
+  pointer-events: none;
+}
+
+.star-label {
+  font-weight: 800;
+  animation: label-in 0.8s ease calc(0.4s + var(--reveal) * 0.9s) both;
+}
+
+.star-sub .star-label {
+  font-weight: 600;
+}
+
+/* 확대했을 때 글 별 옆 제목 */
+.star-post-label {
+  font-weight: 600;
+  animation: label-in 0.4s ease both;
+}
+
+/* 범례: 지도 왼쪽 아래 작은 대문자 라벨 + 모양 */
+.constellation-legend {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.constellation-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.constellation-legend svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.legend-shape {
+  color: var(--color-accent);
+  fill: var(--color-accent);
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    translate: 0 0.35rem;
+  }
+}
+
+@keyframes label-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-edges line,
+  .star-core,
+  .star-post .star-core,
+  .star-label,
+  .hover-title {
+    animation: none;
+  }
+
+  .star,
+  .star-core,
+  .constellation-edges line {
+    transition: none;
+  }
+}
+
+/* 화면 전환(View Transition, 별 확대 뒤 주제 화면으로): 이전 화면이 흐려지며 새 화면이 떠오름 */
+::view-transition-old(root) {
+  animation: 0.35s var(--ease-out-soft) both vt-fade-out;
+}
+
+::view-transition-new(root) {
+  animation: 0.5s var(--ease-out-soft) both vt-rise-in;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+}
+
+/* 제목 이동 (공유 요소 전환): 프리로더 로고 이동과 같은 0.8초, cubic-bezier(0.7, 0, 0.2, 1) */
+::view-transition-group(post-title) {
+  animation-duration: 0.8s;
+  animation-timing-function: cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+/* 작은 제목 → 큰 제목: 가로세로 비율이 달라도 글자가 늘어나 보이지 않게 높이 기준으로 맞춤 */
+::view-transition-old(post-title),
+::view-transition-new(post-title) {
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+/* 출발·도착 제목이 오래 겹쳐 잔상(이중 글자)이 보이지 않도록 교차 시간을 짧게 */
+::view-transition-old(post-title) {
+  animation: 0.25s ease both vt-fade-out;
+}
+
+::view-transition-new(post-title) {
+  animation: 0.3s ease both vt-fade-in;
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(post-title),
+  ::view-transition-old(post-title),
+  ::view-transition-new(post-title) {
+    animation: none;
+  }
+}
+
+/* ---------- 보기 전환 (ViewSwitch): 그래프 | 목록 세그먼트 컨트롤 ---------- */
+
+/* 선택된 쪽은 진한 러스트 칸 + 세이지 글자(4.59:1), 나머지는 옅은 글자(4.75:1) */
+.view-switch {
+  display: inline-flex;
+  border: var(--grid-line);
+  background-color: var(--color-bg);
+}
+
+.view-switch a {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.view-switch a + a {
+  border-left: var(--grid-line);
+}
+
+.view-switch a:hover {
+  color: var(--color-text);
+}
+
+.view-switch a[aria-current="page"] {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+/* 그래프 화면: 오른쪽 위 (좁은 화면은 확대 막대와 겹치지 않도록 오른쪽 아래) */
+.constellation-switch {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+}
+
+@media (max-width: 40rem) {
+  .constellation-switch {
+    top: auto;
+    bottom: 0;
+  }
+}
+
+/* 목록 화면: 페이지 머리 오른쪽에 보기 전환 + 글 수 */
+.page-header-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem 2rem;
 }

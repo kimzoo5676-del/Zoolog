@@ -8,7 +8,7 @@
 1차
 1. 첫 진입 프리로더: 화면 가운데 `Zoolog`의 Z가 진한 러스트로 차오른 뒤 머리글 로고 자리로 이동, 격자선이 제자리에 그어지고 화면이 걷힘 (원래 "쇼릴"로 적었던 항목, 2026-10-12 프리로더로 결정)
 2. 로그인: Google 로그인(OIDC), 소유자 1명만 작성 권한
-3. 공부 글: 마크다운 원문 저장 + 사진, 주제(category) 분류
+3. 공부 글: 마크다운 원문 저장 + 사진, 주제(category) 3단계 분류 (예: Cloud Engineer > AWS-SAA > 컴퓨팅)
 4. 방문자 조회: 주제별 목록, 글 상세
 5. 일정 등록: 주로 반복 일정 (예: 06:00 뉴스 스크랩 메일, 07:00 AWS-SAA 공부, 18:00 토익스피킹 공부)
 6. 완료 체크 → 일정 보드에 기록 표시
@@ -69,7 +69,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - N+1 방지: 연관 객체가 필요한 조회는 JPQL `join fetch` 사용 (`PostRepository` 참고). DTO 변환은 트랜잭션 안(서비스)에서 완료 (`open-in-view: false`)
 - 스키마는 Flyway가 소유: `src/main/resources/db/migration/V<번호>__<이름>.sql`. 적용된 마이그레이션 수정 금지, 변경은 새 버전 파일로. `ddl-auto: validate`
 - 컬럼 규칙: 시각 `TIMESTAMPTZ NOT NULL`, PK `BIGINT GENERATED ALWAYS AS IDENTITY`, FK마다 인덱스, 값 범위는 CHECK 제약
-- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. 엔티티 구현 완료: `Category`, `Post`, `Member`
+- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. V3: `category.parent_id`(NULL이면 큰 주제). 깊이 제한은 `CategoryService.MAX_DEPTH = 3`(2026-10-12 2단계 → 3단계, V3 파일 주석의 "2단계"는 적용된 마이그레이션이라 수정하지 않음). 엔티티 구현 완료: `Category`, `Post`, `Member`
 - 오류 응답: `spring.mvc.problemdetails.enabled: true`로 RFC 9457 ProblemDetail JSON (`status`, `title`, `detail`, `instance`). `ResponseStatusException(상태, "이유")`의 이유가 `detail`로 전달되어 화면에 그대로 표시. 입력값 검증 실패 문구는 `messages.properties`(`입력값을 확인해 주세요`)
 - 상태 코드: 없는 리소스 404, 요청 본문의 잘못된 참조(없는 주제 id) 400, 중복 409
 - 테스트: `@SpringBootTest` + `@Transactional`(개발 DB 사용, 끝나면 롤백), `@DisplayName`은 한국어 문장, 저장 검증은 `flush()` → `clear()` → 재조회. 롤백으로 생기는 id 빈 번호는 정상
@@ -90,11 +90,11 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 
 ## 현재 API
 
-- `GET /api/categories`: 주제 목록, 이름순 (DB 정렬 규칙 en_US.utf8 그대로 유지하기로 결정)
-- `GET /api/posts?category={slug}`: 글 목록, 최신순(`createdAt desc, id desc`), 본문 제외. `category` 생략 시 전체, 없는 slug는 `[]`
+- `GET /api/categories`: 주제 목록(평평한 배열, `parentId` 포함), 이름순 (DB 정렬 규칙 en_US.utf8 그대로 유지하기로 결정). 단계별 트리 묶음은 프론트 `buildCategoryTree`(재귀, `categoryPath`·`descendantIds` 보조)
+- `GET /api/posts?category={slug}`: 글 목록(상위 주제 slug면 아래 모든 단계 주제 글 포함), 최신순(`createdAt desc, id desc`), 본문 제외. `category` 생략 시 전체, 없는 slug는 `[]`
 - `GET /api/posts/{id}`: 글 상세(본문 마크다운, `categoryId` 포함), 없으면 404
 - 소유자 전용(로그인 + CSRF 헤더): `POST /api/posts` 201 + Location, `PUT /api/posts/{id}` 200, `DELETE /api/posts/{id}` 204 (완전 삭제, 2026-10-12 결정). 요청 본문 `{ categoryId, title(200자 이하), content }`
-- `POST /api/categories` `{ name(50자 이하) }` 201. slug(주소용 이름)는 이름에서 자동 생성(소문자, 글자·숫자 외 문자 묶음은 하이픈, 한글 유지. 예: `AWS SAA` → `aws-saa`). 이름·slug 중복 409 (Ghost 방식 참고, 2026-10-12 결정)
+- `POST /api/categories` `{ name(50자 이하), parentId? }` 201. 3단계 주제 아래 추가는 400(3단계 제한). slug(주소용 이름)는 이름에서 자동 생성(소문자, 글자·숫자 외 문자 묶음은 하이픈, 한글 유지. 예: `AWS SAA` → `aws-saa`). 이름·slug 중복 409 (Ghost 방식 참고, 2026-10-12 결정)
 - `GET /api/auth/me`: 로그인 상태면 200 `{ email }`, 비로그인이면 204 (방문자 화면 콘솔 오류 방지로 401 대신)
 - 시각 필드는 ISO-8601 UTC 문자열 (예: `2026-10-12T04:05:29.717131Z`)
 
@@ -114,12 +114,15 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 쓰기 요청: `fetch`에 `csrfHeaders()` 포함, 실패 시 `toApiError`(`src/api/error.ts`)가 ProblemDetail `detail`을 메시지로 사용
 - 소유자 판별: `blog-layout` `clientLoader`가 주제 목록과 `fetchMe`를 함께 조회, 하위 라우트는 `useBlogLayoutData()`로 재사용. 소유자 전용 화면 `clientLoader`는 `requireOwner()` (비로그인 → `/login`)
 - 글 작성 `/posts/new`, 수정 `/posts/:postId/edit`: `PostEditor` (velog 구성 참고, 2026-10-12 결정). 테두리 없는 큰 제목 → 주제 칩(`CategoryPicker`, 라디오) → 원문 textarea | 미리보기 나란히 → 하단 고정 바(나가기, 게시/저장). 라벨 대신 placeholder + `aria-label`. 저장은 라우트 `clientAction` → 성공 시 `redirect`, 실패 시 `{ error }` 반환(입력 유지). 삭제는 글 상세 `clientAction` + `window.confirm`
-- 새 주제: 칩 줄 끝 `+ 새 주제` → 이름 입력 후 Enter(Esc 취소). 추가 후 `revalidate()`로 메뉴·칩 갱신
+- 주제 선택(`CategoryPicker`): 고른 경로를 따라 줄이 열림 `CATEGORY`(큰 주제 칩 + `[+]`) → `↳ SUB`(`선택 안 함` + 하위 칩 + `[+]`) → `↳ SECTION`(3단계). 줄 위치로 무엇을 만드는지 구분 (2026-10-12 소유자 결정, 별도 `주제 만들기` 칸은 써 보고 제외). `[+]`는 점선 칩, 누르면 칩이 옆으로 펼쳐지며 입력 칸 등장·`+`가 `×`로 회전(Enter 또는 `↵` 만들기, Esc 또는 `×` 닫기, 소유자 만족). 제출은 숨은 `categoryId` 하나(가장 깊이 고른 주제). 글은 어느 단계에나 가능
+- 주제 메뉴: 머리글에는 큰 주제만, 펼침 메뉴 없음 (2026-10-12 소유자 결정, 펼침은 써 보고 제외). 메뉴를 가리키면(마우스·키보드 포커스) 홈 별자리 지도에서 그 주제 별자리에 불이 들어옴 (`hooks/mapHighlight.ts` Context, `blog-layout`이 제공, `ConstellationMap`이 읽음, 지도 위를 직접 가리킬 때가 우선). 아래 단계 주제 화면이면 큰 주제 메뉴도 활성(`is-active`). 하위 주제로는 주제 화면의 하위 주제 칸(`.subcategory-nav`, 모든 기기)과 지도 별로 이동. 주제 화면 라벨 자리는 상위 경로(`Cloud Engineer / AWS-SAA`)
 - 글쓰기 메뉴는 주제 메뉴가 아닌 로고 옆 칸(`site-write`, 소유자 로그인 시만)
 - 페이지 제목은 React 19 `<title>` 요소를 라우트 컴포넌트에 직접 렌더링 (`meta` export 대신, React Router 문서 권장)
 - 글 본문은 마크다운 원문 저장, 화면에서는 `MarkdownContent`(react-markdown)로 렌더링. 원문 HTML은 글자로 이스케이프되는 기본값 유지, HTML 허용(`rehype-raw`)이 필요하면 `rehype-sanitize` 함께 적용
 - 화면 확인은 사용자가 Windows 브라우저(http://localhost:5173)에서 진행. UI 변경 후에는 확인할 항목을 정리해 요청
-- 프리로더(`components/Preloader.tsx`): 홈 화면(`/`, `/posts`)을 불러올 때마다 재생 (2026-10-12 소유자 결정). `root.tsx` `<head>`의 인라인 스크립트(`INTRO_SCRIPT`)가 `<html data-intro="play|skip">`을 정함. 다른 주소로 바로 들어오거나 움직임 줄이기 설정이면 skip
+- Claude 자체 화면 확인: scratchpad에 Playwright 설치 후 `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64`로 headless Chromium 실행(Ubuntu 26.04 미지원 우회), 소유자 화면은 `/api/auth/me`를 route로 가짜 응답. 컨테이너 재빌드 시 사라짐
+- 프리로더(`components/Preloader.tsx`): 홈 화면(`/` 그래프, `/posts` 전체 목록)을 불러올 때마다 재생 (2026-10-12 소유자 결정). `root.tsx` `<head>`의 인라인 스크립트(`INTRO_SCRIPT`)가 `<html data-intro="play|skip">`을 정함. 다른 주소로 바로 들어오거나 움직임 줄이기 설정이면 skip
+- `RollText`는 `overflow: hidden`이라 글자 칸에 위아래 여유(`padding-block: 0.2em` + 같은 만큼 음수 margin)를 둠: 줄 높이 1인 큰 제목에서 g·y 아래 획이 잘리던 문제
 - 프리로더 단계: wait(차콜 로고, 화면 데이터·글꼴 준비 대기, JS 전에는 `HydrateFallback`의 `PreloaderStage`) → fill(Z 채움 1.3초) → move(로고 이동 FLIP + 선 그리기) → fade. 채움은 준비가 끝난 뒤 시작해야 느린 환경에서도 보임
 - 프리로더 격자선은 좌표를 적지 않고 `.site-shell` 안 요소의 테두리(2px 이하)를 재서 그림 (`utils/gridLines.ts`). 레이아웃을 바꿔도 프리로더 수정 불필요
 - `:root { scrollbar-gutter: stable }`: 프리로더가 스크롤을 잠갔다 풀 때 화면이 옆으로 밀리지 않도록 유지
@@ -137,6 +140,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 | `--color-on-accent` | #ffffff | 러스트 위 글자 | 4.57:1 |
 | `--color-surface` | #b2bea8 (세이지 + 차콜 8%) | 코드 배경 | 차콜 글자 7.52:1, 진한 러스트 글자 4.01:1이라 사용 금지 |
 | `--color-line` | #889382 (세이지 + 차콜 35%) | 구분선, 표 테두리 (장식 전용) | 세이지 대비 1.89:1 |
+| `--color-text-muted` | #4b524a (세이지 + 차콜 75%) | 선택되지 않은 항목 글자 (보기 전환 등) | 세이지 대비 4.75:1 (4.5:1을 넘는 가장 옅은 값) |
 
 - 러스트(#bd573d)는 세이지 위 글자나 유일한 상태 표시(링크 밑줄, 선택 메뉴)에 사용 금지 (WCAG 1.4.3, 1.4.11)
 - 큰 글자(24px 이상, 굵게 18.66px 이상)만 러스트 비주얼 위에 겹치기 허용 (차콜/러스트 3.19:1)
@@ -144,13 +148,19 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 레퍼런스 느낌: 포스터형. 화면을 채우는 아주 굵은 차콜 제목(글자 자체가 그래픽), 러스트 단색(듀오톤, 망점 질감) 비주얼, 얇은 러스트 막대, 그림자·그라데이션 없는 평면 색면, 넓은 세이지 여백, 제목이 이미지 위에 겹침
 - 강한 표현은 프리로더와 큰 제목에 집중, 글 목록·본문은 차분하고 읽기 우선
 - 레퍼런스 포스터 이미지와 구성은 복제 금지, 비주얼은 직접 제작
+- 움직임: 작은 등장·펼침은 `--ease-out-soft`(iOS 시트 계열 `cubic-bezier(0.32, 0.72, 0, 1)`) 0.4~0.5초, 크기·위치가 크게 바뀌는 움직임(그래프 확대, 막대 폭)은 `--ease-in-out-soft`(`cubic-bezier(0.65, 0, 0.25, 1)`, 프리로더 계열) 0.9~1.1초 — 빠르게 튀어나가는 ease-out은 "뚝딱" 느낌이라 소유자가 거절(2026-10-12), 처음 나타나는 요소는 `@starting-style`, 접힘까지 부드럽게 하려면 `display ... allow-discrete`. 모두 `prefers-reduced-motion`이면 전환 없음
 - 접근성: `:focus-visible` 차콜 2px 테두리 유지 (예외: 편집기의 테두리 없는 입력 칸은 외곽선 없음, 소유자 결정 2026-10-12), 프리로더와 글자 올림 효과는 `prefers-reduced-motion`이면 생략
 - 화면 문구: 소개 문장, 태그라인 같은 꾸밈 문구는 임의로 넣지 않음. 문구는 소유자가 결정
 - 레이아웃 참고: https://mijobello.com (격자선, 칸 구성, 작은 대문자 라벨). 화면 가운데 기둥(`site-shell`)을 진한 러스트 1px 격자선으로 나눔: 머리글(로고 칸 | 메뉴 칸), 페이지 머리 칸, 목록 행(번호 칸 | 제목·정보 칸), 글 정보 칸
 - 글자는 모두 차콜 (로고, 제목, 라벨 포함). 진한 러스트 글자는 써 보고 제외 (2026-10-12 소유자 결정)
-- 페이지 제목은 메뉴 이름 그대로 (예: `전체`, `전체 글` 아님)
+- 페이지 제목은 메뉴 이름 그대로
+- 글 제목에 순서 번호(`01` 등)를 넣지 않음 (2026-10-12 소유자 결정). 그래프로 돌아가는 길: 글 상세 제목 위(러스트 막대 위) 보기 전환 `그래프 | 목록`(글 화면은 어느 쪽도 선택되지 않음), 목록 화면(`/posts`, 주제 화면) 머리 오른쪽 보기 전환 `그래프 | 목록` → `/?focus=slug`. 보기 전환은 선택된 쪽 진한 러스트 칸 + 세이지 글자, 나머지 `--color-text-muted` AWS-SAA 목차 글 27개는 본문 `작성 예정` 상태로 세부 주제별 생성됨
+- 홈(`/`): 머리글 아래 화면 전체가 별자리 지도 (2026-10-12 소유자 결정, 머리글에 `전체` 메뉴 없음). 글 목록은 보기 전환의 `목록`으로: 전체는 `/posts`(20개씩 더 보기), 주제는 주제 화면
+- 그래프(홈 별자리 지도, 화면 용어는 "그래프" — Obsidian 그래프 뷰에서 가져온 일반적인 이름, 2026-10-12. 코드 이름은 `ConstellationMap`, 배치 `utils/constellation.ts`, Obsidian 그래프 뷰에서 착안): 모든 단계가 같은 규칙(재귀). 자기 글은 둘레에 황금각 나선(phyllotaxis, 수백 개도 겹치지 않음)으로 흩어지되 나선 시작을 바깥으로 옮겨 가운데를 비움(부모 별에 붙어 뭉쳐 보이지 않도록). 부모에서 들어오는 선 방향 좌우 약 25°(`PARENT_LINE_GAP` 50°)는 비우고 나머지 호에 나선을 균등하게 다시 펼쳐 별이 선 위에 얹히지 않게 함(소유자 요청 2026-10-12). 직선으로 뻗는 가지 배치는 써 보고 제외(소유자: "주위로 생기는 게 더 좋음", 2026-10-12). 하위 주제는 바깥 고리(큰 주제는 둘레 전체, 그 아래는 부모 쪽 약 70°를 비운 호)이고, 고리 반지름은 이웃의 옆 폭(halfWidth) 기준(글만 있는 주제는 반지름의 70% `LEAF_WIDTH`: 고리를 줄여 부모 별과 글을 잇는 선이 상대적으로 길어 보이게, 소유자 요청 2026-10-12). 지도는 화면에 맞춰 축소되므로 선 길이는 절대값(`POST_SPACING`)이 아니라 고리 대비 비율로 조정. 주제 id로 고정된 작은 흔들림(각도 ±8%, 거리 +25%). 선은 각 글을 먼저 놓인 가장 가까운 별과 이어 가지 모양. 단계마다 모양이 다름(2026-10-12 소유자 결정, 성도의 등급 기호 방식): 큰 주제 ✦ 4갈래 별, 하위 주제 ◎ 고리 두른 별, 세부 주제 ◆ 마름모, 글 • 점. 왼쪽 아래 범례(`Category · Sub · Section · Post`). 별색은 러스트(#bd573d) 하나. 지도 svg는 무대 칸에 `position: absolute`로 고정(자기 비율로 높이를 키워 화면보다 길어지던 문제). 가리키면 그 묶음(위·아래 단계)만 밝아짐. 좁은 화면(<640px)은 세로 배치, 많이 축소되면 작은 주제 이름은 가리킬 때만. 별·글자는 화면 px 고정(ResizeObserver로 배율 측정). 주제 별을 누르면 목록 화면으로 이동하지 않고 지도 안에서 그 별자리로 확대(2026-10-12 소유자 결정): 보이는 범위(viewBox)를 rAF로 1.1초 ease-in-out 보간(`useAnimatedBox`, 프리로더와 같은 속도감)해 별·글자 크기는 유지, 확대 대상 밖은 흐리게(`is-faint`). 상태는 주소 `/?focus=slug`(뒤로 가기로 한 단계씩 축소, 공유 가능, `shouldRevalidate`+`utils/focusParam.ts`로 이때 데이터 재요청 없음). 왼쪽 위 막대 `[esc] | 경로(누르면 그 단계로)`(`전체`는 소유자 결정으로 뺌, 전체로는 Esc 반복·빈 곳 클릭·로고)(키 모양 버튼이 한 단계 위로, 터치 기기는 ←): 항상 렌더링하고 `is-visible`로 나타남·사라짐 전환, 폭은 내용 폭을 재서 CSS 전환(갑자기 생기던 문제). Esc·빈 곳 클릭도 한 단계 축소. 다른 화면에서 `?focus=`로 들어오면 전체 지도에서 시작해 확대되며 들어옴. 깊은 단계 최소 확대 범위는 지도 단위 300×220 고정. 오른쪽 위 보기 전환 `그래프 | 목록`(`ViewSwitch`): 확대한 주제가 있으면 그 주제 목록, 없으면 `/posts`. 가장 깊은 단계(또는 하위 주제 없는 주제)까지 확대하면 글 별 옆에 제목(`utils/labelPlacement.ts`: 오른쪽·왼쪽·위·아래 중 겹치지 않는 첫 자리, 부모 별에서 먼 쪽 우선, 캔버스로 글자 폭 측정, 주제 이름표 자리도 피함), 그 위 단계는 가리킬 때 큰 제목. Ctrl/Cmd 클릭은 주제 목록 화면 새 탭. 키보드는 주제 별만 Tab 이동(Enter 확대), 글은 주제 화면 목록으로 접근 글 별에 마우스를 올리면 별이 커지고 주제 + 큰 제목(`.hover-title`, 이전의 작은 카드 대체)이 별 쪽 끝을 기준으로 작게 시작해 커지며 나타남(방향은 작은 제목이 있던 쪽, 없으면 오른쪽이고 실제 제목 폭이 화면을 넘을 때만 왼쪽), 클릭하면 대기 없이 View Transition 공유 요소 전환으로 그 큰 제목이 글 화면 제목(h1) 자리로 이동(클릭 후 잠깐 확대됐다 이동하던 방식은 소유자 판단으로 제외)(같은 `view-transition-name: post-title`, 프리로더 로고 이동과 같은 0.8초 `cubic-bezier(0.7, 0, 0.2, 1)`, 2026-10-12 소유자 요청). Ctrl/Cmd 클릭은 새 탭, 움직임 줄이기는 즉시 이동.
+- 많을 때 대비 (2026-10-12): 주제 화면은 20개씩 `더 보기`(`PagedPostList`, 클라이언트 분할. 글이 수천 개가 되면 백엔드 페이지네이션 검토)
+- 써 보고 제외 (홈): 잡지형 커버(최신 글 대형 제목 + 그림), Bauhaus 기하 도형 생성 그림, 망점 책 그림, 글 상세 망점 띠(`Halftone`), `Archive` 섹션, 지도 아래 주제 섹션·칸
 - 로고는 `Zoolog` (첫 글자 `Z`만 진한 러스트로 현재 메뉴 칸·목록 번호 칸과 같은 색, 링크에 `aria-label="Zoolog"`로 한 단어로 읽힘)
-- 러스트 사용처: 짧은 막대(글 제목 위, 본문 소제목 앞, 인용, 코드 블록 왼쪽), 글 상세 망점 띠(`Halftone`, SVG로 직접 생성)
+- 러스트 사용처: 짧은 막대(글 제목 위, 본문 소제목 앞, 인용, 코드 블록 왼쪽), 글 상세 정보 칸 아래 단색 막대(`post-band`, 0.5rem), 별자리 지도의 별·선
 - 목록 번호는 현재 메뉴 칸과 같은 진한 러스트 칸 + 세이지 글자, 항상 표시
 - 활성 메뉴는 진한 러스트 칸 + 세이지 글자 (4.59:1). 버튼은 얇은 진한 러스트 테두리, 마우스를 올리면 채움
 - 목록 제목, 주제 메뉴에 마우스를 올리면 글자가 위로 빠지고 아래에서 같은 글자가 올라옴 (`RollText`, 감싸는 요소에 `roll-trigger` 클래스, 0.45초 `cubic-bezier(0.65, 0, 0.35, 1)`). 메뉴는 동시에 진한 러스트 칸 + 세이지 글자로 바뀜. 움직임 줄이기 설정이면 글자 올림 없이 목록은 밑줄

@@ -1,10 +1,14 @@
-import { href, Link, NavLink, Outlet } from 'react-router'
+import { useMemo, useState } from 'react'
+import { href, Link, NavLink, Outlet, useParams, type ShouldRevalidateFunctionArgs } from 'react-router'
 import { fetchMe } from '../api/auth'
 import { fetchCategories } from '../api/category'
 import { AuthShortcut } from '../components/AuthShortcut'
 import { Logo } from '../components/Logo'
 import { PointerFocusReset } from '../components/PointerFocusReset'
 import { RollText } from '../components/RollText'
+import { MapHighlightContext } from '../hooks/mapHighlight'
+import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree'
+import { onlyFocusChanged } from '../utils/focusParam'
 import type { Route } from './+types/blog-layout'
 
 // request.signal: 다른 링크로 이동하면 라우터가 진행 중인 요청을 취소 (기존 ignore 플래그 대체)
@@ -13,47 +17,68 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   return { categories, me }
 }
 
+// 홈 지도 확대(?focus=)만 바뀌면 주제 목록·로그인 상태를 다시 불러오지 않음
+export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate }: ShouldRevalidateFunctionArgs) {
+  return onlyFocusChanged(currentUrl, nextUrl) ? false : defaultShouldRevalidate
+}
+
 export default function BlogLayout({ loaderData }: Route.ComponentProps) {
   const { categories, me } = loaderData
+  const tree = buildCategoryTree(categories)
+  // 아래 단계 주제 화면이면 그 큰 주제 메뉴도 활성 표시
+  const { slug: currentSlug } = useParams()
+  const [highlightSlug, setHighlightSlug] = useState<string | null>(null)
+  const highlight = useMemo(() => ({ slug: highlightSlug, setSlug: setHighlightSlug }), [highlightSlug])
 
   return (
-    <div className="site-shell">
-      <header className="site-header">
-        {/* 첫 글자만 러스트 강조. span으로 나뉜 글자를 "Z oolog"로 띄어 읽지 않도록 aria-label 지정 */}
-        <div className="site-brand">
-          <Link to="/" className="site-title" aria-label="Zoolog">
-            <Logo />
-          </Link>
-          {/* 소유자 로그인 상태에서만 표시. 주제 메뉴와 섞이지 않도록 로고 옆 칸 */}
-          {me && (
-            <NavLink to={href('/posts/new')} className="site-write roll-trigger">
-              <RollText>글쓰기</RollText>
-            </NavLink>
-          )}
-        </div>
-        <nav aria-label="주제" className="site-nav">
-          <ul className="category-nav">
-            <li>
-              {/* end: /posts/3 같은 하위 경로에서는 활성 표시하지 않음 */}
-              <NavLink to="/posts" end className="roll-trigger">
-                <RollText>전체</RollText>
+    <MapHighlightContext value={highlight}>
+      <div className="site-shell">
+        <header className="site-header">
+          {/* 첫 글자만 러스트 강조. span으로 나뉜 글자를 "Z oolog"로 띄어 읽지 않도록 aria-label 지정 */}
+          <div className="site-brand">
+            <Link to="/" className="site-title" aria-label="Zoolog">
+              <Logo />
+            </Link>
+            {/* 소유자 로그인 상태에서만 표시. 주제 메뉴와 섞이지 않도록 로고 옆 칸 */}
+            {me && (
+              <NavLink to={href('/posts/new')} className="site-write roll-trigger">
+                <RollText>글쓰기</RollText>
               </NavLink>
-            </li>
-            {categories.map((category) => (
-              <li key={category.id}>
-                <NavLink to={href('/categories/:slug', { slug: category.slug })} className="roll-trigger">
-                  <RollText>{category.name}</RollText>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </header>
-      <main className="site-main">
-        <Outlet />
-      </main>
-      <AuthShortcut />
-      <PointerFocusReset />
-    </div>
+            )}
+          </div>
+          <nav aria-label="주제" className="site-nav">
+            <ul className="category-nav">
+              {tree.map((category) => (
+                <li key={category.id}>
+                  {/* 가리키면(마우스·키보드) 홈 별자리 지도에서 이 주제의 별자리에 불이 들어옴 */}
+                  <NavLink
+                    to={href('/categories/:slug', { slug: category.slug })}
+                    className={({ isActive }) =>
+                      isActive || hasSlug(category.children, currentSlug) ? 'roll-trigger is-active' : 'roll-trigger'
+                    }
+                    onPointerEnter={() => setHighlightSlug(category.slug)}
+                    onPointerLeave={() => setHighlightSlug(null)}
+                    onFocus={() => setHighlightSlug(category.slug)}
+                    onBlur={() => setHighlightSlug(null)}
+                  >
+                    <RollText>{category.name}</RollText>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </header>
+        <main className="site-main">
+          <Outlet />
+        </main>
+        <AuthShortcut />
+        <PointerFocusReset />
+      </div>
+    </MapHighlightContext>
   )
+}
+
+// 하위 주제(모든 단계) 중 현재 주소의 주제가 있는지: 그 큰 주제 메뉴도 활성 표시
+function hasSlug(nodes: CategoryNode[], slug: string | undefined): boolean {
+  return !!slug && nodes.some((node) => node.slug === slug || hasSlug(node.children, slug))
 }

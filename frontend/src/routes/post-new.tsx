@@ -28,7 +28,7 @@ export default function PostNew({ actionData }: Route.ComponentProps) {
   return (
     <>
       <title>글쓰기 | zoolog</title>
-      <PostEditor categories={categories} error={actionData?.error} submitLabel="게시" exitTo={href('/posts')} />
+      <PostEditor categories={categories} error={actionData?.error} submitLabel="게시" exitTo="/" />
     </>
   )
 }
