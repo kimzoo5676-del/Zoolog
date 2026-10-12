@@ -47,7 +47,9 @@
 노트북 + Tailscale Funnel 셀프 호스팅에서 AWS Lightsail로 변경 (노트북이 꺼지면 사이트·06:00 메일이 멈추는 문제 해결)
 
 - 서버: Lightsail 서울 리전(ap-northeast-2) Linux $12 플랜(2GB 메모리, 2 vCPU, SSD 60GB) 1대 + 고정 IP
-- 주소: 가비아 도메인 → 고정 IP. HTTPS 인증서는 Caddy가 자동 발급·갱신
+- 주소: `zoolog.site`(가비아, 네임서버 가비아 기본값, A 레코드 `@`만. `www`는 Caddyfile에 없어 넣지 않음) → 고정 IP. HTTPS 인증서는 Caddy가 Let's Encrypt로 자동 발급·갱신
+- 서버 정보(IP, Tailscale 이름 등)와 진행 기록은 `NOTES.local.md`(Git 제외)
+- Argo CD core 설치에는 `argocd-server`가 없어 `default` AppProject를 직접 만들어야 함 (`deploy/README.md`, 없으면 앱이 `InvalidSpecError`로 Unknown)
 - 구성: k3s(1대) + Argo CD core로 GitOps 배포 (2026-10-12 소유자 결정, 처음 정한 운영용 Docker Compose 대체). 기본 Traefik은 끄고(`--disable traefik`) Caddy가 HTTPS·화면 제공. 외부 공개는 Caddy의 80/443(LoadBalancer, k3s ServiceLB)만, PostgreSQL·SeaweedFS는 ClusterIP(클러스터 안에서만)
 - 흐름: `main` push → GitHub Actions(`.github/workflows/deploy.yml`: 백엔드 테스트(서비스 컨테이너로 PostgreSQL·SeaweedFS) → 프론트 lint·typecheck → 이미지 2개 linux/amd64 빌드·GHCR 업로드(태그 = 커밋 SHA) → `deploy/k8s/kustomization.yaml` 이미지 태그를 yq로 바꿔 커밋) → Argo CD Application(`deploy/argocd/zoolog.yaml`, 자동 sync·prune·selfHeal)이 서버에 반영. 되돌리기는 태그 커밋 `git revert`
 - 설정 위치: `deploy/k8s/`(kustomize: postgres·seaweedfs StatefulSet + PVC, backend·web Deployment, 백업 CronJob), `backend/Dockerfile`(jar는 CI에서 빌드, temurin 25 JRE), `frontend/Dockerfile`(node 24 빌드 → caddy 2.11), `frontend/Caddyfile`, 서버 준비 절차 `deploy/README.md`
@@ -206,7 +208,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 4. (완료) 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드. 남은 일: 일정 수정 화면
 5. (완료) 첫 진입 프리로더
 6. 2차 기능 (Gmail 알림, 뉴스 스크랩)
-7. 배포 설정 작성 완료 (2026-10-12): Lightsail + k3s + Argo CD + Caddy ("운영" 절). React 빌드는 Caddy가 제공하고 `/api`·`/oauth2`·`/login/oauth2`만 Spring으로 (2026-10-12 결정). 남은 일: 서버 준비·GitHub 저장소 생성(`deploy/README.md` 절차, 소유자 작업), 첫 배포 확인
+7. (완료) 배포 (2026-10-13): https://zoolog.site 운영 중. Lightsail + k3s + Argo CD + Caddy ("운영" 절). React 빌드는 Caddy가 제공하고 `/api`·`/oauth2`·`/login/oauth2`만 Spring으로. 저장소 https://github.com/kimzoo5676-del/Zoolog (공개), 이미지 `ghcr.io/kimzoo5676-del/*` (공개)
 
 ## 열린 이슈
 
