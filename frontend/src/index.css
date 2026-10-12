@@ -2,20 +2,28 @@
   /* 색상 토큰: 색 이름이 아니라 역할 이름으로 지음 */
   --color-bg: #becbb3; /* 세이지, 배경 */
   --color-text: #252a27; /* 차콜, 본문 글자 (배경 대비 8.60:1) */
-  --color-accent: #bd573d; /* 러스트, 흰 글자를 얹는 버튼 배경과 장식 (흰 글자 대비 4.57:1) */
-  --color-accent-strong: #853d2b; /* 진한 러스트, 세이지 위 강조 글자·링크 밑줄·활성 표시 (배경 대비 4.59:1) */
-  --color-on-accent: #ffffff; /* 러스트 배경 위 글자 */
-  --color-surface: #b2bea8; /* 세이지에 차콜 8% 섞은 코드 배경 (차콜 글자 대비 7.52:1, 진한 러스트 글자 금지 4.01:1) */
-  --color-line: #889382; /* 세이지에 차콜 35% 섞은 구분선, 장식 전용 (배경 대비 1.89:1) */
+  --color-accent: #bd573d; /* 러스트, 흰 글자를 얹는 면과 장식 (흰 글자 대비 4.57:1) */
+  --color-accent-strong: #853d2b; /* 진한 러스트, 격자선·링크 밑줄·활성 칸 (배경 대비 4.59:1) */
+  --color-on-accent: #ffffff; /* 러스트 면 위 글자 */
+  --color-surface: #b2bea8; /* 세이지에 차콜 8% 섞은 인라인 코드 배경 (차콜 글자 대비 7.52:1, 진한 러스트 글자 금지 4.01:1) */
+  --color-line: #889382; /* 세이지에 차콜 35% 섞은 옅은 구분선, 장식 전용 (배경 대비 1.89:1) */
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --page-width: 72rem; /* 격자 기둥 전체 폭 */
   --content-width: 45rem; /* 본문 한 줄 길이를 읽기 좋은 폭으로 제한 */
+  --cell-pad-x: clamp(1rem, 3vw, 2rem); /* 격자 칸 안쪽 좌우 여백 */
+  --grid-line: 1px solid var(--color-accent-strong); /* 격자선 */
 }
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* 스크롤바 자리를 항상 비워 둠: 프리로더가 스크롤을 잠갔다 풀 때 화면이 옆으로 밀리지 않도록 */
+:root {
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -41,85 +49,320 @@ a {
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
 }
-/* ---------- 사이트 머리글, 주제 메뉴 ---------- */
 
-.site-header,
-.site-main {
-  width: min(100% - 2rem, var(--content-width));
+::selection {
+  color: var(--color-on-accent);
+  background-color: var(--color-accent);
+}
+
+/* ---------- 공통 조각 ---------- */
+
+/* 작은 대문자 라벨: 영문만 대문자로 바뀌고 한글은 그대로 */
+.eyebrow,
+.meta-list dt,
+.meta-cells dt {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.meta-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2.5rem;
+  margin: 0;
+}
+
+.meta-list dd,
+.meta-cells dd {
+  margin: 0.125rem 0 0;
+  font-weight: 700;
+}
+
+/* 얇은 테두리 버튼, 마우스를 올리면 진한 러스트 칸 + 세이지 글자 (4.59:1) */
+.button-link {
+  display: inline-block;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-text);
+  text-decoration: none;
+  border: var(--grid-line);
+}
+
+.button-link:hover {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.page-section {
+  padding: 2rem var(--cell-pad-x) 4rem;
+}
+
+.empty-message {
+  margin: 0;
+  padding: 1.5rem var(--cell-pad-x);
+}
+
+.error-detail {
+  margin: 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+}
+
+/* 글자 올림 효과 (RollText): 원래 글자는 위로 빠지고 복제본이 아래에서 올라옴 */
+.roll {
+  position: relative;
+  display: inline-block;
+  overflow: hidden; /* 칸 밖으로 나간 글자를 가림 */
+  vertical-align: bottom;
+}
+
+.roll-text {
+  display: inline-block;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* 복제본은 원래 글자 바로 아래에서 대기 (여러 줄 제목도 같은 폭으로 줄바꿈) */
+.roll-text + .roll-text {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+}
+
+/* translateY(-100%)는 각 글자 자신의 높이만큼 위로 이동 */
+.roll-trigger:hover .roll-text,
+.roll-trigger:focus-within .roll-text {
+  transform: translateY(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roll-text {
+    transition: none;
+  }
+
+  .roll-trigger:hover .roll-text,
+  .roll-trigger:focus-within .roll-text {
+    transform: none;
+  }
+}
+
+/* ---------- 첫 진입 프리로더 (Preloader) ---------- */
+
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background-color: var(--color-bg);
+  transition: opacity 0.35s ease;
+}
+
+/* root.tsx 인라인 스크립트가 skip으로 표시하면(이미 본 탭, 움직임 줄이기) 처음부터 숨김 */
+:root[data-intro="skip"] .preloader {
+  display: none;
+}
+
+.preloader[data-phase="fade"] {
+  opacity: 0;
+}
+
+/* 머리글 로고 자리로 이동할 때 왼쪽 위 모서리를 기준으로 축소 */
+.preloader .logo {
+  font-size: clamp(3.5rem, 14vw, 9rem);
+  transform-origin: 0 0;
+  transition: transform 0.8s cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+/* Z 채움: 아래 절반 진한 러스트, 위 절반 차콜인 2배 높이 배경을 글자 모양으로 잘라(background-clip: text) 위로 밀어 올림
+   글자 상자에는 Z 위아래 여백이 있어, 두 색 경계가 Z의 아래 끝(상자 위에서 79%)부터 위 끝(21%)까지만 지나가도록
+   배경 위치를 21% → 79%로 움직임 (Pretendard 900에서 잰 값) */
+.preloader .logo-accent {
+  color: transparent;
+  background-image: linear-gradient(to top, var(--color-accent-strong) 50%, var(--color-text) 50%);
+  background-size: 100% 200%;
+  background-position: 0 21%;
+  background-clip: text;
+}
+
+/* 대기(wait) 단계에서는 차콜 그대로, 채움(fill)부터 시작해 이후 단계에서도 다 찬 상태 유지
+   시간은 Preloader.tsx FILL_MS와 같게 */
+.preloader:not([data-phase="wait"]) .logo-accent {
+  animation: logo-fill 1.3s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+
+@keyframes logo-fill {
+  to {
+    background-position: 0 79%;
+  }
+}
+
+/* 격자선: 실제 테두리 위치에 겹쳐 그어지는 선 (가로는 왼쪽부터, 세로는 위쪽부터) */
+.preloader-line {
+  position: absolute;
+  transform-origin: left center;
+  animation: line-draw-x 0.6s cubic-bezier(0.7, 0, 0.2, 1) both;
+}
+
+.preloader-line[data-vertical] {
+  transform-origin: center top;
+  animation-name: line-draw-y;
+}
+
+@keyframes line-draw-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes line-draw-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+/* ---------- 격자 기둥, 머리글, 주제 메뉴 ---------- */
+
+/* 화면 가운데 세로 격자선으로 감싼 기둥, 화면 높이만큼 늘어남 */
+.site-shell {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  /* 그리드 칸은 기본값으로 내용물 폭보다 줄지 않아, 긴 코드 블록이 기둥을 밀어내지 않도록 0까지 허용 */
+  grid-template-columns: minmax(0, 1fr);
+  width: min(100% - 2rem, var(--page-width));
+  min-height: 100dvh;
   margin-inline: auto;
+  border-inline: var(--grid-line);
 }
 
 .site-header {
-  padding-block: 2.5rem 1rem;
-  border-bottom: 4px solid var(--color-accent); /* 장식용 얇은 러스트 막대 */
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: var(--grid-line);
 }
 
 .site-title {
-  font-size: clamp(2.5rem, 10vw, 4.5rem);
+  display: flex;
+  align-items: center;
+  padding: 0.75rem var(--cell-pad-x);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  color: var(--color-text);
+  text-decoration: none;
+  border-right: var(--grid-line);
+}
+
+/* 로고 글자 (머리글, 프리로더 공용). 크기는 감싸는 요소의 font-size를 따름 */
+.logo {
   font-weight: 900;
   line-height: 1;
-  letter-spacing: -0.03em;
-  text-decoration: none;
+  letter-spacing: -0.05em;
+}
+
+/* 로고 첫 글자: 현재 메뉴 칸·목록 번호 칸과 같은 진한 러스트 (세이지 대비 4.59:1) */
+.logo-accent {
+  color: var(--color-accent-strong);
+}
+
+.site-nav {
+  display: flex;
+  margin-left: auto;
 }
 
 .category-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1.25rem;
-  margin: 1.5rem 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
+.category-nav li {
+  display: flex;
+  border-left: var(--grid-line);
+}
+
 .category-nav a {
-  display: inline-block;
-  padding-block: 0.25rem;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
   text-decoration: none;
-  text-underline-offset: 0.3em;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
+/* 현재 주제, 마우스를 올린 주제: 진한 러스트 칸 + 세이지 글자 (4.59:1). NavLink가 aria-current="page" 자동 설정
+   마우스를 올리면 색이 바뀌면서 글자가 위로 빠지고 아래에서 올라옴 (RollText) */
+.category-nav a[aria-current="page"],
 .category-nav a:hover {
-  text-decoration: underline;
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
 }
 
-/* 현재 주제: 색만으로 구분하지 않도록 굵기와 밑줄을 함께 표시 (NavLink가 aria-current="page" 자동 설정) */
-.category-nav a[aria-current="page"] {
-  color: var(--color-accent-strong);
-  font-weight: 700;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
+/* 좁은 화면: 로고 칸 한 줄, 메뉴 칸 한 줄 */
+@media (max-width: 40rem) {
+  .site-title {
+    flex-basis: 100%;
+    border-right: 0;
+    border-bottom: var(--grid-line);
+  }
+
+  /* 메뉴 칸이 줄 전체를 나눠 채움 */
+  .site-nav,
+  .category-nav,
+  .category-nav li {
+    flex: 1 1 auto;
+  }
+
+  .site-nav {
+    margin-left: 0;
+  }
+
+  .category-nav li:first-child {
+    border-left: 0;
+  }
+
+  .category-nav a {
+    flex: 1;
+    justify-content: center;
+    padding: 0.75rem 0.875rem;
+  }
 }
 
-/* ---------- 본문 영역 ---------- */
+/* ---------- 페이지 머리 칸 (PageHeader) ---------- */
 
-.site-main {
-  padding-block: 2.5rem 4rem;
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: clamp(2.5rem, 7vw, 5rem) var(--cell-pad-x) 1.5rem;
+  border-bottom: var(--grid-line);
+}
+
+.page-header .eyebrow {
+  margin: 0 0 0.75rem;
 }
 
 .page-title {
-  margin: 0 0 1.5rem;
-  font-size: clamp(2rem, 6vw, 3rem);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  margin: 0;
+  font-size: clamp(3rem, 9vw, 6rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+  color: var(--color-text);
 }
 
-.empty-message {
+.page-header > p {
   margin: 0;
 }
 
-.status-message h1 {
-  margin: 0 0 0.5rem;
-  font-size: clamp(2.5rem, 10vw, 4.5rem);
-  line-height: 1;
-}
-
-.status-message pre {
-  overflow-x: auto;
-  font-family: var(--font-mono);
-}
-
-/* ---------- 글 목록 ---------- */
+/* ---------- 글 목록: 번호 칸 | 제목·정보 칸 ---------- */
 
 .post-list {
   margin: 0;
@@ -127,53 +370,145 @@ a {
   list-style: none;
 }
 
-.post-list-item {
-  padding-block: 1.25rem;
-  border-top: 1px solid var(--color-line);
+.post-row {
+  position: relative; /* 제목 링크를 행 전체로 넓히기 위한 기준 */
+  display: grid;
+  grid-template-columns: 3.5rem 1fr;
+  border-bottom: var(--grid-line);
 }
 
-.post-list-item:last-child {
-  border-bottom: 1px solid var(--color-line);
+.post-row-index {
+  display: flex;
+  justify-content: center;
+  padding-top: 1.5rem;
+  border-right: var(--grid-line);
 }
 
-.post-list-title {
-  font-size: 1.25rem;
-  font-weight: 700;
+/* 번호: 현재 메뉴 칸과 같은 진한 러스트 칸 + 세이지 글자 (4.59:1) */
+.post-row-number {
+  align-self: flex-start;
+  padding: 0.125rem 0.375rem;
+  font-size: 1rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.post-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 2rem;
+  padding: 1.5rem var(--cell-pad-x);
+}
+
+.post-row-title {
+  margin: 0;
+  font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.post-row-title a {
   text-decoration: none;
+  text-underline-offset: 0.25em;
 }
 
-.post-list-title:hover {
-  text-decoration: underline;
+/* 행 어디를 눌러도 글로 이동 */
+.post-row-title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
 }
 
-.post-meta {
-  margin: 0.25rem 0 0;
-  font-size: 0.875rem;
+/* 움직임 줄이기 설정이면 글자 올림 효과 대신 제목 밑줄 표시 */
+@media (prefers-reduced-motion: reduce) {
+  .post-row:hover .post-row-title a,
+  .post-row:focus-within .post-row-title a {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
 }
 
-/* ---------- 글 상세 ---------- */
+.post-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 48rem) {
+  .post-row {
+    grid-template-columns: 5rem 1fr;
+  }
+
+  .post-row-number {
+    font-size: 1.25rem;
+  }
+}
+
+/* ---------- 글 상세: 제목 칸 | 정보 칸 | 망점 띠 | 본문 ---------- */
 
 .post-header {
-  margin-bottom: 2.5rem;
+  padding: clamp(2.5rem, 7vw, 5rem) var(--cell-pad-x) 2rem;
+  border-bottom: var(--grid-line);
 }
 
-.post-header .page-title {
-  margin: 0.25rem 0 0;
+/* 제목 위 짧은 러스트 막대 (장식) */
+.post-header::before {
+  content: "";
+  display: block;
+  width: 3rem;
+  height: 0.375rem;
+  margin-bottom: 1.5rem;
+  background-color: var(--color-accent);
 }
 
-.post-category {
-  color: var(--color-accent-strong);
-  font-weight: 700;
-  text-decoration: none;
+.post-title {
+  max-width: 56rem;
+  margin: 0;
+  font-size: clamp(2.25rem, 6vw, 4.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: var(--color-text);
 }
 
-.post-category:hover {
-  text-decoration: underline;
+.meta-cells {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  border-bottom: var(--grid-line);
+}
+
+.meta-cells > div {
+  padding: 1rem var(--cell-pad-x);
+  border-right: var(--grid-line);
+}
+
+.meta-cells a {
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.2em;
+}
+
+.post-band {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--color-accent);
+  border-bottom: var(--grid-line);
 }
 
 /* ---------- 마크다운 본문 (react-markdown 출력) ---------- */
 
 .markdown {
+  max-width: var(--content-width);
   line-height: 1.8;
 }
 
@@ -187,16 +522,27 @@ a {
 .markdown h4 {
   margin: 2.5em 0 0.75em;
   line-height: 1.3;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .markdown h1 {
-  font-size: 1.75rem;
+  font-size: 1.875rem;
 }
 
 .markdown h2 {
   font-size: 1.5rem;
   font-weight: 800;
+}
+
+/* 소제목 앞 짧은 러스트 막대 (장식) */
+.markdown h1::before,
+.markdown h2::before {
+  content: "";
+  display: block;
+  width: 2rem;
+  height: 0.25rem;
+  margin-bottom: 0.75rem;
+  background-color: var(--color-accent);
 }
 
 .markdown h3 {
@@ -217,9 +563,17 @@ a {
   margin-top: 0.25em;
 }
 
+.markdown li::marker {
+  font-weight: 700;
+}
+
 .markdown a {
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
+}
+
+.markdown a:hover {
+  text-decoration-thickness: 2px;
 }
 
 .markdown blockquote {
@@ -236,18 +590,21 @@ a {
   overflow-wrap: anywhere;
 }
 
+/* 코드 블록: 차콜 평면 색면 + 세이지 글자 (8.60:1) */
 .markdown pre {
-  padding: 1rem;
+  padding: 1.25rem;
   overflow-x: auto;
   line-height: 1.6;
-  background-color: var(--color-surface);
-  border-radius: 4px;
+  color: var(--color-bg);
+  background-color: var(--color-text);
+  border-left: 4px solid var(--color-accent);
 }
 
 .markdown pre code {
   padding: 0;
   font-size: 0.875rem;
   background: none;
+  border-radius: 0;
   overflow-wrap: normal;
 }
 
@@ -259,7 +616,7 @@ a {
 .markdown hr {
   margin: 2.5em 0;
   border: 0;
-  border-top: 1px solid var(--color-line);
+  border-top: var(--grid-line);
 }
 
 .table-scroll {
@@ -274,7 +631,12 @@ a {
 .markdown td {
   padding: 0.5rem 0.75rem;
   text-align: left;
-  border: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.markdown thead th {
+  font-weight: 800;
+  border-bottom: var(--grid-line);
 }
 
 /* GFM 체크리스트(- [ ] 할 일): 글머리 기호 대신 체크박스 표시 (remark-gfm이 붙이는 클래스) */
@@ -285,4 +647,5 @@ a {
 
 .markdown .task-list-item input {
   margin: 0 0.5em 0 0;
+  accent-color: var(--color-accent-strong);
 }

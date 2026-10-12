@@ -6,7 +6,7 @@
 ## 기능 범위
 
 1차
-1. 첫 진입 쇼릴: 블로그 소개, 공부 주제, 최근 글을 보여주는 웹 애니메이션
+1. 첫 진입 프리로더: 화면 가운데 `Zoolog`의 Z가 진한 러스트로 차오른 뒤 머리글 로고 자리로 이동, 격자선이 제자리에 그어지고 화면이 걷힘 (원래 "쇼릴"로 적었던 항목, 2026-10-12 프리로더로 결정)
 2. 로그인: 소유자 1명만 작성 권한
 3. 공부 글: 마크다운 원문 저장 + 사진, 주제(category) 분류
 4. 방문자 조회: 주제별 목록, 글 상세
@@ -22,7 +22,7 @@
 - 백엔드: Spring Boot 4.1.1 (Spring Framework 7.0.9, Hibernate 7.4.5, Tomcat 11), Java 25, Gradle 9.7.1 (Groovy DSL)
 - DB: PostgreSQL 18.6, Flyway 마이그레이션
 - 파일 저장소: SeaweedFS 4.45 (`weed mini`, S3 API 포트 8333, 버킷 `zoolog`). MinIO는 저장소 아카이브로 제외
-- 프론트: React 19.2.8, TypeScript ~6.0.2, Vite 8.3.4, ESLint 10, Node 24
+- 프론트: React 19.3.0 (package-lock 기준), TypeScript ~6.0.2, Vite 8.3.4, ESLint 10, Node 24
 - 라우팅: React Router 8.4.0 Framework 모드 + SPA 모드(`ssr: false`). v8부터 `react-router-dom` 없음, `react-router` 하나로 import
 - 마크다운: react-markdown 10.1.0 + remark-gfm 4.0.1 (표, 취소선, 체크리스트, 자동 링크)
 - 글꼴: Pretendard 1.3.9 (npm, 가변 + 동적 서브셋)
@@ -100,6 +100,10 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 페이지 제목은 React 19 `<title>` 요소를 라우트 컴포넌트에 직접 렌더링 (`meta` export 대신, React Router 문서 권장)
 - 글 본문은 마크다운 원문 저장, 화면에서는 `MarkdownContent`(react-markdown)로 렌더링. 원문 HTML은 글자로 이스케이프되는 기본값 유지, HTML 허용(`rehype-raw`)이 필요하면 `rehype-sanitize` 함께 적용
 - 화면 확인은 사용자가 Windows 브라우저(http://localhost:5173)에서 진행. UI 변경 후에는 확인할 항목을 정리해 요청
+- 프리로더(`components/Preloader.tsx`): 홈 화면(`/`, `/posts`)을 불러올 때마다 재생 (2026-10-12 소유자 결정). `root.tsx` `<head>`의 인라인 스크립트(`INTRO_SCRIPT`)가 `<html data-intro="play|skip">`을 정함. 다른 주소로 바로 들어오거나 움직임 줄이기 설정이면 skip
+- 프리로더 단계: wait(차콜 로고, 화면 데이터·글꼴 준비 대기, JS 전에는 `HydrateFallback`의 `PreloaderStage`) → fill(Z 채움 1.3초) → move(로고 이동 FLIP + 선 그리기) → fade. 채움은 준비가 끝난 뒤 시작해야 느린 환경에서도 보임
+- 프리로더 격자선은 좌표를 적지 않고 `.site-shell` 안 요소의 테두리(2px 이하)를 재서 그림 (`utils/gridLines.ts`). 레이아웃을 바꿔도 프리로더 수정 불필요
+- `:root { scrollbar-gutter: stable }`: 프리로더가 스크롤을 잠갔다 풀 때 화면이 옆으로 밀리지 않도록 유지
 
 ## 디자인
 
@@ -109,8 +113,8 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 |---|---|---|---|
 | `--color-bg` | #becbb3 세이지 | 배경 | 기준 |
 | `--color-text` | #252a27 차콜 | 본문, 포커스 테두리 | 세이지 대비 8.60:1 |
-| `--color-accent` | #bd573d 러스트 | 흰 글자 버튼 배경, 장식 | 흰 글자 4.57:1, 세이지 대비 2.70:1 |
-| `--color-accent-strong` | #853d2b 진한 러스트 | 세이지 위 강조 글자, 링크 밑줄, 활성 표시 | 세이지 대비 4.59:1 |
+| `--color-accent` | #bd573d 러스트 | 장식(막대, 망점) | 흰 글자 4.57:1, 세이지 대비 2.70:1 |
+| `--color-accent-strong` | #853d2b 진한 러스트 | 격자선, 링크 밑줄, 로고 `Z`, 활성 메뉴 칸·목록 번호 칸(세이지 글자) | 세이지 대비 4.59:1 |
 | `--color-on-accent` | #ffffff | 러스트 위 글자 | 4.57:1 |
 | `--color-surface` | #b2bea8 (세이지 + 차콜 8%) | 코드 배경 | 차콜 글자 7.52:1, 진한 러스트 글자 4.01:1이라 사용 금지 |
 | `--color-line` | #889382 (세이지 + 차콜 35%) | 구분선, 표 테두리 (장식 전용) | 세이지 대비 1.89:1 |
@@ -119,9 +123,19 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 큰 글자(24px 이상, 굵게 18.66px 이상)만 러스트 비주얼 위에 겹치기 허용 (차콜/러스트 3.19:1)
 - 글꼴: Pretendard 한 가족. 제목 900, 본문 400. `word-break: keep-all`, `overflow-wrap: break-word`
 - 레퍼런스 느낌: 포스터형. 화면을 채우는 아주 굵은 차콜 제목(글자 자체가 그래픽), 러스트 단색(듀오톤, 망점 질감) 비주얼, 얇은 러스트 막대, 그림자·그라데이션 없는 평면 색면, 넓은 세이지 여백, 제목이 이미지 위에 겹침
-- 강한 표현은 쇼릴과 큰 제목에 집중, 글 목록·본문은 차분하고 읽기 우선
+- 강한 표현은 프리로더와 큰 제목에 집중, 글 목록·본문은 차분하고 읽기 우선
 - 레퍼런스 포스터 이미지와 구성은 복제 금지, 비주얼은 직접 제작
-- 접근성: `:focus-visible` 차콜 2px 테두리 유지, 쇼릴 애니메이션은 `prefers-reduced-motion` 대응
+- 접근성: `:focus-visible` 차콜 2px 테두리 유지, 프리로더와 글자 올림 효과는 `prefers-reduced-motion`이면 생략
+- 화면 문구: 소개 문장, 태그라인 같은 꾸밈 문구는 임의로 넣지 않음. 문구는 소유자가 결정
+- 레이아웃 참고: https://mijobello.com (격자선, 칸 구성, 작은 대문자 라벨). 화면 가운데 기둥(`site-shell`)을 진한 러스트 1px 격자선으로 나눔: 머리글(로고 칸 | 메뉴 칸), 페이지 머리 칸, 목록 행(번호 칸 | 제목·정보 칸), 글 정보 칸
+- 글자는 모두 차콜 (로고, 제목, 라벨 포함). 진한 러스트 글자는 써 보고 제외 (2026-10-12 소유자 결정)
+- 페이지 제목은 메뉴 이름 그대로 (예: `전체`, `전체 글` 아님)
+- 로고는 `Zoolog` (첫 글자 `Z`만 진한 러스트로 현재 메뉴 칸·목록 번호 칸과 같은 색, 링크에 `aria-label="Zoolog"`로 한 단어로 읽힘)
+- 러스트 사용처: 짧은 막대(글 제목 위, 본문 소제목 앞, 인용, 코드 블록 왼쪽), 글 상세 망점 띠(`Halftone`, SVG로 직접 생성)
+- 목록 번호는 현재 메뉴 칸과 같은 진한 러스트 칸 + 세이지 글자, 항상 표시
+- 활성 메뉴는 진한 러스트 칸 + 세이지 글자 (4.59:1). 버튼은 얇은 진한 러스트 테두리, 마우스를 올리면 채움
+- 목록 제목, 주제 메뉴에 마우스를 올리면 글자가 위로 빠지고 아래에서 같은 글자가 올라옴 (`RollText`, 감싸는 요소에 `roll-trigger` 클래스, 0.45초 `cubic-bezier(0.65, 0, 0.35, 1)`). 메뉴는 동시에 진한 러스트 칸 + 세이지 글자로 바뀜. 움직임 줄이기 설정이면 글자 올림 없이 목록은 밑줄
+- 써 보고 제외한 것 (소유자 판단): 망점 글자를 겹친 포스터형 페이지 머리, 로고 옆 러스트 커서 막대, 바닥글(러스트 면, mijobello식 포함)
 
 ## Git
 
@@ -136,7 +150,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 2. 로그인(`member`, 세션/토큰 결정, CSRF) → 글 작성·수정·삭제(소유자 전용)
 3. 이미지 업로드 (SeaweedFS S3, `post_image.object_key`)
 4. 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드
-5. 홈 쇼릴 애니메이션
+5. (완료) 첫 진입 프리로더
 6. 2차 기능 (Gmail 알림, 뉴스 스크랩)
 7. 배포: Tailscale Funnel (443/8443/10000). Spring이 React 빌드를 정적 제공 vs Nginx 앞단은 배포 시 결정. Tailscale Funnel이 HTTPS 인증서를 자동 처리하므로 Caddy의 자동 HTTPS는 중복
 

@@ -1,6 +1,8 @@
 import { data } from 'react-router'
 import { fetchCategories } from '../api/category'
 import { fetchPosts } from '../api/post'
+import { MetaList } from '../components/MetaList'
+import { PageHeader } from '../components/PageHeader'
 import { PostList } from '../components/PostList'
 import { RouteError } from '../components/RouteError'
 import type { Route } from './+types/category-posts'
@@ -13,7 +15,7 @@ export async function clientLoader({ params, request }: Route.ClientLoaderArgs) 
   ])
   const category = categories.find((c) => c.slug === params.slug)
   if (!category) {
-    throw data('주제를 찾을 수 없어요.', { status: 404 })
+    throw data('주제를 찾을 수 없어요', { status: 404 })
   }
   return { category, posts }
 }
@@ -24,7 +26,9 @@ export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <title>{`${category.name} | zoolog`}</title>
-      <h1 className="page-title">{category.name}</h1>
+      <PageHeader eyebrow="Category" title={category.name}>
+        <MetaList items={[{ label: 'Posts', value: String(posts.length).padStart(2, '0') }]} />
+      </PageHeader>
       <PostList posts={posts} showCategory={false} />
     </>
   )

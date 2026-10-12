@@ -1,5 +1,6 @@
 import { isRouteErrorResponse } from 'react-router'
 import { NotFound } from './NotFound'
+import { PageHeader } from './PageHeader'
 
 type RouteErrorProps = {
   error: unknown
@@ -12,11 +13,16 @@ export function RouteError({ error }: RouteErrorProps) {
   }
 
   return (
-    <section className="status-message">
+    <>
       <title>오류 | zoolog</title>
-      <h1>문제가 생겼어요</h1>
-      <p>잠시 후 다시 시도해 주세요.</p>
-      {import.meta.env.DEV && error instanceof Error && <pre>{error.message}</pre>}
-    </section>
+      <PageHeader eyebrow="Error" title="문제가 생겼어요">
+        <p>잠시 후 다시 시도해 주세요.</p>
+      </PageHeader>
+      {import.meta.env.DEV && error instanceof Error && (
+        <div className="page-section">
+          <pre className="error-detail">{error.message}</pre>
+        </div>
+      )}
+    </>
   )
 }

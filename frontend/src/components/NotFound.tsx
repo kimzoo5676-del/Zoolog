@@ -1,16 +1,20 @@
 import { Link } from 'react-router'
+import { PageHeader } from './PageHeader'
 
 type NotFoundProps = {
   message?: string
 }
 
-export function NotFound({ message = '요청한 페이지를 찾을 수 없어요.' }: NotFoundProps) {
+export function NotFound({ message = '페이지를 찾을 수 없어요' }: NotFoundProps) {
   return (
-    <section className="status-message">
+    <>
       <title>찾을 수 없음 | zoolog</title>
-      <h1>404</h1>
-      <p>{message}</p>
-      <Link to="/posts">글 목록으로 돌아가기</Link>
-    </section>
+      <PageHeader eyebrow="404 Not Found" title={message} />
+      <div className="page-section">
+        <Link to="/posts" className="button-link">
+          글 목록으로 돌아가기
+        </Link>
+      </div>
+    </>
   )
 }

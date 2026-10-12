@@ -1,4 +1,6 @@
 import { fetchPosts } from '../api/post'
+import { MetaList } from '../components/MetaList'
+import { PageHeader } from '../components/PageHeader'
 import { PostList } from '../components/PostList'
 import type { Route } from './+types/posts'
 
@@ -7,11 +9,15 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 }
 
 export default function Posts({ loaderData }: Route.ComponentProps) {
+  const { posts } = loaderData
+
   return (
     <>
-      <title>전체 글 | zoolog</title>
-      <h1 className="page-title">전체 글</h1>
-      <PostList posts={loaderData.posts} />
+      <title>전체 | zoolog</title>
+      <PageHeader title="전체">
+        <MetaList items={[{ label: 'Posts', value: String(posts.length).padStart(2, '0') }]} />
+      </PageHeader>
+      <PostList posts={posts} />
     </>
   )
 }
