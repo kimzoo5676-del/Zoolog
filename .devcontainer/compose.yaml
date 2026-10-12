@@ -1,0 +1,6 @@
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/base:ubuntu26.04
+    volumes:
+      - ..:/workspaces/zoolog:cached
+    command: sleep infinity

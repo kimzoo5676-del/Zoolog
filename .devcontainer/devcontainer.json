@@ -1,0 +1,12 @@
+{
+  "name": "zoolog",
+  "dockerComposeFile": "compose.yaml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/zoolog",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "vscode",
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": { "version": "25" },
+    "ghcr.io/devcontainers/features/node:1": { "version": "24" }
+  }
+}
