@@ -37,6 +37,11 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
+// 실행용 jar(bootJar) 하나만 만듦: Docker 이미지가 build/libs/*.jar 하나를 복사
+tasks.named('jar') {
+	enabled = false
+}
+
 tasks.named('test') {
 	useJUnitPlatform()
 	// 테스트는 Google과 통신하지 않음, 설정 자리만 채움

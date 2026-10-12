@@ -1,0 +1,23 @@
+# Argo CD Application: GitHub 저장소의 deploy/k8s를 이 서버(k3s)에 자동으로 맞춤
+# 적용: kubectl apply -n argocd -f deploy/argocd/zoolog.yaml (최초 1회)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zoolog
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kimzoo5676/zoolog.git
+    targetRevision: main
+    path: deploy/k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: zoolog
+  syncPolicy:
+    # Git이 바뀌면 자동 반영, Git에서 지운 자원은 클러스터에서도 삭제, 손으로 바꾼 것은 Git대로 되돌림
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

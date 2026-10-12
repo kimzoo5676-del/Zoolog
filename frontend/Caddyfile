@@ -1,0 +1,32 @@
+# 운영 웹 서버: HTTPS 인증서 자동 발급·갱신(Let's Encrypt), 화면 파일 제공, API 전달
+# DOMAIN, ACME_EMAIL은 k8s Secret(zoolog-env)에서 환경 변수로
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# API·Google 로그인 시작·콜백은 Spring으로 (Caddy가 X-Forwarded-Proto 등을 붙여 https를 알려줌)
+	@backend path /api/* /oauth2/* /login/oauth2/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	# 그 외는 화면 파일. 없는 주소는 index.html (SPA: 주소 처리는 React Router)
+	handle {
+		root * /srv
+		# 빌드 파일은 이름에 해시가 붙어 내용이 바뀌면 이름도 바뀜 → 1년 캐시
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		try_files {path} /index.html
+		file_server
+	}
+}

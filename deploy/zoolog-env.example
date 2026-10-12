@@ -1,0 +1,14 @@
+# 운영 비밀값 (k8s Secret zoolog-env). 이 파일을 복사해 서버에서 값을 채운 뒤 Secret으로 만들고, 파일은 지움
+# kubectl -n zoolog create secret generic zoolog-env --from-env-file=zoolog.env
+# 값은 Git에 커밋 금지 (이 예시 파일은 키 목록만)
+POSTGRES_DB=zoolog
+POSTGRES_USER=zoolog
+POSTGRES_PASSWORD=change-me
+AWS_ACCESS_KEY_ID=change-me
+AWS_SECRET_ACCESS_KEY=change-me
+S3_BUCKET=zoolog
+GOOGLE_CLIENT_ID=change-me
+GOOGLE_CLIENT_SECRET=change-me
+OWNER_EMAIL=change-me
+DOMAIN=change-me.example
+ACME_EMAIL=change-me

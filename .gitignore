@@ -4,3 +4,7 @@ CLAUDE.local.md
 
 # 디자인 레퍼런스 이미지 (저작권, 커밋 금지)
 .reference/
+
+# 운영 비밀값 (서버에서만 만들고 지움, 예시 파일만 커밋)
+zoolog.env
+deploy/*.env

@@ -48,10 +48,16 @@
 
 - 서버: Lightsail 서울 리전(ap-northeast-2) Linux $12 플랜(2GB 메모리, 2 vCPU, SSD 60GB) 1대 + 고정 IP
 - 주소: 가비아 도메인 → 고정 IP. HTTPS 인증서는 Caddy가 자동 발급·갱신
-- 구성: 운영용 Docker Compose (Spring, PostgreSQL, SeaweedFS, Caddy). 외부 공개 포트는 80/443(Caddy)만, PostgreSQL·SeaweedFS는 비공개(`ports:` 없음, 컨테이너 내부 통신만)
+- 구성: k3s(1대) + Argo CD core로 GitOps 배포 (2026-10-12 소유자 결정, 처음 정한 운영용 Docker Compose 대체). 기본 Traefik은 끄고(`--disable traefik`) Caddy가 HTTPS·화면 제공. 외부 공개는 Caddy의 80/443(LoadBalancer, k3s ServiceLB)만, PostgreSQL·SeaweedFS는 ClusterIP(클러스터 안에서만)
+- 흐름: `main` push → GitHub Actions(`.github/workflows/deploy.yml`: 백엔드 테스트(서비스 컨테이너로 PostgreSQL·SeaweedFS) → 프론트 lint·typecheck → 이미지 2개 linux/amd64 빌드·GHCR 업로드(태그 = 커밋 SHA) → `deploy/k8s/kustomization.yaml` 이미지 태그를 yq로 바꿔 커밋) → Argo CD Application(`deploy/argocd/zoolog.yaml`, 자동 sync·prune·selfHeal)이 서버에 반영. 되돌리기는 태그 커밋 `git revert`
+- 설정 위치: `deploy/k8s/`(kustomize: postgres·seaweedfs StatefulSet + PVC, backend·web Deployment, 백업 CronJob), `backend/Dockerfile`(jar는 CI에서 빌드, temurin 25 JRE), `frontend/Dockerfile`(node 24 빌드 → caddy 2.11), `frontend/Caddyfile`, 서버 준비 절차 `deploy/README.md`
+- 비밀값: k8s Secret `zoolog-env`(키 목록 `deploy/zoolog-env.example`, 개발 키 + `DOMAIN`, `ACME_EMAIL`), 비공개 GHCR이면 `ghcr` 이미지 내려받기 Secret. Git 커밋 금지, 서버에서 한 번 직접 만듦
+- 메모리(2GB): 각 컨테이너 limit(backend 640Mi, postgres·seaweedfs 256Mi, web 128Mi), 서버 스왑 2GB. backend·web은 `Recreate`(옛 파드를 먼저 내림, 배포 중 잠깐 중단). 부족하면 $24(4GB) 플랜 검토
+- 백엔드 운영 프로필 `prod`(`application-prod.yaml`): `forward-headers-strategy: native`(Caddy의 X-Forwarded-Proto로 https 인식, 없으면 Google 콜백이 http), 세션 쿠키 secure, graceful shutdown. DB 주소 `DB_HOST`(개발 기본 `db`), 저장소 `S3_ENDPOINT`
+- 검증(이 개발 컨테이너에는 Docker·kubectl 없음): scratchpad에 내려받은 `actionlint`, `kustomize build` + `kubeconform -strict`, `caddy validate`로 형식 검사
 - SSH: Tailscale로만 접속, 공개 SSH 포트(22)는 Lightsail 방화벽에서 닫음
 - 빌드는 서버 밖(노트북 또는 GitHub Actions)에서, 서버는 실행만 (Lightsail은 버스트형 CPU라 빌드로 CPU 크레딧을 쓰지 않도록)
-- 백업: Lightsail 자동 스냅샷 + `pg_dump`
+- 백업: Lightsail 자동 스냅샷 + `pg_dump` CronJob(매일 03:00 Asia/Seoul, 서버 `/var/backups/zoolog`, 14일 보관)
 - 메일 발송: Gmail SMTP 587(STARTTLS) 또는 465(SSL). Lightsail은 25번 포트가 기본 차단
 
 ## 명령
@@ -200,7 +206,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 4. (완료) 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드. 남은 일: 일정 수정 화면
 5. (완료) 첫 진입 프리로더
 6. 2차 기능 (Gmail 알림, 뉴스 스크랩)
-7. 배포: AWS Lightsail + 운영용 Docker Compose + Caddy ("운영" 절 참고). React 빌드를 Spring이 정적 제공할지, Caddy가 직접 제공하고 `/api`만 Spring으로 넘길지는 배포 시 결정
+7. 배포 설정 작성 완료 (2026-10-12): Lightsail + k3s + Argo CD + Caddy ("운영" 절). React 빌드는 Caddy가 제공하고 `/api`·`/oauth2`·`/login/oauth2`만 Spring으로 (2026-10-12 결정). 남은 일: 서버 준비·GitHub 저장소 생성(`deploy/README.md` 절차, 소유자 작업), 첫 배포 확인
 
 ## 열린 이슈
 

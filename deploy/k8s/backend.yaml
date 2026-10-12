@@ -1,0 +1,60 @@
+# Spring 백엔드: Caddy만 접근 (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  # 2GB 서버: 새 파드와 옛 파드가 동시에 뜨면 메모리가 모자랄 수 있어 옛 파드를 먼저 내림 (배포 중 잠깐 중단)
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+        - name: ghcr
+      containers:
+        - name: backend
+          image: zoolog-backend
+          envFrom:
+            - secretRef:
+                name: zoolog-env
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: DB_HOST
+              value: postgres
+            - name: S3_ENDPOINT
+              value: http://seaweedfs:8333
+          ports:
+            - containerPort: 8080
+          # 시작(Flyway 마이그레이션 포함)에 최대 2분까지 기다림
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: 384Mi
+            limits:
+              memory: 640Mi

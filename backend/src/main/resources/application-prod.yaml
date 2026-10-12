@@ -1,0 +1,12 @@
+# 운영(Lightsail k3s) 전용: SPRING_PROFILES_ACTIVE=prod
+server:
+  # Caddy가 붙이는 X-Forwarded-Proto·For로 https와 실제 접속 주소를 인식
+  # (없으면 Google 로그인 콜백 주소가 http로 만들어지고, secure 쿠키가 동작하지 않음)
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        secure: true
+        same-site: lax
+  # 배포로 파드가 바뀔 때 처리 중인 요청을 마치고 종료
+  shutdown: graceful

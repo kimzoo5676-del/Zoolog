@@ -1,0 +1,75 @@
+# Caddy(화면 파일 + HTTPS + API 전달): 외부 공개는 이것만 (80/443)
+# k3s 기본 ServiceLB가 LoadBalancer 서비스를 서버의 80/443 포트에 연결
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+    - name: http
+      port: 80
+    - name: https
+      port: 443
+---
+# 발급받은 인증서 보관 (재시작해도 다시 발급받지 않도록, Let's Encrypt 발급 횟수 제한 대비)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: caddy-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  # 인증서 PVC(ReadWriteOnce)를 한 파드만 쓰도록 옛 파드를 먼저 내림
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      imagePullSecrets:
+        - name: ghcr
+      containers:
+        - name: web
+          image: zoolog-web
+          env:
+            - name: DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: zoolog-env
+                  key: DOMAIN
+            - name: ACME_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: zoolog-env
+                  key: ACME_EMAIL
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          resources:
+            requests:
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: caddy-data
+              mountPath: /data
+      volumes:
+        - name: caddy-data
+          persistentVolumeClaim:
+            claimName: caddy-data

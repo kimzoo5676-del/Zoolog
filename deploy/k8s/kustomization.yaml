@@ -1,0 +1,20 @@
+# Argo CD가 이 폴더를 그대로 클러스터에 맞춤 (GitOps)
+# 이미지 태그는 GitHub Actions가 빌드 후 커밋 SHA로 바꿔 커밋 (.github/workflows/deploy.yml)
+# 비밀값(zoolog-env, ghcr)은 Git에 넣지 않고 서버에서 한 번 직접 만듦 (deploy/README.md)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: zoolog
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - seaweedfs.yaml
+  - backend.yaml
+  - web.yaml
+  - backup.yaml
+images:
+  - name: zoolog-backend
+    newName: ghcr.io/kimzoo5676/zoolog-backend
+    newTag: latest
+  - name: zoolog-web
+    newName: ghcr.io/kimzoo5676/zoolog-web
+    newTag: latest
