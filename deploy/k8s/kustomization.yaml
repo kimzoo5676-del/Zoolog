@@ -13,8 +13,8 @@ resources:
   - backup.yaml
 images:
   - name: zoolog-backend
-    newName: ghcr.io/kimzoo5676/zoolog-backend
+    newName: ghcr.io/kimzoo5676-del/zoolog-backend
     newTag: latest
   - name: zoolog-web
-    newName: ghcr.io/kimzoo5676/zoolog-web
+    newName: ghcr.io/kimzoo5676-del/zoolog-web
     newTag: latest

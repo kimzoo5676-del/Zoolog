@@ -72,8 +72,8 @@ kubectl -n argocd get pods   # 모두 Running 확인
 ```bash
 kubectl -n argocd create secret generic zoolog-repo \
   --from-literal=type=git \
-  --from-literal=url=https://github.com/kimzoo5676/zoolog.git \
-  --from-literal=username=kimzoo5676 \
+  --from-literal=url=https://github.com/kimzoo5676-del/Zoolog.git \
+  --from-literal=username=kimzoo5676-del \
   --from-literal=password=<GitHub 토큰>
 kubectl -n argocd label secret zoolog-repo argocd.argoproj.io/secret-type=repository
 ```
@@ -88,7 +88,7 @@ shred -u zoolog.env
 
 # GHCR 이미지가 비공개면 내려받기용 (GitHub 토큰, read:packages 권한)
 kubectl -n zoolog create secret docker-registry ghcr \
-  --docker-server=ghcr.io --docker-username=kimzoo5676 --docker-password=<GitHub 토큰>
+  --docker-server=ghcr.io --docker-username=kimzoo5676-del --docker-password=<GitHub 토큰>
 ```
 
 - `DOMAIN`: 가비아 도메인 (예: `zoolog.kr`), `ACME_EMAIL`: 인증서 만료 알림 받을 메일
@@ -100,14 +100,14 @@ kubectl -n zoolog create secret docker-registry ghcr \
 
 ### 8. GitHub
 
-- 저장소를 GitHub에 올림 (`kimzoo5676/zoolog`, 다른 이름이면 `deploy/argocd/zoolog.yaml`, `deploy/k8s/kustomization.yaml`의 주소 수정)
+- 저장소를 GitHub에 올림 (`kimzoo5676-del/Zoolog`, 다른 이름이면 `deploy/argocd/zoolog.yaml`, `deploy/k8s/kustomization.yaml`의 주소 수정)
 - Settings → Actions → General → Workflow permissions: Read and write (이미지 태그 커밋용)
 - 첫 push 후 Actions가 끝나면 `deploy/k8s/kustomization.yaml`의 태그가 커밋 SHA로 바뀜
 
 ### 9. Argo CD에 앱 등록 (최초 1회)
 
 ```bash
-kubectl apply -n argocd -f https://raw.githubusercontent.com/kimzoo5676/zoolog/main/deploy/argocd/zoolog.yaml
+kubectl apply -n argocd -f https://raw.githubusercontent.com/kimzoo5676-del/Zoolog/main/deploy/argocd/zoolog.yaml
 # 비공개 저장소면 저장소를 내려받은 뒤 kubectl apply -n argocd -f deploy/argocd/zoolog.yaml
 kubectl -n argocd get application zoolog    # SYNC STATUS Synced, HEALTH Healthy 확인
 kubectl -n zoolog get pods
