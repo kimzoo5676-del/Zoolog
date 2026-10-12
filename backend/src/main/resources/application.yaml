@@ -29,6 +29,8 @@ spring:
 
 zoolog:
   owner-email: ${OWNER_EMAIL}
+  # 일정의 "오늘" 기준 시간대
+  zone: Asia/Seoul
   # 이미지 저장소 (SeaweedFS S3 API, 컨테이너 안 주소). 외부 공개 금지
   storage:
     endpoint: ${S3_ENDPOINT:http://storage:8333}

@@ -8,6 +8,7 @@ export default [
     route('posts/:postId', 'routes/post-detail.tsx'),
     route('posts/:postId/edit', 'routes/post-edit.tsx'),
     route('categories/:slug', 'routes/category-posts.tsx'),
+    route('schedules', 'routes/schedules.tsx'),
     route('login', 'routes/login.tsx'),
     route('*', 'routes/not-found.tsx'),
   ]),
