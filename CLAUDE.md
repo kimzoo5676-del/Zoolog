@@ -23,6 +23,8 @@
 - DB: PostgreSQL 18.6, Flyway 마이그레이션
 - 파일 저장소: SeaweedFS 4.45 (`weed mini`, S3 API 포트 8333, 버킷 `zoolog`). MinIO는 저장소 아카이브로 제외
 - 프론트: React 19.2.8, TypeScript ~6.0.2, Vite 8.3.4, ESLint 10, Node 24
+- 라우팅: React Router 8.4.0 Framework 모드 + SPA 모드(`ssr: false`). v8부터 `react-router-dom` 없음, `react-router` 하나로 import
+- 마크다운: react-markdown 10.1.0 + remark-gfm 4.0.1 (표, 취소선, 체크리스트, 자동 링크)
 - 글꼴: Pretendard 1.3.9 (npm, 가변 + 동적 서브셋)
 
 ## 개발 환경
@@ -51,6 +53,8 @@ cd /workspaces/zoolog/backend
 cd /workspaces/zoolog/frontend
 npm run dev
 npm run lint
+npm run typecheck   # 라우트 타입 생성(typegen) + tsc
+npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html로 응답하도록 서버 설정 필요)
 ```
 
 ## 백엔드 규칙
@@ -88,8 +92,13 @@ npm run lint
 - `vite.config.ts`의 `server.host: '127.0.0.1'` 삭제 금지: VS Code 포트 포워딩이 IPv6를 지원하지 않아, 없으면 브라우저가 무한 로딩 (Vite Troubleshooting 문서)
 - 개발 중 API는 Vite 프록시(`/api` → `http://localhost:8080`)로 호출, CORS 설정 불필요
 - API 함수는 `src/api/*.ts`, 타입은 백엔드 DTO와 같은 모양, `response.ok` 검사 후 오류 throw
-- 데이터 조회는 현재 `useEffect` + `ignore` 플래그 패턴. TanStack Query는 화면이 늘어나면 도입 검토
-- 글 본문은 마크다운 원문 저장, 화면에서는 HTML로 렌더링(렌더러 미정)
+- 라우트 등록은 `src/routes.ts`, 라우트 모듈은 `src/routes/*.tsx`, 문서 뼈대(`<html>`)는 `src/root.tsx`의 `Layout` (`index.html`, `main.tsx` 없음). `appDirectory: 'src'`
+- 라우트 타입은 `import type { Route } from './+types/<파일명>'`. 생성 위치 `.react-router/`(gitignore), `npm run dev`/`typecheck`가 생성
+- 데이터 조회는 라우트 모듈의 `clientLoader`, `request.signal`을 API 함수에 전달(다른 화면으로 이동하면 요청 취소). SPA 모드라 서버 `loader`는 사용 안 함. TanStack Query는 화면이 늘어나면 도입 검토
+- 없는 리소스: `clientLoader`에서 `throw data('메시지', { status: 404 })` → 라우트 `ErrorBoundary`에서 `RouteError`로 표시. 오류 화면도 레이아웃(머리글, 주제 메뉴) 안에 표시하려면 라우트마다 `ErrorBoundary` export
+- 링크 경로는 `href('/posts/:postId', { postId })`로 생성 (경로·파라미터 타입 검사)
+- 페이지 제목은 React 19 `<title>` 요소를 라우트 컴포넌트에 직접 렌더링 (`meta` export 대신, React Router 문서 권장)
+- 글 본문은 마크다운 원문 저장, 화면에서는 `MarkdownContent`(react-markdown)로 렌더링. 원문 HTML은 글자로 이스케이프되는 기본값 유지, HTML 허용(`rehype-raw`)이 필요하면 `rehype-sanitize` 함께 적용
 - 화면 확인은 사용자가 Windows 브라우저(http://localhost:5173)에서 진행. UI 변경 후에는 확인할 항목을 정리해 요청
 
 ## 디자인
@@ -103,6 +112,8 @@ npm run lint
 | `--color-accent` | #bd573d 러스트 | 흰 글자 버튼 배경, 장식 | 흰 글자 4.57:1, 세이지 대비 2.70:1 |
 | `--color-accent-strong` | #853d2b 진한 러스트 | 세이지 위 강조 글자, 링크 밑줄, 활성 표시 | 세이지 대비 4.59:1 |
 | `--color-on-accent` | #ffffff | 러스트 위 글자 | 4.57:1 |
+| `--color-surface` | #b2bea8 (세이지 + 차콜 8%) | 코드 배경 | 차콜 글자 7.52:1, 진한 러스트 글자 4.01:1이라 사용 금지 |
+| `--color-line` | #889382 (세이지 + 차콜 35%) | 구분선, 표 테두리 (장식 전용) | 세이지 대비 1.89:1 |
 
 - 러스트(#bd573d)는 세이지 위 글자나 유일한 상태 표시(링크 밑줄, 선택 메뉴)에 사용 금지 (WCAG 1.4.3, 1.4.11)
 - 큰 글자(24px 이상, 굵게 18.66px 이상)만 러스트 비주얼 위에 겹치기 허용 (차콜/러스트 3.19:1)
@@ -121,7 +132,7 @@ npm run lint
 
 ## 다음 작업 (순서)
 
-1. 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
+1. (완료) 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
 2. 로그인(`member`, 세션/토큰 결정, CSRF) → 글 작성·수정·삭제(소유자 전용)
 3. 이미지 업로드 (SeaweedFS S3, `post_image.object_key`)
 4. 일정(`schedule`), 완료 기록(`schedule_record`), 일정 보드
