@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: zoolog
+  datasource:
+    url: jdbc:postgresql://db:5432/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
