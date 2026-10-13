@@ -26,8 +26,6 @@ spec:
       labels:
         app: backend
     spec:
-      imagePullSecrets:
-        - name: ghcr
       containers:
         - name: backend
           image: zoolog-backend

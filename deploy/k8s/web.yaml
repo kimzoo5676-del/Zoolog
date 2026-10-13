@@ -46,8 +46,6 @@ spec:
       labels:
         app: web
     spec:
-      imagePullSecrets:
-        - name: ghcr
       containers:
         - name: web
           image: zoolog-web

@@ -14,6 +14,14 @@
 - **해결:** `default` AppProject를 YAML로 직접 생성 → 즉시 Synced/Healthy. 서버 준비 문서에 단계 추가
 - **배운 점:** 상태가 Unknown이면 추측하지 말고 `.status.conditions`의 메시지부터 확인. 경량 설치는 빠진 구성 요소가 하던 일을 따로 챙겨야 함
 
+### 정상 동작인데 Warning 이벤트가 계속 쌓임 (2026-10-13)
+
+- **증상:** `kubectl describe pod`의 Events에 `FailedToRetrieveImagePullSecret ... (ghcr)` 경고가 54분 동안 49번
+- **원인:** 이미지를 공개로 바꿔 내려받기용 Secret `ghcr`를 만들지 않았는데, 매니페스트에는 `imagePullSecrets: ghcr` 참조가 남아 있음. 공개 이미지라 받기는 성공하지만 kubelet이 매번 경고를 남김
+- **해결:** 공개 이미지에 맞춰 `imagePullSecrets` 제거
+- **같이 확인한 것:** 같은 Events의 `Startup probe failed: connection refused` 4회는 Spring이 켜지는 약 20초 동안 포트가 아직 닫혀 있어서 생긴 예상된 경고(검사 5초 간격, 최대 24회 허용). Warning이라고 모두 장애는 아님
+- **배운 점:** 무해한 경고를 방치하면 진짜 경고가 묻힘. 경고는 원인을 확인해 고치거나 왜 무해한지 기록
+
 ### 프록시 뒤에서 Google 로그인 콜백 주소가 http로 만들어지는 문제 예방 (2026-10-12)
 
 - **상황:** Caddy가 HTTPS를 끝내고 Spring에는 http로 전달. Spring은 요청이 http라고 판단해 콜백 주소를 `http://`로 만들고, Google 콘솔에 등록한 `https://` 주소와 달라 로그인 실패하는 구조

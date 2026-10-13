@@ -104,7 +104,8 @@ kubectl create namespace zoolog
 kubectl -n zoolog create secret generic zoolog-env --from-env-file=zoolog.env
 shred -u zoolog.env
 
-# GHCR 이미지가 비공개면 내려받기용 (GitHub 토큰, read:packages 권한)
+# GHCR 이미지가 비공개일 때만 내려받기용 (GitHub classic 토큰, read:packages 권한)
+# 이 경우 backend.yaml, web.yaml 파드 spec에 imagePullSecrets: [{name: ghcr}]도 추가 (현재 이미지는 공개라 없음)
 kubectl -n zoolog create secret docker-registry ghcr \
   --docker-server=ghcr.io --docker-username=kimzoo5676-del --docker-password=<GitHub 토큰>
 ```
