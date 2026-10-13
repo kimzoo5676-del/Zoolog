@@ -13,7 +13,7 @@ OWNER_EMAIL=change-me
 # 알림 메일 발송 계정: Gmail 주소 + Google 계정 앱 비밀번호(2단계 인증 필요)
 MAIL_USERNAME=change-me@gmail.com
 MAIL_PASSWORD=change-me
-# 아침 기사 메일: 네이버 뉴스 검색 API(developers.naver.com) + Claude API(console.anthropic.com)
+# 아침 기사 메일: 네이버 뉴스 검색(네이버 클라우드 NAVER API HUB 앱의 Client ID·Secret), Claude API 키는 선택(비우면 규칙 선정)
 NAVER_CLIENT_ID=change-me
 NAVER_CLIENT_SECRET=change-me
 ANTHROPIC_API_KEY=change-me

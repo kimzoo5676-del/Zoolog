@@ -75,7 +75,8 @@ zoolog:
       - 네이버
       - 카카오
       - AI 데이터센터
-  # 네이버 뉴스 검색 API (developers.naver.com 애플리케이션 등록, 검색 API). 없으면 IT·취업 기사 생략
+  # 네이버 뉴스 검색 API: 네이버 클라우드 콘솔 > NAVER API HUB > Application 등록(뉴스 선택) > 인증 정보의 Client ID·Secret
+  # 없으면 IT·취업 기사 생략
   naver:
     client-id: ${NAVER_CLIENT_ID:}
     client-secret: ${NAVER_CLIENT_SECRET:}

@@ -16,13 +16,14 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
-// 네이버 뉴스 검색 API: IT·취업 기사 후보 (기사 앞부분 문장 description을 소개 근거로 사용)
-// 인기순 정렬이 없어 최신순으로 모은 뒤 선정은 Claude가 맡음
-// https://developers.naver.com/docs/serviceapi/search/news/news.md
+// 네이버 뉴스 검색 API(NAVER API HUB): IT·취업 기사 후보 (기사 앞부분 문장 description을 소개 근거로 사용)
+// 인기순 정렬이 없어 최신순으로 모은 뒤 고르기는 NewsRanker(또는 Claude)
+// 개발자센터(openapi.naver.com) 검색 API는 네이버 클라우드 NAVER API HUB로 이관: 주소·인증 헤더만 다르고 요청·응답 형식은 같음
+// https://api.ncloud-docs.com/docs/naver-api-hub-search-news
 @Component
 public class NaverNewsClient {
 
-    private static final String SEARCH_URL = "https://openapi.naver.com/v1/search/news.json";
+    private static final String SEARCH_URL = "https://naverapihub.apigw.ntruss.com/search/v1/news";
     // 전날 아침 이후 기사만 (06:00 발송 기준 하루)
     private static final Duration FRESH = Duration.ofHours(24);
 
@@ -55,8 +56,8 @@ public class NaverNewsClient {
                     .build()
                     .toUri();
             SearchResponse response = restClient.get().uri(uri)
-                    .header("X-Naver-Client-Id", clientId)
-                    .header("X-Naver-Client-Secret", clientSecret)
+                    .header("X-NCP-APIGW-API-KEY-ID", clientId)
+                    .header("X-NCP-APIGW-API-KEY", clientSecret)
                     .retrieve()
                     .body(SearchResponse.class);
             if (response == null || response.items() == null) {
