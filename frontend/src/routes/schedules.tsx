@@ -92,7 +92,7 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
           <p className="day-hero-date">
             {Number(month)}.{Number(day)}
           </p>
-          <p className="day-hero-weekday">{DAYS[weekdayIndex].long}</p>
+          <p className="day-hero-weekday">{DAYS[weekdayIndex].value}</p>
         </div>
         {/* 그날 완료 수 / 해야 할 수 (달성 링은 써 보고 제외, 2026-10-13 소유자 결정) */}
         <p className="day-hero-count" aria-label={`${selectedStats.due.length}개 중 ${selectedStats.done}개 완료`}>
@@ -179,7 +179,7 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
               me && editingId === item.schedule.id ? (
                 <div key={item.schedule.id} className="habit-card is-editing">
                   <ScheduleForm
-                    className="schedule-form-inline"
+                    className="composer-inline"
                     today={board.today}
                     schedule={item.schedule}
                     onCancel={() => setEditingId(null)}
@@ -208,6 +208,7 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
         <div className="schedule-add">
           {adding ? (
             <ScheduleForm
+              className="composer-new"
               today={board.today}
               onCancel={() => setAdding(false)}
               onSaved={async () => {

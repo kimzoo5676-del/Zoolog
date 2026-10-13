@@ -20,14 +20,21 @@ export function isDueOn(schedule: Schedule, date: string): boolean {
   )
 }
 
-// "월·수·금", 7일이면 "매일", 월~금이면 "평일"
+// "MON·WED·FRI", 7일이면 DAILY, 월~금이면 WEEKDAYS, 토·일이면 WEEKENDS (2026-10-13 소유자 결정: 영문)
 export function repeatLabel(days: DayOfWeek[]): string {
-  if (days.length === 7) return '매일'
+  if (days.length === 7) return 'DAILY'
   const weekdays: DayOfWeek[] = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
-  if (days.length === 5 && weekdays.every((d) => days.includes(d))) return '평일'
+  if (days.length === 5 && weekdays.every((d) => days.includes(d))) return 'WEEKDAYS'
+  if (days.length === 2 && days.includes('SATURDAY') && days.includes('SUNDAY')) return 'WEEKENDS'
   return DAYS.filter((d) => days.includes(d.value))
     .map((d) => d.label)
     .join('·')
+}
+
+// "10.13" (날짜 머리 칸과 같은 표기)
+export function dotDate(date: string): string {
+  const [, month, day] = date.split('-')
+  return `${Number(month)}.${Number(day)}`
 }
 
 export function shortDate(date: string): string {

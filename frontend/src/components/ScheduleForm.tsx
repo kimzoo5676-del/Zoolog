@@ -1,6 +1,8 @@
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useId, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react'
 import { createSchedule, DAYS, updateSchedule, type DayOfWeek, type Schedule } from '../api/schedule'
 import { errorMessage } from '../utils/postForm'
+import { parseSchedule } from '../utils/scheduleParse'
+import { dotDate, repeatLabel } from '../utils/scheduleDates'
 
 type ScheduleFormProps = {
   today: string
@@ -11,16 +13,58 @@ type ScheduleFormProps = {
   className?: string
 }
 
-// 일정 추가·수정 칸 (소유자): 제목, 시각, 반복 요일(칩), 시작일, 끝나는 날(비우면 계속). Esc로 닫기
+type RepeatMode = 'DAILY' | 'WEEKDAYS' | 'WEEKENDS' | 'CUSTOM'
+
+const ALL = DAYS.map((d) => d.value)
+const PRESETS: { mode: Exclude<RepeatMode, 'CUSTOM'>; days: DayOfWeek[] }[] = [
+  { mode: 'DAILY', days: ALL },
+  { mode: 'WEEKDAYS', days: ALL.slice(0, 5) },
+  { mode: 'WEEKENDS', days: ALL.slice(5) },
+]
+
+function modeOf(days: DayOfWeek[]): RepeatMode {
+  const preset = PRESETS.find((p) => p.days.length === days.length && p.days.every((d) => days.includes(d)))
+  return preset?.mode ?? 'CUSTOM'
+}
+
+// 일정 추가·수정 (소유자 전용, 방문자에게는 그려지지 않음)
+// 조사한 일정 앱의 공통 방식 반영 (2026-10-13):
+// - 제목 한 줄에 "매일 7시"처럼 적으면 알아듣고 밑줄로 표시 (Todoist Quick Add, Things 날짜 입력)
+// - 반복은 자주 쓰는 묶음(매일·평일·주말)을 먼저, 요일 고르기는 직접 선택에서만 (Apple 미리 알림 반복)
+// - 시작일·끝나는 날은 기본값(오늘부터, 계속)으로 접어 두고 필요할 때만 펼침
+// - 고른 내용을 한 문장 요약으로 계속 보여 줌. Enter 저장, Esc 닫기
 export function ScheduleForm({ today, schedule, onSaved, onCancel, className }: ScheduleFormProps) {
-  const [days, setDays] = useState<DayOfWeek[]>(schedule?.repeatDays ?? DAYS.map((d) => d.value))
+  const editing = schedule !== undefined
+  const [text, setText] = useState(schedule?.title ?? '')
+  // 직접 고른 값이 있으면 제목에서 알아들은 값보다 우선
+  const [pickedDays, setPickedDays] = useState<DayOfWeek[] | null>(schedule?.repeatDays ?? null)
+  const [pickedTime, setPickedTime] = useState<string | null>(schedule?.startTime.slice(0, 5) ?? null)
+  const [customOpen, setCustomOpen] = useState(schedule ? modeOf(schedule.repeatDays) === 'CUSTOM' : false)
+  const [periodOpen, setPeriodOpen] = useState(Boolean(schedule?.endDate))
+  const [startDate, setStartDate] = useState(schedule?.startDate ?? today)
+  const [endDate, setEndDate] = useState(schedule?.endDate ?? '')
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
-  const editing = schedule !== undefined
-  const hintId = useId()
+  const summaryId = useId()
+
+  const parsed = parseSchedule(text)
+  const days = pickedDays ?? parsed.days ?? ALL
+  const time = pickedTime ?? parsed.time ?? '07:00'
+  const mode = customOpen ? 'CUSTOM' : modeOf(days)
+
+  function pickPreset(next: RepeatMode) {
+    if (next === 'CUSTOM') {
+      setCustomOpen(true)
+      setPickedDays(days)
+      return
+    }
+    setCustomOpen(false)
+    setPickedDays(PRESETS.find((p) => p.mode === next)!.days)
+  }
 
   function toggleDay(day: DayOfWeek) {
-    setDays((current) => (current.includes(day) ? current.filter((d) => d !== day) : [...current, day]))
+    const next = days.includes(day) ? days.filter((d) => d !== day) : [...days, day]
+    setPickedDays(ALL.filter((d) => next.includes(d)))
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLFormElement>) {
@@ -30,20 +74,26 @@ export function ScheduleForm({ today, schedule, onSaved, onCancel, className }: 
     }
   }
 
+  // 제목 칸은 여러 줄로 늘어나는 textarea라 Enter를 저장으로 사용
+  function handleTitleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault()
+      event.currentTarget.form?.requestSubmit()
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const form = new FormData(event.currentTarget)
+    const title = parsed.title
+    if (!title) {
+      setError('제목을 입력해 주세요')
+      return
+    }
     if (days.length === 0) {
       setError('반복할 요일을 하나 이상 골라 주세요')
       return
     }
-    const input = {
-      title: String(form.get('title') ?? '').trim(),
-      startTime: String(form.get('startTime')),
-      repeatDays: days,
-      startDate: String(form.get('startDate') || (schedule?.startDate ?? today)),
-      endDate: String(form.get('endDate') ?? '') || undefined,
-    }
+    const input = { title, startTime: time, repeatDays: days, startDate, endDate: endDate || undefined }
     setPending(true)
     setError(null)
     try {
@@ -56,51 +106,138 @@ export function ScheduleForm({ today, schedule, onSaved, onCancel, className }: 
     }
   }
 
+  // 알아들은 부분에 밑줄 (입력 칸 뒤에 같은 글자를 투명하게 깔고 그 부분만 표시)
+  const segments: { text: string; mark: boolean }[] = []
+  let cursor = 0
+  for (const { start, end } of parsed.matches) {
+    segments.push({ text: text.slice(cursor, start), mark: false }, { text: text.slice(start, end), mark: true })
+    cursor = end
+  }
+  segments.push({ text: text.slice(cursor), mark: false })
+
+  const summary = [
+    repeatLabel(days) || 'NO DAYS',
+    time,
+    startDate === today ? 'from TODAY' : `from ${dotDate(startDate)}`,
+    endDate ? `until ${dotDate(endDate)}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <form
-      className={className ? `schedule-form ${className}` : 'schedule-form'}
+      className={className ? `schedule-composer ${className}` : 'schedule-composer'}
       aria-label={editing ? `${schedule.title} 일정 수정` : '일정 추가'}
       onSubmit={handleSubmit}
       onKeyDown={handleKeyDown}
     >
-      <label className="schedule-field schedule-field-title">
-        <span className="picker-label">Title</span>
-        <input
+      <div className="composer-title">
+        <div className="composer-title-mirror" aria-hidden="true">
+          {segments.map((s, i) => (s.mark ? <mark key={i}>{s.text}</mark> : s.text))}{' '}
+        </div>
+        <textarea
           name="title"
-          required
+          rows={1}
           maxLength={100}
-          placeholder="예: AWS-SAA 공부"
-          defaultValue={schedule?.title}
+          value={text}
+          placeholder="AWS-SAA 공부 매일 7시"
+          aria-label="제목 (반복·시각을 함께 적으면 알아들음)"
+          aria-describedby={summaryId}
           autoFocus
+          onChange={(e) => {
+            setText(e.target.value)
+            setError(null)
+          }}
+          onKeyDown={handleTitleKeyDown}
         />
-      </label>
-      <label className="schedule-field">
-        <span className="picker-label">Time</span>
-        <input name="startTime" type="time" required defaultValue={schedule?.startTime.slice(0, 5) ?? '07:00'} />
-      </label>
-      <fieldset className="schedule-field schedule-days">
-        <legend className="picker-label">Repeat</legend>
-        <div className="picker-options">
-          {DAYS.map((day) => (
-            <label key={day.value} className="chip">
-              <input type="checkbox" checked={days.includes(day.value)} onChange={() => toggleDay(day.value)} />
-              {day.label}
-            </label>
+      </div>
+
+      <p id={summaryId} className="composer-summary" aria-live="polite">
+        {summary}
+      </p>
+
+      <div className="composer-row">
+        <span className="picker-label">Repeat</span>
+        <div
+          className="composer-segments"
+          role="radiogroup"
+          aria-label="반복"
+          style={{ '--count': 4 } as CSSProperties}
+        >
+          {(['DAILY', 'WEEKDAYS', 'WEEKENDS', 'CUSTOM'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="radio"
+              aria-checked={mode === m}
+              className="composer-segment"
+              onClick={() => pickPreset(m)}
+            >
+              {m}
+            </button>
           ))}
         </div>
-      </fieldset>
-      <label className="schedule-field">
-        <span className="picker-label">Start</span>
-        <input name="startDate" type="date" defaultValue={schedule?.startDate ?? today} />
+      </div>
+
+      {mode === 'CUSTOM' && (
+        <div className="composer-row composer-days" role="group" aria-label="요일">
+          <span className="picker-label" aria-hidden="true" />
+          <div className="composer-segments" style={{ '--count': 7 } as CSSProperties}>
+            {DAYS.map((d) => (
+              <button
+                key={d.value}
+                type="button"
+                aria-pressed={days.includes(d.value)}
+                aria-label={d.long}
+                className="composer-segment"
+                onClick={() => toggleDay(d.value)}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <label className="composer-row">
+        <span className="picker-label">Time</span>
+        <input
+          className="composer-time"
+          type="time"
+          required
+          value={time}
+          onChange={(e) => setPickedTime(e.target.value)}
+        />
       </label>
-      <label className="schedule-field">
-        <span className="picker-label">End</span>
-        <input name="endDate" type="date" defaultValue={schedule?.endDate ?? ''} aria-describedby={hintId} />
-      </label>
-      <p id={hintId} className="schedule-hint">
-        끝나는 날을 비우면 계속 반복
-      </p>
-      <div className="schedule-form-actions">
+
+      {periodOpen ? (
+        <div className="composer-row composer-period">
+          <span className="picker-label">Period</span>
+          <div className="composer-period-fields">
+            <label>
+              <span className="visually-hidden">시작일</span>
+              <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <span aria-hidden="true">→</span>
+            <label>
+              <span className="visually-hidden">끝나는 날 (비우면 계속)</span>
+              <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+          </div>
+        </div>
+      ) : (
+        <div className="composer-row">
+          <span className="picker-label">Period</span>
+          <button type="button" className="text-link" onClick={() => setPeriodOpen(true)}>
+            기간 정하기
+          </button>
+        </div>
+      )}
+
+      <div className="composer-footer">
+        <span className="composer-keys" aria-hidden="true">
+          <kbd>Enter</kbd> {editing ? '저장' : '추가'} <kbd>Esc</kbd> 닫기
+        </span>
         <button type="button" className="button-link" onClick={onCancel}>
           취소
         </button>

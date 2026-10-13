@@ -2057,44 +2057,9 @@ button.habit-day:hover {
   font-size: 0.8125rem;
 }
 
-/* 수정 중인 카드: 그 자리에서 입력 칸으로 바뀜 (옅은 면 + 칸이 위에서 살짝 내려오며 나타남) */
+/* 수정 중인 카드: 그 자리에서 입력 칸으로 바뀜 (칸이 위에서 살짝 내려오며 나타남) */
 .habit-card.is-editing {
   padding: 1.25rem var(--cell-pad-x) 1.5rem;
-  background-color: var(--color-surface);
-}
-
-.schedule-form.schedule-form-inline {
-  padding: 0;
-  background: none;
-  transition:
-    opacity 0.4s ease,
-    translate 0.5s var(--ease-out-soft);
-}
-
-@starting-style {
-  .schedule-form.schedule-form-inline {
-    opacity: 0;
-    translate: 0 -0.4rem;
-  }
-}
-
-/* 카드 폭이 좁아 칸마다 한 줄씩 (시각·날짜는 폭 가득) */
-.schedule-form-inline .schedule-field {
-  flex: 1 1 100%;
-}
-
-.schedule-form-inline .schedule-hint {
-  margin-top: -0.75rem;
-}
-
-.schedule-form-inline .schedule-form-actions {
-  margin-left: 0;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .schedule-form.schedule-form-inline {
-    transition: none;
-  }
 }
 
 @media (max-width: 40rem) {
@@ -2136,72 +2101,266 @@ button.habit-day:hover {
   color: var(--color-text);
 }
 
-/* 일정 추가 (소유자) */
+/* 일정 추가·수정 (소유자 전용): 큰 제목 한 줄 + 요약 문장 + 반복·시각·기간 줄 */
 .schedule-add {
   padding: 1.25rem var(--cell-pad-x) 3rem;
 }
 
-.schedule-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 1rem 1.5rem;
-  padding: 1.25rem;
-  background-color: var(--color-surface);
+.schedule-composer {
+  container-type: inline-size;
+  display: grid;
+  gap: 1rem;
+  transition:
+    opacity 0.4s ease,
+    translate 0.5s var(--ease-out-soft);
 }
 
-.schedule-field {
+@starting-style {
+  .schedule-composer {
+    opacity: 0;
+    translate: 0 -0.4rem;
+  }
+}
+
+/* 새 일정: + 일정 칩 자리에서 펼쳐짐 (칩 크기에서 시작해 전체로, 큰 크기 변화라 1초 ease-in-out) */
+.schedule-composer.composer-new {
+  padding-bottom: 0.25rem;
+  clip-path: inset(0 0 0 0);
+  transition:
+    clip-path 1s var(--ease-in-out-soft),
+    opacity 0.4s ease;
+}
+
+@starting-style {
+  .schedule-composer.composer-new {
+    opacity: 1;
+    translate: none;
+    clip-path: inset(0 calc(100% - 6rem) calc(100% - 2.5rem) 0);
+  }
+}
+
+/* 제목: 편집기 제목처럼 테두리 없는 큰 글자. 뒤에 같은 글자를 투명하게 깔아 알아들은 말에 밑줄 */
+.composer-title {
   display: grid;
-  gap: 0.375rem;
-  /* 날짜·시각 입력 칸의 기본 최소 폭 때문에 좁은 화면에서 넘치지 않도록 */
-  min-width: 0;
+}
+
+.composer-title > * {
+  grid-area: 1 / 1;
   margin: 0;
   padding: 0;
-  border: 0;
-}
-
-.schedule-field-title {
-  flex: 1 1 16rem;
-}
-
-.schedule-field input:not([type="checkbox"]) {
-  box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
-  height: 2.5rem;
-  padding: 0 0.625rem;
   font: inherit;
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  border: var(--grid-line);
-  border-radius: 0;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
-/* 입력 칸: 클릭 외곽선 대신 테두리를 굵게 해 입력 중임을 표시 (편집기 입력 칸과 같은 결정) */
-.schedule-field input:not([type="checkbox"]):focus {
-  outline: none;
-  box-shadow: inset 0 0 0 1px var(--color-accent-strong);
-}
-
-.schedule-days .chip input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
+.composer-title-mirror {
+  color: transparent;
   pointer-events: none;
 }
 
-.schedule-form-actions {
-  display: flex;
+.composer-title-mirror mark {
+  color: transparent;
+  background: none;
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-strong);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.15em;
+}
+
+.composer-title textarea {
+  field-sizing: content;
+  min-height: 1.2em;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  outline: none;
+  resize: none;
+}
+
+.composer-title textarea::placeholder {
+  color: var(--color-text);
+  opacity: 0.35;
+}
+
+/* 고른 내용 한 문장 요약 */
+.composer-summary {
+  margin: 0;
+  padding-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border-bottom: var(--grid-line);
+}
+
+.composer-row {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  align-items: center;
   gap: 0.75rem;
-  margin-left: auto;
+  margin: 0;
 }
 
-.schedule-form .form-error {
-  flex-basis: 100%;
+/* 반복·요일: 같은 폭으로 붙어 있는 칸 묶음 (보기 전환과 같은 모양: 고른 칸은 진한 러스트 + 세이지 글자) */
+.composer-segments {
+  display: grid;
+  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+  max-width: 30rem;
 }
 
-.schedule-hint {
-  flex-basis: 100%;
-  margin: -0.5rem 0 0;
-  font-size: 0.75rem;
+.composer-segment {
+  min-width: 0;
+  margin: 0 -1px 0 0;
+  padding: 0.5rem 0.25rem;
+  text-align: center;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   color: var(--color-text-muted);
+  background: transparent;
+  border: var(--grid-line);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.composer-segment:hover {
+  color: var(--color-text);
+}
+
+.composer-segment[aria-checked="true"],
+.composer-segment[aria-pressed="true"] {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.composer-days {
+  transition:
+    opacity 0.4s ease,
+    translate 0.5s var(--ease-out-soft);
+}
+
+@starting-style {
+  .composer-days {
+    opacity: 0;
+    translate: 0 -0.4rem;
+  }
+}
+
+/* 시각: 큰 숫자, 테두리 없음 */
+.composer-time {
+  justify-self: start;
+  padding: 0;
+  font: inherit;
+  font-size: 1.75rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.composer-time:focus-visible,
+.composer-period input:focus-visible {
+  text-decoration: underline;
+  text-decoration-color: var(--color-accent-strong);
+  text-underline-offset: 0.2em;
+}
+
+.composer-row > .text-link {
+  justify-self: start;
+}
+
+.composer-period-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  font-weight: 800;
+}
+
+.composer-period input {
+  min-width: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+
+.composer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: var(--grid-line);
+}
+
+/* 단축키 안내: 키 모양 글자 */
+.composer-keys {
+  margin-right: auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.composer-keys kbd {
+  padding: 0.125rem 0.375rem;
+  font: inherit;
+  font-weight: 800;
+  border: 1px solid var(--color-line);
+}
+
+.composer-keys kbd + kbd,
+.composer-keys kbd ~ kbd {
+  margin-left: 0.5rem;
+}
+
+.schedule-composer .form-error {
+  margin: 0;
+}
+
+/* 좁은 자리(휴대폰, 습관 카드 안 수정): 이름표를 칸 위로 */
+@container (max-width: 34rem) {
+  .composer-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.375rem;
+  }
+
+  .composer-days .picker-label {
+    display: none;
+  }
+
+  .composer-segment {
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+}
+
+@media (max-width: 40rem) {
+  .composer-keys {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-composer,
+  .schedule-composer.composer-new,
+  .composer-days {
+    transition: none;
+  }
 }
