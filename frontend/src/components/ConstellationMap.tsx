@@ -450,7 +450,8 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
                 style={{
                   left: (node.x - box.x) * scale + offsetX,
                   top: (node.y - box.y) * scale + offsetY,
-                  ...tileTransition(Number(node.id.slice(4))),
+                  // 하위 주제 ◎는 커지지 않고 제 크기로 칸 가운데까지 날아감 (index.css *.gather-sub)
+                  ...tileTransition(Number(node.id.slice(4)), node.kind === 'sub'),
                 }}
               >
                 {/* 그래프의 별과 같은 모양 (큰 주제 ✦, 하위 주제 ◎), 칸 색 */}

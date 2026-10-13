@@ -1548,7 +1548,7 @@ a {
 }
 
 .gather-marker.is-sub {
-  /* 하위 주제 ◎: 별 크기 정도까지만 커짐. 너무 작게 시작한 그림은 칸으로 커질 때 번져 보여 이 크기로 캡처되게 함 */
+  /* 하위 주제 ◎: 모일 때 이 크기까지 커지고(초점), 칸으로 나뉠 때는 더 커지지 않음 (2026-10-13 소유자 결정) */
   --marker-size: 3.5rem;
   fill: currentColor;
 }
@@ -1710,6 +1710,19 @@ a {
   animation: calc(var(--dur-travel) * 0.45) ease calc(var(--dur-travel) * 0.45) both vt-fade-in;
 }
 
+/* ◎ 표지 → 칸: ◎는 제 크기 그대로(object-fit: none) 칸 가운데로 날아가고, 칸이 그 주위로 펼쳐지며 나타남 */
+::view-transition-old(*.gather-sub) {
+  /* 그림 칸을 무리(group) 크기에 맞춰야 제 크기 ◎가 칸 한가운데에 놓임 */
+  width: 100%;
+  height: 100%;
+  object-fit: none;
+  animation: calc(var(--dur-travel) * 0.4) ease calc(var(--dur-travel) * 0.6) both vt-fade-out;
+}
+
+::view-transition-new(*.gather-sub) {
+  animation: calc(var(--dur-travel) * 0.6) ease calc(var(--dur-travel) * 0.3) both vt-fade-in;
+}
+
 /* 짝이 없는 칸: 새로 생기는 칸은 제목이 자리 잡은 뒤 떠오르고, 사라지는 칸은 흐려짐 */
 ::view-transition-new(*.gather-tile):only-child {
   animation: var(--dur-ui) var(--ease-out-soft) calc(var(--dur-travel) * 0.6) both vt-rise-in;
@@ -1760,6 +1773,8 @@ a {
   ::view-transition-group(category-board),
   ::view-transition-old(category-board),
   ::view-transition-new(category-board),
+  ::view-transition-old(*.gather-sub),
+  ::view-transition-new(*.gather-sub),
   ::view-transition-group(*.gather-tile),
   ::view-transition-old(*.gather-tile),
   ::view-transition-new(*.gather-tile),
