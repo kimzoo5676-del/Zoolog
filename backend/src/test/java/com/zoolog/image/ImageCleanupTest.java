@@ -45,7 +45,7 @@ class ImageCleanupTest {
     Clock clock;
 
     @Test
-    @DisplayName("글과 연결되지 않은 채 7일이 지난 이미지는 저장소 파일과 기록이 함께 삭제된다")
+    @DisplayName("글과 연결되지 않은 채 하루가 지난 이미지는 저장소 파일과 기록이 함께 삭제된다")
     void deleteOldUnusedImage() {
         PostImage unused = save(new PostImage(newKey(), "image/png"));
         nowIs(Instant.now().plus(ImageService.UNUSED_GRACE).plus(Duration.ofHours(1)));
@@ -59,7 +59,7 @@ class ImageCleanupTest {
     }
 
     @Test
-    @DisplayName("연결이 없어도 7일이 지나지 않은 이미지는 남는다")
+    @DisplayName("연결이 없어도 하루가 지나지 않은 이미지는 남는다")
     void keepRecentUnusedImage() {
         PostImage recent = save(new PostImage(newKey(), "image/png"));
         nowIs(Instant.now().plus(ImageService.UNUSED_GRACE).minus(Duration.ofHours(1)));

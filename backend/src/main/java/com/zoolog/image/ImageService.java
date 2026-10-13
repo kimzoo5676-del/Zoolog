@@ -23,8 +23,8 @@ public class ImageService {
 
     static final String URL_PREFIX = "/api/images/";
     private static final String KEY_PREFIX = "images/";
-    // 연결 없는 이미지를 남겨 두는 기간: 편집기를 열어 둔 채 며칠 두거나, 본문에서 뺀 이미지를 다시 넣는 경우 대비
-    static final Duration UNUSED_GRACE = Duration.ofDays(7);
+    // 연결 없는 이미지를 남겨 두는 기간 (2026-10-13 소유자 결정 1일): 작성 중이거나 방금 본문에서 뺀 이미지는 남김
+    static final Duration UNUSED_GRACE = Duration.ofDays(1);
     // 본문 마크다운에서 이 사이트에 올린 이미지 주소 찾기 (파일 이름은 UUID.확장자)
     private static final Pattern IMAGE_URL = Pattern.compile("/api/images/([0-9a-f-]{36}\\.(?:jpg|png|gif|webp))");
 
