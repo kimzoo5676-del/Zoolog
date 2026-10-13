@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { href, Link, useViewTransitionState } from 'react-router'
 import type { PostSummary } from '../api/post'
+import { useEnteredInTransition } from '../utils/viewTransition'
 import { RollText } from './RollText'
 
 const PAGE_SIZE = 24 // 한 줄 8·4·2개 어느 쪽이든 줄이 꽉 차는 수
@@ -10,11 +11,12 @@ const PAGE_SIZE = 24 // 한 줄 8·4·2개 어느 쪽이든 줄이 꽉 차는 �
 // 글이 많으면 24개씩 "더 보기". 주제가 바뀌면 처음부터 보이도록 부모에서 key로 초기화
 export function PostCards({ posts }: { posts: PostSummary[] }) {
   const [visible, setVisible] = useState(PAGE_SIZE)
+  const entered = useEnteredInTransition()
   const shown = posts.slice(0, visible)
 
   return (
     <>
-      <ul className="post-cards" aria-label="글">
+      <ul className={entered ? 'post-cards is-vt' : 'post-cards'} aria-label="글">
         {shown.map((post, i) => (
           <li
             key={post.id}

@@ -6,7 +6,7 @@ import { RouteError } from '../components/RouteError'
 import { ViewSwitch } from '../components/ViewSwitch'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
 import { formatDate } from '../utils/date'
-import { nameForTransition } from '../utils/viewTransition'
+import { nameForTransition, useEnteredInTransition } from '../utils/viewTransition'
 import type { Route } from './+types/post-detail'
 
 export async function clientLoader({ params, request }: Route.ClientLoaderArgs) {
@@ -28,6 +28,8 @@ export async function clientAction({ params }: Route.ClientActionArgs) {
 }
 
 export default function PostDetail({ loaderData }: Route.ComponentProps) {
+  // 화면 전환으로 들어왔으면 정보 줄·띠·본문은 제목이 자리 잡은 뒤 떠오름 (한 번만)
+  const enter = useEnteredInTransition() ? ' is-vt-enter' : ''
   const { post } = loaderData
   const { me } = useBlogLayoutData()
 
@@ -48,7 +50,7 @@ export default function PostDetail({ loaderData }: Route.ComponentProps) {
         </h1>
       </header>
       <MetaList
-        className="meta-cells"
+        className={`meta-cells${enter}`}
         items={[
           {
             label: 'Category',
@@ -67,7 +69,7 @@ export default function PostDetail({ loaderData }: Route.ComponentProps) {
         ]}
       />
       {me && (
-        <div className="owner-actions">
+        <div className={`owner-actions${enter}`}>
           {/* 글 제목이 편집기 제목 칸으로 이어서 이동 (편집기 제목 칸도 post-title) */}
           <Link to={href('/posts/:postId/edit', { postId: String(post.id) })} viewTransition className="button-link">
             수정
@@ -88,8 +90,8 @@ export default function PostDetail({ loaderData }: Route.ComponentProps) {
         </div>
       )}
       {/* 정보 칸과 본문 사이 러스트 막대 (장식) */}
-      <div className="post-band" aria-hidden="true" />
-      <div className="page-section">
+      <div className={`post-band${enter}`} aria-hidden="true" />
+      <div className={`page-section${enter}`}>
         <MarkdownContent>{post.content}</MarkdownContent>
       </div>
     </article>

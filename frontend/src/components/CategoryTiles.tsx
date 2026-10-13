@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { href, Link } from 'react-router'
 import type { Category } from '../api/category'
-import { categoryTitleTransition, tileTransition } from '../utils/viewTransition'
+import { categoryTitleTransition, tileTransition, useEnteredInTransition } from '../utils/viewTransition'
 import { RollText } from './RollText'
 
 type CategoryTilesProps = {
@@ -17,8 +17,9 @@ type CategoryTilesProps = {
 // 전환 이름은 주제 id별(cat-80): 한 화면 안에서 겹치지 않고, 칸 이름 ↔ 다음 화면 제목이 같은 이름으로 짝이 됨
 // 뒤로 가기도 제목 → 칸으로 되돌아감. 모양은 class(category-title)로 한 번에 지정
 export function CategoryTiles({ tiles, columns }: CategoryTilesProps) {
+  const entered = useEnteredInTransition()
   return (
-    <ul className={`category-tiles is-${columns}`} aria-label="하위 주제">
+    <ul className={`category-tiles is-${columns}${entered ? ' is-vt' : ''}`} aria-label="하위 주제">
       {tiles.map(({ category, postCount }, i) => {
         return (
           <li
