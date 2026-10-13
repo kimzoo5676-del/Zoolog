@@ -14,6 +14,13 @@
 - **해결:** `default` AppProject를 YAML로 직접 생성 → 즉시 Synced/Healthy. 서버 준비 문서에 단계 추가
 - **배운 점:** 상태가 Unknown이면 추측하지 말고 `.status.conditions`의 메시지부터 확인. 경량 설치는 빠진 구성 요소가 하던 일을 따로 챙겨야 함
 
+### 화면 전환 이름이 겹쳐 공유 요소 전환이 통째로 건너뛰어짐 (2026-10-13)
+
+- **증상:** 하위 주제 칸을 누르면 제목 이동 없이 화면만 바뀌고 콘솔에 `Unexpected duplicate view-transition-name: category-title`
+- **원인:** 누른 칸 이름과 현재 화면 제목에 같은 이름을 주고, 떠나는 화면 제목만 이름을 빼려고 `useViewTransitionState(현재 주소)`를 썼는데, 이 훅은 출발 주소와 도착 주소 모두에서 true라 떠나는 화면에 같은 이름이 두 개 생김
+- **해결:** 이름을 주제 id별(`cat-80`)로 바꾸고 모양은 `view-transition-class`로 한 번에 지정 → 한 화면 안에서는 항상 유일, 칸 이름(cat-80) ↔ 다음 화면 제목(cat-80)이 저절로 짝이 됨. 뒤로 가기에서도 제목이 칸으로 되돌아감
+- **배운 점:** 공유 요소 전환 이름은 "같은 대상이면 같은 이름, 다른 대상이면 다른 이름"이 되도록 데이터 id로 짓는 편이 조건 분기보다 안전
+
 ### 정상 동작인데 Warning 이벤트가 계속 쌓임 (2026-10-13)
 
 - **증상:** `kubectl describe pod`의 Events에 `FailedToRetrieveImagePullSecret ... (ghcr)` 경고가 54분 동안 49번

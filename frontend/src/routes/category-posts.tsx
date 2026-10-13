@@ -1,12 +1,14 @@
-import { data, href, NavLink } from 'react-router'
+import { data, href } from 'react-router'
 import { fetchCategories } from '../api/category'
 import { fetchPosts } from '../api/post'
 import { MetaList } from '../components/MetaList'
 import { PageHeader } from '../components/PageHeader'
-import { PagedPostList } from '../components/PagedPostList'
+import { CategoryTiles } from '../components/CategoryTiles'
+import { PostCards } from '../components/PostCards'
 import { RouteError } from '../components/RouteError'
 import { ViewSwitch } from '../components/ViewSwitch'
-import { categoryPath } from '../utils/categoryTree'
+import { categoryPath, descendantIds } from '../utils/categoryTree'
+import { categoryTitleTransition } from '../utils/viewTransition'
 import type { Route } from './+types/category-posts'
 
 export async function clientLoader({ params, request }: Route.ClientLoaderArgs) {
@@ -21,12 +23,24 @@ export async function clientLoader({ params, request }: Route.ClientLoaderArgs) 
   }
   // 상위 경로 (큰 주제부터, 자기 자신 제외): 라벨 자리에 "Cloud Engineer / AWS-SAA"
   const ancestors = categoryPath(categories, category.id).slice(0, -1)
-  const children = categories.filter((c) => c.parentId === category.id)
-  return { category, ancestors, children, posts }
+  // 하위 주제 칸: 각 하위 주제 아래 모든 단계의 글 수
+  const tiles = categories
+    .filter((c) => c.parentId === category.id)
+    .map((child) => {
+      const ids = descendantIds(categories, child.id)
+      const slugs = new Set(categories.filter((c) => ids.has(c.id)).map((c) => c.slug))
+      return { category: child, postCount: posts.filter((p) => slugs.has(p.categorySlug)).length }
+    })
+  // 글 카드는 이 주제에 바로 쓴 글만 (하위 주제 글은 그 칸으로 들어가서 봄)
+  const ownPosts = posts.filter((p) => p.categorySlug === category.slug)
+  return { category, ancestors, tiles, ownPosts, totalPosts: posts.length }
 }
 
+// 주제 화면 (2026-10-13 소유자 결정): 글 목록을 한 번에 보여 주지 않음
+// 하위 주제가 있으면 하위 주제 칸(한 줄 2칸), 이 주제에 바로 쓴 글은 카드(한 줄 4개)
+// 하위 주제 칸을 누르면 그 이름이 다음 화면 제목 자리로 이어서 이동 (칸 이름과 제목이 주제 id로 같은 전환 이름)
 export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
-  const { category, ancestors, children, posts } = loaderData
+  const { category, ancestors, tiles, ownPosts, totalPosts } = loaderData
 
   return (
     <>
@@ -35,6 +49,7 @@ export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
       <PageHeader
         eyebrow={ancestors.length > 0 ? ancestors.map((c) => c.name).join(' / ') : 'Category'}
         title={category.name}
+        titleStyle={categoryTitleTransition(category.id)}
       >
         <div className="page-header-side">
           <ViewSwitch
@@ -42,21 +57,14 @@ export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
             graphTo={{ pathname: '/', search: `?focus=${encodeURIComponent(category.slug)}` }}
             listTo={href('/categories/:slug', { slug: category.slug })}
           />
-          <MetaList items={[{ label: 'Posts', value: String(posts.length).padStart(2, '0') }]} />
+          <MetaList items={[{ label: 'Posts', value: String(totalPosts).padStart(2, '0') }]} />
         </div>
       </PageHeader>
-      {/* 마우스가 없는 기기(터치)는 머리글 펼침 메뉴를 쓸 수 없어 큰 주제 화면에 하위 주제 칸 표시 */}
-      {children.length > 0 && (
-        <nav aria-label="하위 주제" className="subcategory-nav">
-          {children.map((child) => (
-            <NavLink key={child.id} to={href('/categories/:slug', { slug: child.slug })} className="chip">
-              {child.name}
-            </NavLink>
-          ))}
-        </nav>
+      {tiles.length > 0 && (
+        <CategoryTiles key={`tiles-${category.slug}`} tiles={tiles} columns={category.parentId === null ? 2 : 4} />
       )}
-      {/* 하위 주제가 있으면 여러 주제 글이 섞이므로 주제 표시 */}
-      <PagedPostList key={category.slug} posts={posts} showCategory={children.length > 0} />
+      {/* 하위 주제가 없으면 글 카드 판 (글이 없어도 빈 바둑판 한 줄) */}
+      {(ownPosts.length > 0 || tiles.length === 0) && <PostCards key={`cards-${category.slug}`} posts={ownPosts} />}
     </>
   )
 }

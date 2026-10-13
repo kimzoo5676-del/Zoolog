@@ -14,6 +14,7 @@
   --content-width: 45rem; /* 본문 한 줄 길이를 읽기 좋은 폭으로 제한 */
   --cell-pad-x: clamp(1rem, 3vw, 2rem); /* 격자 칸 안쪽 좌우 여백 */
   --grid-line: 1px solid var(--color-accent-strong); /* 격자선 */
+  --board-gap: 4px; /* 바둑판(하위 주제 칸, 글 카드) 칸 사이 세이지 선 */
   --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1); /* 빠르게 시작해 부드럽게 멈춤 (iOS 시트 계열 곡선) */
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.25, 1); /* 천천히 출발해 가속 후 부드럽게 멈춤, 프리로더와 같은 계열. 크기·위치가 크게 바뀌는 움직임용 */
   --ease-travel: cubic-bezier(0.7, 0, 0.2, 1); /* 요소가 다른 자리로 옮겨 가는 움직임 (프리로더 로고, 제목 공유 요소 전환) */
@@ -352,19 +353,6 @@ a {
   background-color: var(--color-accent-strong);
 }
 
-/* 주제 화면의 하위 주제 칸: 머리글에는 큰 주제만 있으므로 하위 주제로 가는 길 */
-.subcategory-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 1rem var(--cell-pad-x);
-  border-bottom: var(--grid-line);
-}
-
-.subcategory-nav .chip[aria-current="page"] {
-  color: var(--color-bg);
-  background-color: var(--color-accent-strong);
-}
 
 /* 좁은 화면: 로고 칸 한 줄, 메뉴 칸 한 줄 */
 @media (max-width: 40rem) {
@@ -1633,14 +1621,17 @@ a {
 }
 
 /* 제목 이동 (공유 요소 전환): 프리로더 로고 이동과 같은 0.8초, cubic-bezier(0.7, 0, 0.2, 1) */
-::view-transition-group(post-title) {
+::view-transition-group(post-title),
+::view-transition-group(*.category-title) {
   animation-duration: var(--dur-travel);
   animation-timing-function: var(--ease-travel);
 }
 
 /* 작은 제목 → 큰 제목: 가로세로 비율이 달라도 글자가 늘어나 보이지 않게 높이 기준으로 맞춤 */
 ::view-transition-old(post-title),
-::view-transition-new(post-title) {
+::view-transition-new(post-title),
+::view-transition-old(*.category-title),
+::view-transition-new(*.category-title) {
   width: auto;
   height: 100%;
   object-fit: contain;
@@ -1648,12 +1639,45 @@ a {
 }
 
 /* 출발·도착 제목이 오래 겹쳐 잔상(이중 글자)이 보이지 않도록 교차 시간을 짧게 */
-::view-transition-old(post-title) {
+::view-transition-old(post-title),
+::view-transition-old(*.category-title) {
   animation: var(--dur-fade) ease both vt-fade-out;
 }
 
-::view-transition-new(post-title) {
+::view-transition-new(post-title),
+::view-transition-new(*.category-title) {
   animation: var(--dur-fade) ease both vt-fade-in;
+}
+
+/* 하위 주제 판 ↔ 판(2칸 → 4칸 → 글 카드): 판 자리와 크기는 이어지고 내용은 서서히 흐려지며 바뀜 */
+::view-transition-group(category-board) {
+  animation-duration: var(--dur-travel);
+  animation-timing-function: var(--ease-travel);
+}
+
+::view-transition-old(category-board) {
+  animation: var(--dur-ui) ease both vt-fade-out;
+}
+
+::view-transition-new(category-board) {
+  animation: var(--dur-ui) ease calc(var(--dur-fade) * 0.5) both vt-fade-in;
+}
+
+::view-transition-old(category-board),
+::view-transition-new(category-board) {
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* 짝이 없는 주제 이름(새 화면에만 있는 하위 주제 칸 이름)은 제목 이동이 거의 끝난 뒤 떠오름 (이동하는 제목과 겹치지 않도록)
+   떠나는 화면에만 있는 이름(이전 화면 제목 등)은 바로 흐려짐 */
+::view-transition-new(*.category-title):only-child {
+  animation: var(--dur-ui) var(--ease-out-soft) calc(var(--dur-travel) * 0.6) both vt-rise-in;
+}
+
+::view-transition-old(*.category-title):only-child {
+  animation: var(--dur-fade) ease both vt-fade-out;
 }
 
 @keyframes vt-fade-in {
@@ -1667,7 +1691,250 @@ a {
   ::view-transition-new(root),
   ::view-transition-group(post-title),
   ::view-transition-old(post-title),
-  ::view-transition-new(post-title) {
+  ::view-transition-new(post-title),
+  ::view-transition-group(category-board),
+  ::view-transition-old(category-board),
+  ::view-transition-new(category-board),
+  ::view-transition-group(*.category-title),
+  ::view-transition-old(*.category-title),
+  ::view-transition-new(*.category-title) {
+    animation: none;
+  }
+}
+
+/* ---------- 주제 화면: 하위 주제 칸(한 줄 2칸) + 글 카드(한 줄 4개) ---------- */
+
+/* 하위 주제 칸: 러스트 · 진한 러스트 바둑판 (러스트 위 글자는 큰 차콜 3.19:1, 진한 러스트 위는 세이지 4.59:1) */
+.category-tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  /* 칸 사이를 띄워 바둑판 선처럼 세이지 배경이 보이게 (2026-10-13 소유자 결정) */
+  gap: var(--board-gap);
+  margin: 0;
+  padding: var(--board-gap);
+  list-style: none;
+  border-bottom: var(--grid-line);
+  view-transition-name: category-board;
+}
+
+.category-tiles.is-2 {
+  --columns: 2;
+}
+
+.category-tiles.is-4 {
+  --columns: 4;
+}
+
+.category-tile {
+  --tile-text: var(--color-text);
+  background-color: var(--color-accent);
+  animation: tile-in var(--dur-ui) var(--ease-out-soft) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* 다른 주제 화면에서 넘어올 때(화면 전환 중)는 이동하는 제목이 먼저 자리를 잡은 뒤 칸이 떠오름 */
+:root:active-view-transition .category-tile {
+  animation-delay: calc(var(--dur-travel) * 0.6 + var(--i, 0) * 60ms);
+}
+
+/* 바둑판: 2칸 판은 4칸마다(2·3번째), 4칸 판은 8칸마다(2·4·5·7번째) 진한 러스트 */
+.category-tiles.is-2 .category-tile:nth-child(4n + 2),
+.category-tiles.is-2 .category-tile:nth-child(4n + 3),
+.category-tiles.is-4 .category-tile:nth-child(8n + 2),
+.category-tiles.is-4 .category-tile:nth-child(8n + 4),
+.category-tiles.is-4 .category-tile:nth-child(8n + 5),
+.category-tiles.is-4 .category-tile:nth-child(8n + 7) {
+  --tile-text: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+@keyframes tile-in {
+  from {
+    opacity: 0;
+    translate: 0 0.5rem;
+  }
+}
+
+.category-tile-link {
+  /* 칸 안 글은 가로세로 가운데 (2026-10-13 소유자 결정) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  text-align: center;
+  min-height: clamp(9rem, 18vw, 13rem);
+  padding: clamp(1.25rem, 3vw, 2rem) var(--cell-pad-x);
+  color: var(--tile-text);
+  text-decoration: none;
+}
+
+/* 4칸 판: 칸이 작아 낮게, 이름도 한 단계 작게 (굵은 20px 이상 유지: 러스트 위 차콜 큰 글자 기준) */
+.category-tiles.is-4 .category-tile-link {
+  min-height: clamp(8rem, 13vw, 10rem);
+  gap: 0.5rem;
+  padding: 1.25rem var(--cell-pad-x);
+}
+
+.category-tiles.is-4 .category-tile-name {
+  font-size: clamp(1.25rem, 2vw, 1.625rem);
+  word-break: keep-all;
+}
+
+.category-tile-name {
+  display: block;
+  width: fit-content;
+  font-size: clamp(1.5rem, 3.4vw, 2.5rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+/* 글 수: 굵은 20px(큰 글자 기준 18.66px 이상)라 러스트 위 차콜도 대비 기준 충족 */
+.category-tile-count {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+/* 글 카드: 한 줄 8개, 하위 주제 칸과 같은 러스트 · 진한 러스트 바둑판 (판이 2칸 → 4칸 → 8칸으로 잘게 나뉨, 2026-10-13 소유자 결정)
+   러스트 위 차콜은 큰 글자(굵게 18.66px 이상)만 대비 기준을 넘어 제목만 20px로 두고 날짜는 카드에서 뺌(글 화면에 있음) */
+.post-cards {
+  --columns: 8;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  gap: var(--board-gap);
+  margin: 0;
+  padding: var(--board-gap);
+  list-style: none;
+  border-bottom: var(--grid-line);
+  view-transition-name: category-board;
+}
+
+.post-card {
+  --tile-text: var(--color-text);
+  background-color: var(--color-accent);
+  animation: tile-in var(--dur-ui) var(--ease-out-soft) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+:root:active-view-transition .post-card {
+  animation-delay: calc(var(--dur-travel) * 0.6 + var(--i, 0) * 30ms);
+}
+
+/* 8칸 판: 16칸마다 (1줄 짝수 칸, 2줄 홀수 칸) 진한 러스트 */
+.post-card:nth-child(16n + 2),
+.post-card:nth-child(16n + 4),
+.post-card:nth-child(16n + 6),
+.post-card:nth-child(16n + 8),
+.post-card:nth-child(16n + 9),
+.post-card:nth-child(16n + 11),
+.post-card:nth-child(16n + 13),
+.post-card:nth-child(16n + 15) {
+  --tile-text: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.post-card-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 9.5rem;
+  padding: 1rem 0.875rem 1.125rem;
+  color: var(--tile-text);
+  text-decoration: none;
+}
+
+/* 빈 칸: 색만 (가리켜도 반응 없음) */
+.category-tile.is-empty,
+.post-card.is-empty {
+  min-height: 100%;
+}
+
+.category-tile.is-empty {
+  min-height: clamp(9rem, 18vw, 13rem);
+}
+
+.category-tiles.is-4 .category-tile.is-empty {
+  min-height: clamp(8rem, 13vw, 10rem);
+}
+
+.post-card.is-empty {
+  min-height: 9.5rem;
+}
+
+.post-card-title {
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 64rem) {
+  .post-cards {
+    --columns: 4;
+  }
+
+  .post-card:nth-child(n) {
+    --tile-text: var(--color-text);
+    background-color: var(--color-accent);
+  }
+
+  .post-card:nth-child(8n + 2),
+  .post-card:nth-child(8n + 4),
+  .post-card:nth-child(8n + 5),
+  .post-card:nth-child(8n + 7) {
+    --tile-text: var(--color-bg);
+    background-color: var(--color-accent-strong);
+  }
+}
+
+@media (max-width: 48rem) {
+  .category-tiles.is-4 {
+    --columns: 2;
+  }
+
+  .category-tiles.is-4 .category-tile:nth-child(n) {
+    --tile-text: var(--color-text);
+    background-color: var(--color-accent);
+  }
+
+  .category-tiles.is-4 .category-tile:nth-child(4n + 2),
+  .category-tiles.is-4 .category-tile:nth-child(4n + 3) {
+    --tile-text: var(--color-bg);
+    background-color: var(--color-accent-strong);
+  }
+}
+
+@media (max-width: 40rem) {
+  .post-cards {
+    --columns: 2;
+  }
+
+  .post-card:nth-child(n) {
+    --tile-text: var(--color-text);
+    background-color: var(--color-accent);
+  }
+
+  .post-card:nth-child(4n + 2),
+  .post-card:nth-child(4n + 3) {
+    --tile-text: var(--color-bg);
+    background-color: var(--color-accent-strong);
+  }
+
+  .post-card-link {
+    min-height: 8rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .category-tile,
+  .post-card {
     animation: none;
   }
 }
@@ -1856,83 +2123,97 @@ a {
 
 .streak-day.is-filled:hover,
 .streak-day.is-filled[aria-expanded="true"] {
-  scale: 1.1;
+  scale: 1.08;
 }
 
-/* 그날 글 팝오버 (Apple HIG Popovers): 화살표가 칸을 가리킴, 칸 아래에 떠서 칸을 가리지 않음
-   다른 칸으로 옮기면 같은 팝오버가 미끄러져 이동, 처음에는 화살표 쪽에서 작게 시작해 커짐. 평면(그림자 없음) */
-.streak-pop {
+/* 그날 글 팁: 칸 위에 뜨고 아래 화살표가 칸을 가리킴. 평면(그림자 없음)
+   열림·닫힘 모두 서서히(투명도 + 화살표 쪽에서 커짐 + 살짝 떠오름), 다른 칸으로는 미끄러져 이동 */
+.streak-tip {
   position: absolute;
   z-index: 5;
-  padding: 0.25rem 0;
   background-color: var(--color-bg);
   border: 1px solid var(--color-accent-strong);
-  transform-origin: var(--arrow-x) top;
+  transform-origin: var(--arrow-x) bottom;
+  opacity: 0;
+  scale: 0.96;
+  translate: 0 0.25rem;
+  visibility: hidden;
+  pointer-events: none;
   transition:
-    left var(--dur-ui) var(--ease-out-soft),
-    top var(--dur-ui) var(--ease-out-soft),
     opacity var(--dur-fade) ease,
-    scale var(--dur-ui) var(--ease-out-soft);
+    scale var(--dur-ui) var(--ease-out-soft),
+    translate var(--dur-ui) var(--ease-out-soft),
+    left var(--dur-ui) var(--ease-out-soft),
+    bottom var(--dur-ui) var(--ease-out-soft),
+    visibility 0s linear var(--dur-fade);
 }
 
+.streak-tip[data-open="true"] {
+  opacity: 1;
+  scale: 1;
+  translate: 0 0;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+/* 처음 그려질 때도 닫힌 모양에서 시작 */
 @starting-style {
-  .streak-pop {
+  .streak-tip[data-open="true"] {
     opacity: 0;
-    scale: 0.94;
+    scale: 0.96;
+    translate: 0 0.25rem;
   }
 }
 
-/* 화살표: 테두리 색 삼각형 위에 배경색 삼각형을 1px 겹침 */
-.streak-pop::before,
-.streak-pop::after {
+/* 아래 화살표: 테두리 색 삼각형 위에 배경색 삼각형을 1px 겹침 */
+.streak-tip::before,
+.streak-tip::after {
   content: "";
   position: absolute;
   left: var(--arrow-x);
   border: 8px solid transparent;
-  border-top: 0;
+  border-bottom: 0;
   translate: -50% 0;
   transition: left var(--dur-ui) var(--ease-out-soft);
 }
 
-.streak-pop::before {
-  top: -9px;
-  border-bottom-color: var(--color-accent-strong);
+.streak-tip::before {
+  bottom: -9px;
+  border-top-color: var(--color-accent-strong);
 }
 
-.streak-pop::after {
-  top: -8px;
-  border-bottom-color: var(--color-bg);
+.streak-tip::after {
+  bottom: -8px;
+  border-top-color: var(--color-bg);
 }
 
-/* 목록: 4편까지 보이고 펼치면 같은 자리에서 늘어남 (높이 전환), 아주 길 때만 안에서 스크롤 */
-.streak-pop-list {
+/* 글 목록: 모두 보여 줌. 아주 많을 때만 안에서 스크롤 (기본 막대는 숨기고 위아래 끝을 흐리게) */
+.streak-tip-list {
   display: grid;
+  max-height: 16rem;
   margin: 0;
-  padding: 0;
-  overflow: hidden;
-  list-style: none;
-  transition: height var(--dur-ui) var(--ease-out-soft);
-}
-
-.streak-pop-list[data-scroll="true"] {
+  padding: 0.375rem 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  list-style: none;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 0.75rem, #000 calc(100% - 1.25rem), transparent 100%);
 }
 
-.streak-pop-list li {
+.streak-tip-list::-webkit-scrollbar {
+  display: none;
+}
+
+.streak-tip-list li {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
   gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
+  padding: 0.4375rem 0.875rem;
 }
 
-.streak-pop-list li + li {
-  border-top: 1px solid color-mix(in srgb, var(--color-line) 60%, transparent);
-}
-
-.streak-pop-title {
+.streak-tip-title {
   font-size: 0.9375rem;
   font-weight: 800;
   line-height: 1.35;
@@ -1943,33 +2224,12 @@ a {
   transition: text-decoration-color var(--dur-quick) ease;
 }
 
-.streak-pop-title:hover,
-.streak-pop-title:focus-visible {
+.streak-tip-title:hover,
+.streak-tip-title:focus-visible {
   text-decoration-color: var(--color-accent-strong);
 }
 
-.streak-pop-more {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 0.875rem;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-align: left;
-  color: var(--color-text-muted);
-  background: none;
-  border: 0;
-  border-top: 1px solid color-mix(in srgb, var(--color-line) 60%, transparent);
-  cursor: pointer;
-  transition: color var(--dur-quick) ease;
-}
-
-.streak-pop-more:hover {
-  color: var(--color-text);
-}
-
-/* 색 점 (범례·팝오버 공용) */
+/* 색 점 (범례·팁 공용) */
 .streak-dot {
   display: inline-block;
   flex: none;
@@ -2003,10 +2263,9 @@ a {
   }
 
   .streak-day.is-filled,
-  .streak-pop,
-  .streak-pop::before,
-  .streak-pop::after,
-  .streak-pop-list {
+  .streak-tip,
+  .streak-tip::before,
+  .streak-tip::after {
     transition: none;
   }
 }

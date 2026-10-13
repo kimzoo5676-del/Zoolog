@@ -16,7 +16,7 @@ const ROW_LABELS = ['Category', 'Sub', 'Section']
 
 // 주제 선택: 고른 경로를 따라 줄이 하나씩 열림 (최대 3단계)
 // CATEGORY 줄: 큰 주제 칩 + [+](새 큰 주제)
-// ↳ SUB 줄(큰 주제를 고르면): 선택 안 함 + 하위 칩 + [+](고른 큰 주제의 하위)
+// ↳ SUB 줄(큰 주제를 고르면): 하위 칩 + [+](고른 큰 주제의 하위). 큰 주제에는 글을 쓸 수 없어 반드시 고름
 // ↳ SECTION 줄(하위 주제를 고르면): 선택 안 함 + 3단계 칩 + [+]
 // 줄 위치로 무엇을 만드는지 구분. 실제 제출 값은 숨은 input categoryId 하나 (가장 깊이 고른 주제)
 export function CategoryPicker({ categories, value, onChange, onCreated }: CategoryPickerProps) {
@@ -49,7 +49,8 @@ export function CategoryPicker({ categories, value, onChange, onCreated }: Categ
               {ROW_LABELS[depth]}
             </span>
             <div className="picker-options" role="radiogroup" aria-labelledby={labelId}>
-              {parent && (
+              {/* 큰 주제에는 글을 쓸 수 없어 SUB 줄은 반드시 고름, SECTION 줄만 선택 안 함 가능 (2026-10-13) */}
+              {parent && depth >= 2 && (
                 <label className="chip chip-quiet">
                   {/* name은 같은 줄끼리 묶기 위한 값, 제출은 숨은 categoryId가 담당 */}
                   <input
@@ -66,7 +67,7 @@ export function CategoryPicker({ categories, value, onChange, onCreated }: Categ
                   <input
                     type="radio"
                     name={labelId}
-                    required={depth === 0}
+                    required={depth <= 1}
                     checked={selectedId === node.id}
                     onChange={() => onChange(String(node.id))}
                   />

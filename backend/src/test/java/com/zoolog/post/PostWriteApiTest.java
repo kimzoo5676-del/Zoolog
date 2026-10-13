@@ -44,7 +44,8 @@ class PostWriteApiTest {
 
     @BeforeEach
     void setUp() {
-        category = categoryRepository.save(new Category("테스트 주제", "test-category"));
+        Category top = categoryRepository.save(new Category("테스트 큰 주제", "test-top"));
+        category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
     }
 
     @Test
@@ -104,10 +105,20 @@ class PostWriteApiTest {
     }
 
     @Test
+    @DisplayName("큰 주제에는 글을 쓸 수 없고 하위 주제를 고르라는 이유를 받는다")
+    void createInTopCategory() throws Exception {
+        mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(category.getParent().getId(), "제목", "본문")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("하위 주제를 골라 주세요"));
+    }
+
+    @Test
     @DisplayName("글을 수정하면 제목, 본문, 주제가 바뀐다")
     void update() throws Exception {
         Post post = postRepository.save(new Post(category, "원래 제목", "원래 본문"));
-        Category other = categoryRepository.save(new Category("다른 주제", "other-category"));
+        Category other = categoryRepository.save(new Category("다른 주제", "other-category", category.getParent()));
 
         mockMvc.perform(put("/api/posts/{id}", post.getId()).with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

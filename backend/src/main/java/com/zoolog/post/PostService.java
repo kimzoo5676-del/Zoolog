@@ -67,8 +67,13 @@ public class PostService {
     }
 
     // 요청 본문의 값이 잘못된 경우라 404가 아닌 400
+    // 글은 하위 주제(2단계 이상)에만 쓸 수 있음 (2026-10-13 소유자 결정: 큰 주제 화면은 하위 주제 칸만 보여 주므로)
     private Category getCategory(Long categoryId) {
-        return categoryRepository.findById(categoryId)
+        Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "주제를 찾을 수 없어요"));
+        if (category.getParent() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "하위 주제를 골라 주세요");
+        }
+        return category;
     }
 }

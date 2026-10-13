@@ -110,7 +110,8 @@ class ImageApiTest {
     void syncWithPost() throws Exception {
         String url = upload();
         String key = "images/" + url.substring(url.lastIndexOf('/') + 1);
-        Category category = categoryRepository.save(new Category("테스트 주제", "test-category"));
+        Category top = categoryRepository.save(new Category("테스트 큰 주제", "test-top"));
+        Category category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
 
         String created = mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
