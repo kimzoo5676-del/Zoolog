@@ -2,6 +2,9 @@ package com.zoolog.image;
 
 import com.zoolog.post.Post;
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,15 +23,19 @@ public class ImageService {
 
     static final String URL_PREFIX = "/api/images/";
     private static final String KEY_PREFIX = "images/";
+    // 연결 없는 이미지를 남겨 두는 기간: 편집기를 열어 둔 채 며칠 두거나, 본문에서 뺀 이미지를 다시 넣는 경우 대비
+    static final Duration UNUSED_GRACE = Duration.ofDays(7);
     // 본문 마크다운에서 이 사이트에 올린 이미지 주소 찾기 (파일 이름은 UUID.확장자)
     private static final Pattern IMAGE_URL = Pattern.compile("/api/images/([0-9a-f-]{36}\\.(?:jpg|png|gif|webp))");
 
     private final ImageStorage storage;
     private final PostImageRepository postImageRepository;
+    private final Clock clock;
 
-    public ImageService(ImageStorage storage, PostImageRepository postImageRepository) {
+    public ImageService(ImageStorage storage, PostImageRepository postImageRepository, Clock clock) {
         this.storage = storage;
         this.postImageRepository = postImageRepository;
+        this.clock = clock;
     }
 
     // 원본 그대로 저장 (2026-10-12 결정: 가공 없음, 크기 제한은 spring.servlet.multipart 10MB)
@@ -73,6 +80,20 @@ public class ImageService {
     public void detachAll(Post post) {
         List<PostImage> images = postImageRepository.findAllByPost(post);
         images.forEach(PostImage::detach);
+    }
+
+    // 글과 연결되지 않은 채 UNUSED_GRACE 동안 그대로인 이미지를 저장소 파일과 기록 모두 삭제
+    // 연결 해제(본문에서 빠짐, 글 삭제)도 updatedAt을 갱신하므로 해제 시점부터 기간을 셈
+    // 파일을 먼저 지우고 기록을 지움: 도중에 실패하면 기록이 남아 다음 실행 때 다시 시도
+    @Transactional
+    public int deleteUnusedImages() {
+        Instant cutoff = clock.instant().minus(UNUSED_GRACE);
+        List<PostImage> images = postImageRepository.findAllByPostIsNullAndUpdatedAtBefore(cutoff);
+        for (PostImage image : images) {
+            storage.delete(image.getObjectKey());
+            postImageRepository.delete(image);
+        }
+        return images.size();
     }
 
     public StoredImage load(String fileName) {

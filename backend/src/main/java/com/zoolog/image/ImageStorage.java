@@ -38,4 +38,9 @@ public class ImageStorage {
     public ResponseInputStream<GetObjectResponse> get(String key) {
         return s3Client.getObject((request) -> request.bucket(bucket).key(key));
     }
+
+    // 없는 파일을 지워도 오류 없음 (S3 DeleteObject), 실패 후 다시 실행해도 안전
+    public void delete(String key) {
+        s3Client.deleteObject((request) -> request.bucket(bucket).key(key));
+    }
 }

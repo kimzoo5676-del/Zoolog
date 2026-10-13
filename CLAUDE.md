@@ -118,7 +118,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - `GET /api/posts/{id}`: 글 상세(본문 마크다운, `categoryId` 포함), 없으면 404
 - 소유자 전용(로그인 + CSRF 헤더): `POST /api/posts` 201 + Location, `PUT /api/posts/{id}` 200, `DELETE /api/posts/{id}` 204 (완전 삭제, 2026-10-12 결정). 요청 본문 `{ categoryId, title(200자 이하), content }`
 - `POST /api/categories` `{ name(50자 이하), parentId? }` 201. 3단계 주제 아래 추가는 400(3단계 제한). slug(주소용 이름)는 이름에서 자동 생성(소문자, 글자·숫자 외 문자 묶음은 하이픈, 한글 유지. 예: `AWS SAA` → `aws-saa`). 이름·slug 중복 409 (Ghost 방식 참고, 2026-10-12 결정)
-- 이미지 (2026-10-12): `POST /api/images`(소유자, multipart `file`, 10MB, JPEG·PNG·GIF·WebP를 파일 서명으로 판별, 아니면 415, 초과 413) → `{ url: "/api/images/{uuid}.{ext}" }`. `GET /api/images/{uuid}.{ext}`(공개, 백엔드가 저장소에서 읽어 전달, `Cache-Control: max-age=31536000, public, immutable`). 원본 그대로 저장(가공 없음). 글 저장 시 본문에 쓰인 이미지 주소를 찾아 `post_image`를 그 글과 연결, 빠지면 연결 해제, 글 삭제 전 연결 해제(FK). 연결 없는 이미지(저장소 파일 포함) 정리는 아직 없음
+- 이미지 (2026-10-12): `POST /api/images`(소유자, multipart `file`, 10MB, JPEG·PNG·GIF·WebP를 파일 서명으로 판별, 아니면 415, 초과 413) → `{ url: "/api/images/{uuid}.{ext}" }`. `GET /api/images/{uuid}.{ext}`(공개, 백엔드가 저장소에서 읽어 전달, `Cache-Control: max-age=31536000, public, immutable`). 원본 그대로 저장(가공 없음). 글 저장 시 본문에 쓰인 이미지 주소를 찾아 `post_image`를 그 글과 연결, 빠지면 연결 해제, 글 삭제 전 연결 해제(FK). 연결 없이 7일(`ImageService.UNUSED_GRACE`, 해제 시점 `updatedAt` 기준) 지난 이미지는 `ImageCleanupScheduler`가 매일 04:00(Asia/Seoul) 저장소 파일 → 기록 순으로 삭제 (2026-10-13)
 - 일정 API (2026-10-12, 화면은 2026-10-13 삭제, 백엔드는 2차 Gmail 알림 설계 때 재사용 또는 삭제 결정): `GET /api/schedules/board?weeks=12`(공개), 소유자 전용 `POST /api/schedules`, `PUT`·`DELETE /api/schedules/{id}`, `PUT`·`DELETE /api/schedules/{id}/records/{YYYY-MM-DD}`
 - 일정 규칙: "오늘"은 `zoolog.zone: Asia/Seoul` 기준 `Clock` 빈(`ClockConfig`, 테스트는 `@MockitoBean Clock`으로 날짜 고정). 반복 요일은 `repeat_days` "MON,WED,FRI"(`RepeatDaysConverter`). 완료(DONE)만 저장하고 놓침은 계산(스키마의 MISSED는 쓰지 않음). 연속 일수는 해야 했던 날만 세고 오늘 미완료면 어제부터
 - `GET /api/auth/me`: 로그인 상태면 200 `{ email }`, 비로그인이면 204 (방문자 화면 콘솔 오류 방지로 401 대신)
@@ -223,7 +223,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 
 1. (완료) 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
 2. (완료) Google 로그인, 글 작성·수정·삭제(소유자 전용), 편집기에서 주제 추가
-3. (완료) 이미지 업로드 (SeaweedFS S3, `post_image.object_key`). 남은 일: 연결 없는 이미지 정리, 대체 텍스트(alt) 입력 안내
+3. (완료) 이미지 업로드 (SeaweedFS S3, `post_image.object_key`). 연결 없는 이미지 정리 완료(2026-10-13). 남은 일: 대체 텍스트(alt) 입력 안내
 4. (완료) Streak 화면 (2026-10-13, 일정 보드 대체). 일정 백엔드는 남아 있음
 5. (완료) 첫 진입 프리로더
 6. 2차 기능 (Gmail 알림, 뉴스 스크랩)
