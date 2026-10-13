@@ -1,5 +1,6 @@
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { IMAGE_ALT_PLACEHOLDER } from '../utils/imageAlt'
 
 // 렌더링마다 새 객체를 만들지 않도록 모듈 범위에 고정
 const remarkPlugins = [remarkGfm]
@@ -17,10 +18,13 @@ const components: Components = {
     )
   },
   // 이미지: 화면에 가까워질 때 불러오기(lazy), 디코딩은 화면 그리기와 따로(async)
+  // 편집기의 대체 텍스트 자리 표시를 그대로 두면 빈 alt: 스크린 리더가 "이미지 설명"을 읽지 않도록
   img(props) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { node, ...rest } = props
-    return <img {...rest} loading="lazy" decoding="async" />
+    const { node, alt, ...rest } = props
+    // 주소 없는 이미지(편집기의 업로드 중 표시)는 그리지 않음: 빈 src는 현재 페이지를 다시 요청함
+    if (!rest.src) return null
+    return <img {...rest} alt={alt === IMAGE_ALT_PLACEHOLDER ? '' : alt} loading="lazy" decoding="async" />
   },
 }
 

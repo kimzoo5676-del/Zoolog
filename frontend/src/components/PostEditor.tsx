@@ -1,10 +1,11 @@
-import { useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
 import { Form, Link, useNavigation, useRevalidator } from 'react-router'
 import type { Category } from '../api/category'
 import { uploadImage } from '../api/image'
 import type { PostInput } from '../api/post'
 import { CategoryPicker } from './CategoryPicker'
 import { MarkdownContent } from './MarkdownContent'
+import { IMAGE_ALT_PLACEHOLDER } from '../utils/imageAlt'
 
 type PostEditorProps = {
   categories: Category[]
@@ -29,6 +30,25 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  // 본문을 직접 고친 횟수: 올리는 동안 다른 곳을 쓰고 있으면 선택을 옮기지 않기 위해 비교
+  const editCountRef = useRef(0)
+  // 올라간 이미지의 대체 텍스트 자리 표시를 선택할 대상 (이미지 주소)
+  const selectAltRef = useRef<string | null>(null)
+
+  // 이미지 한 장이 올라가면 "이미지 설명"을 선택해 바로 타이핑으로 바꿀 수 있게 함
+  useLayoutEffect(() => {
+    const url = selectAltRef.current
+    const textarea = contentRef.current
+    if (!url || !textarea) return
+    selectAltRef.current = null
+    const start = content.indexOf(`![${IMAGE_ALT_PLACEHOLDER}](${url})`)
+    // 제목 칸 등 다른 입력 칸에서 쓰는 중이면 포커스를 빼앗지 않음 (이미지 버튼으로 올린 경우는 본문으로 옮김)
+    const active = document.activeElement
+    const typingElsewhere = active !== textarea && active instanceof HTMLElement && active.matches('input, textarea, [contenteditable]')
+    if (start < 0 || typingElsewhere) return
+    textarea.focus()
+    textarea.setSelectionRange(start + 2, start + 2 + IMAGE_ALT_PLACEHOLDER.length)
+  }, [content])
 
   // 이미지 넣기: 커서 자리에 "업로드 중" 표시를 먼저 넣고, 올라가면 실제 주소로 바꿈 (여러 장은 동시에)
   // 실패하면 표시를 지우고 하단 바에 이유 표시
@@ -37,16 +57,30 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
     if (images.length === 0) return
     setUploadError(null)
     const textarea = contentRef.current
-    const at = textarea ? textarea.selectionStart : content.length
+    let at = textarea ? textarea.selectionStart : content.length
+    let prefix = ''
+    // 커서가 줄 중간(예: 방금 쓴 이미지 설명 안)이면 그 줄 다음에 넣음: 마크다운 이미지 문법 안에 끼어들지 않도록
+    if (at > 0 && content[at - 1] !== '\n') {
+      const lineEnd = content.indexOf('\n', at)
+      if (lineEnd < 0) {
+        at = content.length
+        prefix = '\n'
+      } else {
+        at = lineEnd + 1
+      }
+    }
     const placeholders = images.map((file, i) => `![업로드 중: ${file.name} ${Date.now()}-${i}]()`)
-    const block = placeholders.map((p) => `${p}\n`).join('')
+    const block = prefix + placeholders.map((p) => `${p}\n`).join('')
+    const editCount = editCountRef.current
     setContent((current) => current.slice(0, at) + block + current.slice(at))
     setUploading((n) => n + images.length)
     await Promise.all(
       images.map(async (file, i) => {
         try {
           const url = await uploadImage(file)
-          setContent((current) => current.replace(placeholders[i], `![](${url})`))
+          // 한 장일 때만, 그동안 본문을 고치지 않았으면 대체 텍스트 자리 표시를 선택
+          if (images.length === 1 && editCountRef.current === editCount) selectAltRef.current = url
+          setContent((current) => current.replace(placeholders[i], `![${IMAGE_ALT_PLACEHOLDER}](${url})`))
         } catch (e) {
           setContent((current) => current.replace(`${placeholders[i]}\n`, ''))
           setUploadError(e instanceof Error ? e.message : '이미지를 올리지 못했어요')
@@ -121,7 +155,10 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
           placeholder="마크다운으로 작성"
           required
           value={content}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={(event) => {
+            editCountRef.current += 1
+            setContent(event.target.value)
+          }}
           ref={contentRef}
           onPaste={handlePaste}
           onDragOver={(event) => {
