@@ -5,7 +5,7 @@ import type { PostSummary } from '../api/post'
 import { useMapHighlight } from '../hooks/mapHighlight'
 import { layoutConstellation, type StarNode } from '../utils/constellation'
 import { centeredLabelRect, placeLabels, textWidth, type LabelPlacement } from '../utils/labelPlacement'
-import { topTileTransition } from '../utils/viewTransition'
+import { tileTransition } from '../utils/viewTransition'
 import { ViewSwitch } from './ViewSwitch'
 
 type ConstellationMapProps = {
@@ -417,7 +417,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
                 style={{
                   left: (node.x - box.x) * scale + offsetX,
                   top: (node.y - box.y) * scale + offsetY,
-                  ...topTileTransition(Number(node.id.slice(4))),
+                  ...tileTransition(Number(node.id.slice(4))),
                 }}
               >
                 {/* 그래프의 큰 주제 별과 같은 모양 (칸 색) */}

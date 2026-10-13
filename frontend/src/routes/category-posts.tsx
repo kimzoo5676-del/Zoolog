@@ -41,6 +41,7 @@ export async function clientLoader({ params, request }: Route.ClientLoaderArgs) 
 // 하위 주제 칸을 누르면 그 이름이 다음 화면 제목 자리로 이어서 이동 (칸 이름과 제목이 주제 id로 같은 전환 이름)
 export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
   const { category, ancestors, tiles, ownPosts, totalPosts } = loaderData
+  const isTop = category.parentId === null
 
   return (
     <>
@@ -60,11 +61,15 @@ export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
           <MetaList items={[{ label: 'Posts', value: String(totalPosts).padStart(2, '0') }]} />
         </div>
       </PageHeader>
-      {tiles.length > 0 && (
-        <CategoryTiles key={`tiles-${category.slug}`} tiles={tiles} columns={category.parentId === null ? 2 : 4} />
+      {/* 큰 주제는 하위 주제가 없어도 칸 판(빈 줄)이 기본 화면 (큰 주제에는 글을 쓰지 않음, 2026-10-13) */}
+      {(tiles.length > 0 || isTop) && (
+        <CategoryTiles key={`tiles-${category.slug}`} tiles={tiles} columns={isTop ? 2 : 4} />
       )}
       {/* 하위 주제가 없으면 글 카드 판 (글이 없어도 빈 바둑판 한 줄) */}
-      {(ownPosts.length > 0 || tiles.length === 0) && <PostCards key={`cards-${category.slug}`} posts={ownPosts} />}
+      {/* 하위 주제가 없는 하위 주제(세부 주제 등)는 글 카드 판 (글이 없어도 빈 줄) */}
+      {(ownPosts.length > 0 || (tiles.length === 0 && !isTop)) && (
+        <PostCards key={`cards-${category.slug}`} posts={ownPosts} />
+      )}
     </>
   )
 }

@@ -6,8 +6,8 @@ export function categoryTitleTransition(id: number): CSSProperties {
   return { viewTransitionName: `cat-${id}`, viewTransitionClass: 'category-title' } as CSSProperties
 }
 
-// 큰 주제 칸 자체의 전환 이름: 홈 그래프에서 모여든 별(표지)이 이 칸 자리로 날아가 칸으로 커짐 (Category 화면에서만)
-export function topTileTransition(id: number): CSSProperties {
+// 주제 칸 자체의 전환 이름: 별(그래프의 모여든 별, 머리글 메뉴에서 튀어나온 별)이 이 칸 자리로 날아가 칸으로 커짐
+export function tileTransition(id: number): CSSProperties {
   return { viewTransitionName: `tile-${id}`, viewTransitionClass: 'gather-tile' } as CSSProperties
 }
 
@@ -15,6 +15,7 @@ export function topTileTransition(id: number): CSSProperties {
 // 머리글은 화면이 바뀌어도 그대로 남는 요소라 새 화면에서는 이름을 지워야 함 (제목과 이름이 겹치면 전환이 통째로 건너뛰어짐)
 // → blog-layout이 주소가 바뀌는 순간(useLayoutEffect, 새 화면 캡처 전) clearPendingNames() 호출
 const pending = new Set<HTMLElement>()
+const spawned = new Set<HTMLElement>()
 
 export function nameForTransition(element: Element | null, name: string) {
   if (!(element instanceof HTMLElement)) return
@@ -31,4 +32,30 @@ export function clearPendingNames() {
     element.style.removeProperty('view-transition-class')
   }
   pending.clear()
+  for (const element of spawned) element.remove()
+  spawned.clear()
+}
+
+const SPARKLE = 'M0 -14 Q0 0 14 0 Q0 0 0 14 Q0 0 -14 0 Q0 0 0 -14 Z' // 그래프 큰 주제 별(✦)과 같은 모양
+
+// 머리글 주제 메뉴 → 주제 화면: 메뉴 글자 자리에 하위 주제 수만큼 작은 별을 띄워 두면(칸 색, tile-<id>)
+// 화면 전환에서 각 별이 자기 하위 주제 칸 자리로 날아가 칸이 됨. 새 화면을 그리는 순간 clearPendingNames()가 지움
+export function spawnTileStars(from: Element | null, items: { id: number; dark: boolean }[]) {
+  if (!from || items.length === 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const rect = from.getBoundingClientRect()
+  const layer = document.createElement('div')
+  layer.className = 'star-markers'
+  layer.setAttribute('aria-hidden', 'true')
+  for (const { id, dark } of items) {
+    const marker = document.createElement('span')
+    marker.className = dark ? 'gather-marker is-small is-dark' : 'gather-marker is-small'
+    marker.style.left = `${rect.left + rect.width / 2}px`
+    marker.style.top = `${rect.top + rect.height / 2}px`
+    marker.style.setProperty('view-transition-name', `tile-${id}`)
+    marker.style.setProperty('view-transition-class', 'gather-tile')
+    marker.innerHTML = `<svg viewBox="-14 -14 28 28" focusable="false"><path d="${SPARKLE}"/></svg>`
+    layer.append(marker)
+  }
+  document.body.append(layer)
+  spawned.add(layer)
 }

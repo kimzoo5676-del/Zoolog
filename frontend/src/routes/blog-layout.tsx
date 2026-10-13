@@ -9,7 +9,7 @@ import { RollText } from '../components/RollText'
 import { MapHighlightContext } from '../hooks/mapHighlight'
 import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree'
 import { onlyFocusChanged } from '../utils/focusParam'
-import { clearPendingNames, nameForTransition } from '../utils/viewTransition'
+import { clearPendingNames, nameForTransition, spawnTileStars } from '../utils/viewTransition'
 import type { Route } from './+types/blog-layout'
 
 // request.signal: 다른 링크로 이동하면 라우터가 진행 중인 요청을 취소 (기존 ignore 플래그 대체)
@@ -70,7 +70,18 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
                     }
                     viewTransition
                     // 메뉴 글자가 주제 화면 제목 자리로 이어서 이동 (주제 칸과 같은 전환 이름 cat-<id>)
-                    onClick={(e) => nameForTransition(e.currentTarget.querySelector('.roll'), `cat-${category.id}`)}
+                    // 하위 주제 수만큼 별이 메뉴 자리에서 튀어나와 각자의 칸 자리로 날아가 칸이 됨 (2칸 바둑판 색 순서)
+                    onClick={(e) => {
+                      const label = e.currentTarget.querySelector('.roll')
+                      nameForTransition(label, `cat-${category.id}`)
+                      spawnTileStars(
+                        label,
+                        category.children.map((child, i) => ({
+                          id: child.id,
+                          dark: (Math.floor(i / 2) + (i % 2)) % 2 === 1,
+                        })),
+                      )
+                    }}
                     onPointerEnter={() => setHighlightSlug(category.slug)}
                     onPointerLeave={() => setHighlightSlug(null)}
                     onFocus={() => setHighlightSlug(category.slug)}

@@ -1539,6 +1539,18 @@ a {
   color: var(--color-accent-strong);
 }
 
+/* 머리글 메뉴에서 튀어나오는 별: 화면 위 고정 층, 메뉴 글자 크기의 작은 별 */
+.star-markers {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.gather-marker.is-small {
+  --marker-size: 1.75rem;
+}
+
 /* 시작: 그래프의 큰 주제 별 크기(지름 약 28px)와 색 */
 @starting-style {
   .gather-marker {
@@ -1679,6 +1691,15 @@ a {
   animation: calc(var(--dur-travel) * 0.45) ease calc(var(--dur-travel) * 0.45) both vt-fade-in;
 }
 
+/* 짝이 없는 칸: 새로 생기는 칸은 제목이 자리 잡은 뒤 떠오르고, 사라지는 칸은 흐려짐 */
+::view-transition-new(*.gather-tile):only-child {
+  animation: var(--dur-ui) var(--ease-out-soft) calc(var(--dur-travel) * 0.6) both vt-rise-in;
+}
+
+::view-transition-old(*.gather-tile):only-child {
+  animation: var(--dur-ui) ease both vt-fade-out;
+}
+
 /* 홈 그래프의 Card 글자 → Category 화면 제목: 자리·크기는 이어지고 글자는 Card에서 Category로 서서히 바뀜 */
 ::view-transition-group(view-title) {
   animation-duration: var(--dur-travel);
@@ -1768,8 +1789,8 @@ a {
   animation-delay: calc(var(--dur-travel) * 0.6 + var(--i, 0) * 60ms);
 }
 
-/* 그래프에서 넘어오는 Category 칸: 칸 자체가 표지에서 날아와 커지므로 따로 떠오르지 않음 */
-:root:active-view-transition .category-tiles.is-quick .category-tile {
+/* 이름 있는 칸(tile-<id>)은 화면 전환이 직접 움직이므로 칸 자체 등장 효과는 끔 (빈 칸만 떠오름) */
+:root:active-view-transition .category-tile:not(.is-empty) {
   animation: none;
 }
 
