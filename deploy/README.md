@@ -153,14 +153,21 @@ gunzip -c /var/backups/zoolog/zoolog-YYYYMMDD-HHMM.sql.gz | \
   kubectl -n zoolog exec -i statefulset/postgres -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
-## 개발 DB 내용을 운영으로 옮기기 (선택, 처음 한 번)
+## 개발 DB 내용을 운영으로 옮기기 (2026-10-13 실행 완료, 처음 한 번)
+
+필요한 행만 COPY로 뽑아 SQL 파일로 만든 뒤(테스트 글 제외, `member`는 운영 로그인 때 생기므로 제외), 시험용 DB에서 먼저 넣어 보고 운영에 적용
 
 ```bash
-# 개발 컨테이너에서
-PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h db -U "$POSTGRES_USER" -d "$POSTGRES_DB" --data-only \
-  --exclude-table=flyway_schema_history > dev-data.sql
-# 서버로 복사(scp, Tailscale) 후 서버에서 (운영 앱이 한 번 떠서 Flyway가 표를 만든 뒤)
-kubectl -n zoolog exec -i statefulset/postgres -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < dev-data.sql
+# 1. 개발 컨테이너: dev-data.sql 생성 (Git 제외 파일). 시험용 DB에 V1~V4 적용 후 넣어 보기
+# 2. Windows PowerShell: 컨테이너 → Windows → 서버
+docker cp <app 컨테이너 이름>:/workspaces/zoolog/dev-data.sql $HOME\dev-data.sql
+scp $HOME\dev-data.sql ubuntu@zoolog:~/
+# 3. 서버: 백업 → 비어 있는지 확인 → 한 트랜잭션으로 넣기 → 파일 삭제
+kubectl -n zoolog create job --from=cronjob/postgres-backup backup-before-import
+kubectl -n zoolog exec postgres-0 -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select count(*) from category; select count(*) from post"'
+kubectl -n zoolog exec -i postgres-0 -- sh -c 'psql -v ON_ERROR_STOP=1 -1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < dev-data.sql
+rm dev-data.sql
 ```
 
-이미지 파일(SeaweedFS)은 아직 없으므로 옮길 필요 없음
+- `GENERATED ALWAYS` 식별 열도 COPY로는 원래 id 그대로 들어감, 이후 `setval`로 번호 이어 붙임
+- 이미지 파일(SeaweedFS)은 옮기지 않음 (옮긴 글에 이미지 없음)
