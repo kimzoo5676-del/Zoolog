@@ -51,7 +51,7 @@ export function spawnTileStars(from: Element | null, items: { id: number; dark: 
   layer.setAttribute('aria-hidden', 'true')
   items.forEach(({ id, dark }, index) => {
     const marker = document.createElement('span')
-    marker.className = dark ? 'gather-marker is-sub is-dark' : 'gather-marker is-sub'
+    marker.className = dark ? 'gather-marker is-sub is-menu is-dark' : 'gather-marker is-sub is-menu'
     // 메뉴 글자 아래쪽에서 살짝 흩어져 시작 (한 점에 겹치지 않도록)
     marker.style.left = `${rect.left + rect.width / 2 + (index - (items.length - 1) / 2) * 60}px`
     marker.style.top = `${rect.bottom + 40}px`
@@ -62,4 +62,18 @@ export function spawnTileStars(from: Element | null, items: { id: number; dark: 
   })
   document.body.append(layer)
   spawned.add(layer)
+}
+
+// 홈 그래프가 떠 있으면 머리글 주제 메뉴 클릭을 그래프가 받아 별을 모은 뒤 이동 (true를 돌려주면 처리함)
+let homeCategoryHandler: ((categoryId: number) => boolean) | null = null
+
+export function registerHomeCategoryHandler(handler: (categoryId: number) => boolean) {
+  homeCategoryHandler = handler
+  return () => {
+    if (homeCategoryHandler === handler) homeCategoryHandler = null
+  }
+}
+
+export function handleHomeCategory(categoryId: number) {
+  return homeCategoryHandler?.(categoryId) ?? false
 }

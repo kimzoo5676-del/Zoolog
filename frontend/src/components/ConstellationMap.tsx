@@ -5,7 +5,7 @@ import type { PostSummary } from '../api/post'
 import { useMapHighlight } from '../hooks/mapHighlight'
 import { layoutConstellation, type StarNode } from '../utils/constellation'
 import { centeredLabelRect, placeLabels, textWidth, type LabelPlacement } from '../utils/labelPlacement'
-import { tileTransition } from '../utils/viewTransition'
+import { registerHomeCategoryHandler, tileTransition } from '../utils/viewTransition'
 import { ViewSwitch } from './ViewSwitch'
 
 type ConstellationMapProps = {
@@ -111,8 +111,10 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
   const stageRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [activeId, setActiveId] = useState<string | null>(null)
-  // Card(전체 주제 바둑판)로 갈 때: 별들이 각자의 큰 주제 별로 모여든 뒤 화면 전환 (2026-10-13 소유자 결정)
-  const [gathering, setGathering] = useState(false)
+  // 화면을 떠나기 전 별이 모여드는 연출 (2026-10-13 소유자 결정)
+  // all: Card(큰 주제 바둑판)로 갈 때 모든 별이 각자의 큰 주제 별(✦)로
+  // category: 머리글 주제 메뉴를 누를 때 그 주제의 글·세부 주제 별이 각자의 하위 주제 별(◎)로, 다른 별은 흐려짐
+  const [gathering, setGathering] = useState<{ mode: 'all' } | { mode: 'category'; topId: string } | null>(null)
   const navigate = useNavigate()
 
   // 좁은 화면(모바일)은 별자리를 세로로 쌓고, 넓은 화면은 화면 비율에 맞춰 가로로 펼침
@@ -137,16 +139,43 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     () => nodes.filter((n) => n.kind === 'top').sort((a, b) => Number(a.id.slice(4)) - Number(b.id.slice(4))),
     [nodes],
   )
-  // 모여들 자리: 각 별의 큰 주제 별까지의 거리 (지도 단위)
+  // 모여들 자리까지의 거리 (지도 단위): all은 큰 주제 별, category는 그 주제 안에서 하위 주제 별(2단계)
   const gatherOffset = useMemo(() => {
     const map = new Map<string, { x: number; y: number }>()
+    if (!gathering) return map
     for (const node of nodes) {
-      let top = node
-      while (top.parentId && byId.get(top.parentId)) top = byId.get(top.parentId)!
-      map.set(node.id, { x: top.x - node.x, y: top.y - node.y })
+      let target = node
+      if (gathering.mode === 'all') {
+        while (target.parentId && byId.get(target.parentId)) target = byId.get(target.parentId)!
+      } else if (node.clusterId === byId.get(gathering.topId)?.clusterId) {
+        while (target.depth > 2 && target.parentId && byId.get(target.parentId)) target = byId.get(target.parentId)!
+      }
+      map.set(node.id, { x: target.x - node.x, y: target.y - node.y })
     }
     return map
-  }, [nodes, byId])
+  }, [nodes, byId, gathering])
+  // 모인 별 표지: all은 큰 주제 별(✦), category는 그 주제의 하위 주제 별(◎). 주제 id 순 = 다음 화면 칸 순서
+  const gatherTargets = useMemo(() => {
+    if (!gathering) return []
+    if (gathering.mode === 'all') return topNodes
+    return nodes
+      .filter((n) => n.kind === 'sub' && n.parentId === gathering.topId)
+      .sort((a, b) => Number(a.id.slice(4)) - Number(b.id.slice(4)))
+  }, [gathering, nodes, topNodes])
+
+  // 머리글 주제 메뉴를 누르면 이 지도가 받아 별을 모은 뒤 이동 (blog-layout → utils/viewTransition 등록)
+  useEffect(() => {
+    if (prefersReducedMotion()) return
+    return registerHomeCategoryHandler((categoryId) => {
+      const top = byId.get(`cat-${categoryId}`)
+      if (!top?.slug) return false
+      setActiveId(null)
+      setGathering({ mode: 'category', topId: top.id })
+      const slug = top.slug
+      window.setTimeout(() => navigate(href('/categories/:slug', { slug }), { viewTransition: true }), GATHER_MS * 0.8)
+      return true
+    })
+  }, [byId, navigate])
 
   // 별마다 상위 별 목록 (강조·확대 범위 계산용)
   const ancestors = useMemo(() => {
@@ -227,7 +256,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     if (event.metaKey || event.ctrlKey || prefersReducedMotion()) return
     event.preventDefault()
     setActiveId(null)
-    setGathering(true)
+    setGathering({ mode: 'all' })
     // 별이 거의 다 모였을 때 화면 전환을 시작해 모인 별이 곧바로 바둑판으로 이어지도록
     window.setTimeout(() => navigate('/posts', { viewTransition: true }), GATHER_MS * 0.8)
   }
@@ -350,7 +379,9 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
 
   return (
     <div
-      className={`constellation${lit ? ' has-focus' : ''}${focus ? ' is-zoomed' : ''}${gathering ? ' is-gathering' : ''}`}
+      className={`constellation${lit ? ' has-focus' : ''}${focus ? ' is-zoomed' : ''}${
+        gathering ? ` is-gathering is-gathering-${gathering.mode}` : ''
+      }`}
     >
       {/* 무대: svg와 글 카드의 공통 기준 (크기 측정, 카드 위치 계산) */}
       <div ref={stageRef} className="constellation-stage" onPointerLeave={() => setActiveId(null)}>
@@ -410,20 +441,28 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
             화면 전환에서 별 모양 그대로 Category 화면의 칸 자리로 날아가며 커지다 칸으로 바뀜 (tile-<id>) */}
         {gathering && (
           <div className="gather-markers" aria-hidden="true">
-            {topNodes.map((node, i) => (
+            {gatherTargets.map((node, i) => (
               <span
                 key={node.id}
-                className={(Math.floor(i / 2) + (i % 2)) % 2 === 1 ? 'gather-marker is-dark' : 'gather-marker'}
+                className={`gather-marker${node.kind === 'sub' ? ' is-sub' : ''}${
+                  (Math.floor(i / 2) + (i % 2)) % 2 === 1 ? ' is-dark' : ''
+                }`}
                 style={{
                   left: (node.x - box.x) * scale + offsetX,
                   top: (node.y - box.y) * scale + offsetY,
                   ...tileTransition(Number(node.id.slice(4))),
                 }}
               >
-                {/* 그래프의 큰 주제 별과 같은 모양 (칸 색) */}
-                <svg viewBox="-14 -14 28 28" focusable="false">
-                  <StarShape depth={1} px={1} />
-                </svg>
+                {/* 그래프의 별과 같은 모양 (큰 주제 ✦, 하위 주제 ◎), 칸 색 */}
+                {node.kind === 'sub' ? (
+                  <svg viewBox="-12 -12 24 24" focusable="false">
+                    <StarShape depth={2} px={1} />
+                  </svg>
+                ) : (
+                  <svg viewBox="-14 -14 28 28" focusable="false">
+                    <StarShape depth={1} px={1} />
+                  </svg>
+                )}
               </span>
             ))}
           </div>

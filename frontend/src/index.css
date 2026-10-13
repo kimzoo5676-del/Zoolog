@@ -1548,16 +1548,19 @@ a {
 }
 
 .gather-marker.is-sub {
-  /* 커질 때 흐리게 번지지 않도록 처음부터 큼직하게 (그래프 쪽 큰 별 표지와 비슷한 크기) */
+  /* 하위 주제 ◎: 별 크기 정도까지만 커짐. 너무 작게 시작한 그림은 칸으로 커질 때 번져 보여 이 크기로 캡처되게 함 */
   --marker-size: 3.5rem;
   fill: currentColor;
+}
+
+/* 머리글 메뉴에서 띄운 ◎: 화면 전환이 곧바로 시작되므로 커지는 단계 없이 처음부터 이 크기 */
+.gather-marker.is-menu {
   scale: 1;
 }
 
 .gather-marker.is-sub svg {
   overflow: visible;
 }
-
 
 /* 시작: 그래프의 큰 주제 별 크기(지름 약 28px)와 색 */
 @starting-style {
@@ -1568,6 +1571,12 @@ a {
 }
 
 /* 표지가 덮는 원래 큰 주제 별은 함께 사라짐 (별이 두 개로 보이지 않도록) */
+/* 주제 메뉴로 갈 때: 큰 주제 별은 모두 흐려지고(제목은 메뉴 글자가 이어받음), 그 주제의 하위 주제 별(◎) 자리에 표지가 커짐 */
+.constellation.is-gathering-category .star-top {
+  opacity: 0;
+  transition: opacity var(--dur-ui) ease;
+}
+
 .constellation.is-gathering .star-top .star-core {
   opacity: 0;
   transition: opacity var(--dur-fade) ease;
@@ -1588,9 +1597,11 @@ a {
 }
 
 .constellation.is-gathering .constellation-edges line,
+.constellation.is-gathering .constellation-edges line.is-lit,
 .constellation.is-gathering .constellation-legend,
 .constellation.is-gathering .constellation-bar {
   opacity: 0;
+  /* 메뉴를 가리켜 강조된 선(is-lit)도 함께 사라지도록 강조 규칙과 같은 우선순위로 뒤에 둠 */
   transition: opacity var(--dur-ui) ease;
 }
 

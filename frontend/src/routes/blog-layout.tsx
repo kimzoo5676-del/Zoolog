@@ -9,7 +9,7 @@ import { RollText } from '../components/RollText'
 import { MapHighlightContext } from '../hooks/mapHighlight'
 import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree'
 import { onlyFocusChanged } from '../utils/focusParam'
-import { clearPendingNames, nameForTransition, spawnTileStars } from '../utils/viewTransition'
+import { clearPendingNames, handleHomeCategory, nameForTransition, spawnTileStars } from '../utils/viewTransition'
 import type { Route } from './+types/blog-layout'
 
 // request.signal: 다른 링크로 이동하면 라우터가 진행 중인 요청을 취소 (기존 ignore 플래그 대체)
@@ -74,6 +74,11 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
                     onClick={(e) => {
                       const label = e.currentTarget.querySelector('.roll')
                       nameForTransition(label, `cat-${category.id}`)
+                      // 홈 그래프에서는 그 주제의 ◎ 별에 초점이 생기고 글 별이 모여든 뒤 칸으로 나뉨 (그래프가 처리)
+                      if (!e.metaKey && !e.ctrlKey && handleHomeCategory(category.id)) {
+                        e.preventDefault()
+                        return
+                      }
                       spawnTileStars(
                         label,
                         category.children.map((child, i) => ({
