@@ -5,6 +5,7 @@ type HabitCardProps = {
   item: BoardItem
   today: string
   onToggle?: (date: string, done: boolean) => void
+  onEdit?: () => void
   onDelete?: () => void
 }
 
@@ -12,7 +13,7 @@ const CALENDAR_WEEKS = 5
 
 // 습관 카드: 연속 일수(큰 숫자) + 최근 30일 달성률 + 최근 5주 달력(월~일 7열, 칸이 카드 폭을 채움)
 // 놓친 날은 옅게 (습관 앱 권장: 놓친 날을 벌주듯 강하게 표시하지 않음)
-export function HabitCard({ item, today, onToggle, onDelete }: HabitCardProps) {
+export function HabitCard({ item, today, onToggle, onEdit, onDelete }: HabitCardProps) {
   const done = new Set(item.doneDates)
   const { schedule } = item
 
@@ -73,10 +74,19 @@ export function HabitCard({ item, today, onToggle, onDelete }: HabitCardProps) {
           )
         })}
       </div>
-      {onDelete && (
-        <button type="button" className="text-link habit-delete" onClick={onDelete}>
-          삭제
-        </button>
+      {(onEdit || onDelete) && (
+        <div className="habit-actions">
+          {onEdit && (
+            <button type="button" className="text-link" onClick={onEdit}>
+              수정
+            </button>
+          )}
+          {onDelete && (
+            <button type="button" className="text-link" onClick={onDelete}>
+              삭제
+            </button>
+          )}
+        </div>
       )}
     </article>
   )

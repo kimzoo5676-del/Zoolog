@@ -64,6 +64,18 @@ export async function createSchedule(input: ScheduleInput): Promise<Schedule> {
   return response.json()
 }
 
+export async function updateSchedule(id: number, input: ScheduleInput): Promise<Schedule> {
+  const response = await fetch(`/api/schedules/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
+    body: JSON.stringify(input),
+  })
+  if (!response.ok) {
+    throw await toApiError(response, '일정을 수정하지 못했어요')
+  }
+  return response.json()
+}
+
 export async function deleteSchedule(id: number): Promise<void> {
   const response = await fetch(`/api/schedules/${id}`, { method: 'DELETE', headers: csrfHeaders() })
   if (!response.ok) {

@@ -25,6 +25,8 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
   const { revalidate } = useRevalidator()
   const [selected, setSelected] = useState(board.today)
   const [adding, setAdding] = useState(false)
+  // 수정 중인 일정 id: 그 카드 자리에서 입력 칸으로 바뀜
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   // 체크 즉시 화면에 반영(낙관적 업데이트), 서버 응답 뒤 다시 불러와 맞춤
   const [pending, setPending] = useState<Record<string, boolean>>({})
@@ -180,15 +182,31 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
             Habits
           </h2>
           <div className="habit-grid">
-            {items.map((item) => (
-              <HabitCard
-                key={item.schedule.id}
-                item={item}
-                today={board.today}
-                onToggle={me ? (date, done) => void toggle(item.schedule.id, date, done) : undefined}
-                onDelete={me ? () => void remove(item) : undefined}
-              />
-            ))}
+            {items.map((item) =>
+              me && editingId === item.schedule.id ? (
+                <div key={item.schedule.id} className="habit-card is-editing">
+                  <ScheduleForm
+                    className="schedule-form-inline"
+                    today={board.today}
+                    schedule={item.schedule}
+                    onCancel={() => setEditingId(null)}
+                    onSaved={async () => {
+                      await revalidate()
+                      setEditingId(null)
+                    }}
+                  />
+                </div>
+              ) : (
+                <HabitCard
+                  key={item.schedule.id}
+                  item={item}
+                  today={board.today}
+                  onToggle={me ? (date, done) => void toggle(item.schedule.id, date, done) : undefined}
+                  onEdit={me ? () => setEditingId(item.schedule.id) : undefined}
+                  onDelete={me ? () => void remove(item) : undefined}
+                />
+              ),
+            )}
           </div>
         </section>
       )}
@@ -199,7 +217,7 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
             <ScheduleForm
               today={board.today}
               onCancel={() => setAdding(false)}
-              onCreated={async () => {
+              onSaved={async () => {
                 await revalidate()
                 setAdding(false)
               }}

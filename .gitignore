@@ -14,3 +14,6 @@ deploy/*.env
 
 # 개발 DB → 운영 데이터 이전 파일 (글 내용 포함, 커밋 금지)
 /dev-data.sql
+
+# 화면 캡처 공유용 (Claude에게 보여 줄 사진)
+.screenshots/
