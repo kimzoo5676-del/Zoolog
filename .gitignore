@@ -11,3 +11,6 @@ CLAUDE.local.md
 # 운영 비밀값 (서버에서만 만들고 지움, 예시 파일만 커밋)
 zoolog.env
 deploy/*.env
+
+# 개발 DB → 운영 데이터 이전 파일 (글 내용 포함, 커밋 금지)
+/dev-data.sql
