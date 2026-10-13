@@ -15,3 +15,6 @@ zoolog:
   # 알림 메일 발송 (MAIL_USERNAME, MAIL_PASSWORD 필요)
   reminders:
     enabled: true
+  # 아침 기사 메일 (NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, ANTHROPIC_API_KEY 필요)
+  news:
+    enabled: true

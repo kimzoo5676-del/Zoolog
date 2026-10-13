@@ -22,6 +22,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	// 알림 메일 발송 (Gmail SMTP)
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
+	// 아침 기사 선정·소개: Anthropic 공식 Java SDK (2026-10-13 소유자 결정)
+	implementation 'com.anthropic:anthropic-java:2.34.0'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'

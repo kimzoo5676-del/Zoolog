@@ -26,7 +26,7 @@ class ReminderTest {
     ReminderProperties properties;
 
     @Autowired
-    ReminderMailer mailer;
+    OwnerMailer mailer;
 
     // 실제 Gmail로 보내지 않도록 가짜로 대체
     @MockitoBean
@@ -47,7 +47,7 @@ class ReminderTest {
     @Test
     @DisplayName("알림 메일은 소유자에게 제목 앞에 [Zoolog]를 붙여 보낸다")
     void sendToOwner() {
-        mailer.send(new Reminder("0 0 7 * * *", "AWS-SAA 공부 시간입니다"));
+        mailer.send("AWS-SAA 공부 시간입니다", "AWS-SAA 공부 시간입니다");
 
         ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
         verify(mailSender).send(captor.capture());
@@ -61,6 +61,6 @@ class ReminderTest {
     void failureDoesNotThrow() {
         willThrow(new MailSendException("연결 실패")).given(mailSender).send(any(SimpleMailMessage.class));
 
-        mailer.send(new Reminder("0 0 18 * * *", "영어 공부 시간입니다"));
+        mailer.send("영어 공부 시간입니다", "영어 공부 시간입니다");
     }
 }

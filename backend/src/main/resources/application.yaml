@@ -59,3 +59,26 @@ zoolog:
         subject: AWS-SAA 공부 시간입니다
       - cron: "0 0 18 * * *"
         subject: 영어 공부 시간입니다
+  # 매일 06:00 아침 기사 메일: 핫이슈 1개(Google 뉴스 주요 기사) + IT·취업 2개(네이버 뉴스 검색), 선정·소개는 Claude
+  # 운영(prod)에서만 켬
+  news:
+    enabled: false
+    cron: "0 0 6 * * *"
+    model: claude-opus-5-5
+    queries:
+      - 클라우드
+      - AWS
+      - 개발자 채용
+      - IT 기업 채용
+      - 삼성전자
+      - SK하이닉스
+      - 네이버
+      - 카카오
+      - AI 데이터센터
+  # 네이버 뉴스 검색 API (developers.naver.com 애플리케이션 등록, 검색 API). 없으면 IT·취업 기사 생략
+  naver:
+    client-id: ${NAVER_CLIENT_ID:}
+    client-secret: ${NAVER_CLIENT_SECRET:}
+  # Claude API 키 (console.anthropic.com). 없으면 목록 앞쪽 기사로 대신함
+  anthropic:
+    api-key: ${ANTHROPIC_API_KEY:}
