@@ -8,8 +8,6 @@ type CategoryTilesProps = {
   tiles: { category: Category; postCount: number }[]
   // 한 줄 칸 수: 큰 주제 화면 2, 하위 주제 화면 4 (단계가 깊어질수록 판이 잘게 나뉨)
   columns: 2 | 4
-  // 큰 주제 칸 (Category 화면): 그래프의 ✦ 별이 칸으로 커짐. 아니면 하위 주제 칸: ◎ 별이 제 크기로 날아옴
-  topLevel?: boolean
 }
 
 // 하위 주제 칸 (2026-10-13 소유자 결정: 주제 화면은 글 목록 대신 하위 주제를 칸으로)
@@ -18,7 +16,7 @@ type CategoryTilesProps = {
 // 누르면 칸의 이름이 다음 화면 제목 자리로 이어서 이동 (공유 요소 전환)
 // 전환 이름은 주제 id별(cat-80): 한 화면 안에서 겹치지 않고, 칸 이름 ↔ 다음 화면 제목이 같은 이름으로 짝이 됨
 // 뒤로 가기도 제목 → 칸으로 되돌아감. 모양은 class(category-title)로 한 번에 지정
-export function CategoryTiles({ tiles, columns, topLevel = false }: CategoryTilesProps) {
+export function CategoryTiles({ tiles, columns }: CategoryTilesProps) {
   return (
     <ul className={`category-tiles is-${columns}`} aria-label="하위 주제">
       {tiles.map(({ category, postCount }, i) => {
@@ -27,7 +25,7 @@ export function CategoryTiles({ tiles, columns, topLevel = false }: CategoryTile
             key={category.id}
             className="category-tile"
             // 칸마다 전환 이름(tile-<id>): 그래프·머리글 메뉴의 별이 이 자리로 날아와 칸이 됨
-            style={{ '--i': i, ...tileTransition(category.id, !topLevel) } as CSSProperties}
+            style={{ '--i': i, ...tileTransition(category.id) } as CSSProperties}
           >
             <TileLink category={category} postCount={postCount} />
           </li>

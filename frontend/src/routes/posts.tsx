@@ -35,7 +35,7 @@ export default function Posts({ loaderData }: Route.ComponentProps) {
           <MetaList items={[{ label: 'Posts', value: String(posts.length).padStart(2, '0') }]} />
         </div>
       </PageHeader>
-      <CategoryTiles tiles={tiles} columns={2} topLevel />
+      <CategoryTiles tiles={tiles} columns={2} />
     </>
   )
 }

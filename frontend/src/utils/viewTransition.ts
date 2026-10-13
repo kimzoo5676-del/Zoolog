@@ -7,12 +7,8 @@ export function categoryTitleTransition(id: number): CSSProperties {
 }
 
 // 주제 칸 자체의 전환 이름: 별(그래프의 모여든 별, 머리글 메뉴에서 튀어나온 별)이 이 칸 자리로 날아가 칸으로 커짐
-// sub: 하위 주제 칸(◎에서 날아옴) → 별이 커지지 않고 제 크기로 칸 가운데까지 날아감 (index.css *.gather-sub)
-export function tileTransition(id: number, sub = false): CSSProperties {
-  return {
-    viewTransitionName: `tile-${id}`,
-    viewTransitionClass: sub ? 'gather-tile gather-sub' : 'gather-tile',
-  } as CSSProperties
+export function tileTransition(id: number): CSSProperties {
+  return { viewTransitionName: `tile-${id}`, viewTransitionClass: 'gather-tile' } as CSSProperties
 }
 
 // 머리글 메뉴 → 화면 제목: 누른 메뉴 글자에 다음 화면 제목과 같은 전환 이름을 잠깐 줌
@@ -60,7 +56,7 @@ export function spawnTileStars(from: Element | null, items: { id: number; dark: 
     marker.style.left = `${rect.left + rect.width / 2 + (index - (items.length - 1) / 2) * 64}px`
     marker.style.top = `${rect.bottom + 40}px`
     marker.style.setProperty('view-transition-name', `tile-${id}`)
-    marker.style.setProperty('view-transition-class', 'gather-tile gather-sub')
+    marker.style.setProperty('view-transition-class', 'gather-tile')
     marker.innerHTML = SUB_STAR_SVG
     layer.append(marker)
   })

@@ -15,6 +15,7 @@
   --cell-pad-x: clamp(1rem, 3vw, 2rem); /* 격자 칸 안쪽 좌우 여백 */
   --grid-line: 1px solid var(--color-accent-strong); /* 격자선 */
   --board-gap: 4px; /* 바둑판(하위 주제 칸, 글 카드) 칸 사이 세이지 선 */
+  --gather-size: 4rem; /* 모여든 별 표지(✦·◎) 크기: 모일 때 이 크기까지 커지고 칸으로 나뉠 때 그대로 */
   --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1); /* 빠르게 시작해 부드럽게 멈춤 (iOS 시트 계열 곡선) */
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.25, 1); /* 천천히 출발해 가속 후 부드럽게 멈춤, 프리로더와 같은 계열. 크기·위치가 크게 바뀌는 움직임용 */
   --ease-travel: cubic-bezier(0.7, 0, 0.2, 1); /* 요소가 다른 자리로 옮겨 가는 움직임 (프리로더 로고, 제목 공유 요소 전환) */
@@ -1517,7 +1518,7 @@ a {
 }
 
 .gather-marker {
-  --marker-size: 4.5rem;
+  --marker-size: var(--gather-size);
   position: absolute;
   width: var(--marker-size);
   height: var(--marker-size);
@@ -1548,8 +1549,7 @@ a {
 }
 
 .gather-marker.is-sub {
-  /* 하위 주제 ◎: 모일 때 이 크기까지 커지고(초점), 칸으로 나뉠 때는 더 커지지 않음 (2026-10-13 소유자 결정) */
-  --marker-size: 3.5rem;
+  /* 하위 주제 ◎도 ✦와 같은 크기까지 커지고(초점), 칸으로 나뉠 때는 더 커지지 않음 (2026-10-13 소유자 결정) */
   fill: currentColor;
 }
 
@@ -1694,32 +1694,24 @@ a {
   animation: var(--dur-ui) var(--ease-out-soft) calc(var(--dur-travel) * 0.6) both vt-rise-in;
 }
 
-/* 모여든 별 표지 → Category 칸: 표지 자리에서 칸 자리로 날아가며 커짐, 표지는 금방 칸 모습으로 바뀜 */
+/* 모여든 별 표지(✦·◎) → 칸 (2026-10-13 소유자 결정: 합쳐질 때 더 커지지 않게)
+   별은 모일 때 커진 크기 그대로(object-fit: none) 칸 가운데로 날아가고, 칸이 그 주위로 펼쳐지며 나타남 */
 ::view-transition-group(*.gather-tile) {
   animation-duration: var(--dur-travel);
   animation-timing-function: var(--ease-travel);
 }
 
-/* 별은 모양을 유지한 채(비율 고정) 칸 크기 쪽으로 커지며 흐려지고, 칸은 이동이 절반쯤 지나 나타남 */
 ::view-transition-old(*.gather-tile) {
+  /* 별 그림은 표지 크기(--gather-size) 그대로 무리(group) 한가운데에 고정 */
+  inset: 0;
+  width: var(--gather-size);
+  height: var(--gather-size);
+  margin: auto;
   object-fit: contain;
-  animation: calc(var(--dur-travel) * 0.5) ease calc(var(--dur-travel) * 0.3) both vt-fade-out;
-}
-
-::view-transition-new(*.gather-tile) {
-  animation: calc(var(--dur-travel) * 0.45) ease calc(var(--dur-travel) * 0.45) both vt-fade-in;
-}
-
-/* ◎ 표지 → 칸: ◎는 제 크기 그대로(object-fit: none) 칸 가운데로 날아가고, 칸이 그 주위로 펼쳐지며 나타남 */
-::view-transition-old(*.gather-sub) {
-  /* 그림 칸을 무리(group) 크기에 맞춰야 제 크기 ◎가 칸 한가운데에 놓임 */
-  width: 100%;
-  height: 100%;
-  object-fit: none;
   animation: calc(var(--dur-travel) * 0.4) ease calc(var(--dur-travel) * 0.6) both vt-fade-out;
 }
 
-::view-transition-new(*.gather-sub) {
+::view-transition-new(*.gather-tile) {
   animation: calc(var(--dur-travel) * 0.6) ease calc(var(--dur-travel) * 0.3) both vt-fade-in;
 }
 
@@ -1773,8 +1765,6 @@ a {
   ::view-transition-group(category-board),
   ::view-transition-old(category-board),
   ::view-transition-new(category-board),
-  ::view-transition-old(*.gather-sub),
-  ::view-transition-new(*.gather-sub),
   ::view-transition-group(*.gather-tile),
   ::view-transition-old(*.gather-tile),
   ::view-transition-new(*.gather-tile),
