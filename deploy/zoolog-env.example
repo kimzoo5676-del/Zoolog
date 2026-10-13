@@ -10,5 +10,8 @@ S3_BUCKET=zoolog
 GOOGLE_CLIENT_ID=change-me
 GOOGLE_CLIENT_SECRET=change-me
 OWNER_EMAIL=change-me
+# 알림 메일 발송 계정: Gmail 주소 + Google 계정 앱 비밀번호(2단계 인증 필요)
+MAIL_USERNAME=change-me@gmail.com
+MAIL_PASSWORD=change-me
 DOMAIN=change-me.example
 ACME_EMAIL=change-me

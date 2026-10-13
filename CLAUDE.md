@@ -14,7 +14,7 @@
 6. (삭제) 일정 완료 체크·일정 보드 화면. 일정 알림 메일은 화면 없이 받을 예정(2차 Gmail, 무엇을 알릴지 설계 필요)
 
 2차
-7. Gmail 일정 알림
+7. Gmail 알림 (2026-10-13 일부 완료): 화면 없이 소유자 메일로만. 매일 07:00 `AWS-SAA 공부 시간입니다`, 18:00 `영어 공부 시간입니다`(설정 파일 고정 목록). 06:00 그날 읽을 기사 추천은 8번 뉴스 스크랩과 함께
 8. 산업 뉴스 스크랩: 매일 기사 선정 메일 + 코멘트 유도 질문 → 소유자가 1~2문장 코멘트 → "뉴스 스크랩" 글로 게시. 공개 글에는 제목 + 원문 링크 + 본인 코멘트만 (기사 본문 복제 금지, 저작권). 네이버 뉴스 검색 API 예정. 선정 방식, 코멘트 입력 방식, 누락일 처리는 미정 (06:00 발송 시 노트북 절전 문제는 상시 운영 서버로 해결)
 
 ## 스택 (확인된 버전)
@@ -35,7 +35,7 @@
 - 컨테이너 안 저장소 경로 `/workspaces/zoolog`, DB 주소 `db:5432`
 - Claude Code 로그인·설정 유지: named volume `claude-config` → `/home/vscode/.claude`, `CLAUDE_CONFIG_DIR`로 `.claude.json`도 그 안에 저장. 볼륨 소유자는 `postCreateCommand`의 `chown`으로 맞춤. 볼륨 삭제 시 재로그인 필요
 - `db`, `storage`는 `ports:` 없음(외부 비공개). `forwardPorts`는 5173(Vite)만
-- 비밀값은 `.devcontainer/.env` (gitignore 대상): `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OWNER_EMAIL`. 키 목록은 `.env.example`에 커밋. `.env` 변경은 컨테이너를 다시 만들어야(Rebuild) 반영
+- 비밀값은 `.devcontainer/.env` (gitignore 대상): `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OWNER_EMAIL`, `MAIL_USERNAME`, `MAIL_PASSWORD`(개발은 비워도 됨). 키 목록은 `.env.example`에 커밋. `.env` 변경은 컨테이너를 다시 만들어야(Rebuild) 반영
 - 테스트는 `build.gradle`의 `test` 작업이 Google 관련 환경 변수를 가짜 값으로 채움 (Google과 통신 안 함)
 - `.env` 내용, 비밀번호, Google 클라이언트 시크릿은 출력·커밋·공유 금지
 - 지금까지 SQL 직접 실행은 Windows PowerShell에서: `docker exec zoolog_devcontainer-db-1 psql -U zoolog -d zoolog -c "..."`
@@ -60,7 +60,8 @@
 - SSH: Tailscale로만 접속, 공개 SSH 포트(22)는 Lightsail 방화벽에서 닫음
 - 빌드는 서버 밖(노트북 또는 GitHub Actions)에서, 서버는 실행만 (Lightsail은 버스트형 CPU라 빌드로 CPU 크레딧을 쓰지 않도록)
 - 백업: Lightsail 자동 스냅샷 + `pg_dump` CronJob(매일 03:00 Asia/Seoul, 서버 `/var/backups/zoolog`, 14일 보관)
-- 메일 발송: Gmail SMTP 587(STARTTLS) 또는 465(SSL). Lightsail은 25번 포트가 기본 차단
+- 메일 발송: Gmail SMTP 587(STARTTLS), `spring-boot-starter-mail`. 계정 `MAIL_USERNAME`(Gmail 주소) + `MAIL_PASSWORD`(Google 계정 앱 비밀번호, 2단계 인증 필요), 받는 사람 `OWNER_EMAIL`. Lightsail은 25번 포트가 기본 차단
+- 알림 메일(2026-10-13): `application.yaml` `zoolog.reminders.items`(cron + 제목, Asia/Seoul)를 `ReminderScheduler`(SchedulingConfigurer)가 cron 작업으로 등록, `ReminderMailer`가 `[Zoolog] 제목` + 본문 한 줄 발송, 실패는 로그만. `enabled`는 기본 false, `application-prod.yaml`에서만 true(개발 bootRun과 중복 발송 방지). 알림 추가·변경은 목록 수정 후 배포
 
 ## 명령
 
@@ -226,7 +227,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 3. (완료) 이미지 업로드 (SeaweedFS S3, `post_image.object_key`). 연결 없는 이미지 정리, 대체 텍스트(alt) 입력 안내 완료(2026-10-13)
 4. (완료) Streak 화면 (2026-10-13, 일정 보드 대체). 일정 백엔드는 남아 있음
 5. (완료) 첫 진입 프리로더
-6. 2차 기능 (Gmail 알림, 뉴스 스크랩)
+6. 2차 기능: 알림 메일 07:00·18:00 완료(2026-10-13, 운영 Secret에 `MAIL_USERNAME`·`MAIL_PASSWORD` 추가 필요). 남은 일: 06:00 기사 추천 메일 + 뉴스 스크랩(네이버 뉴스 API, 선정 방식 미정). 일정 백엔드(`schedule` 패키지·API·테이블)는 화면이 없고 알림도 설정 파일 방식이라 삭제 예정
 7. (완료) 배포 (2026-10-13): https://zoolog.site 운영 중. Lightsail + k3s + Argo CD + Caddy ("운영" 절). React 빌드는 Caddy가 제공하고 `/api`·`/oauth2`·`/login/oauth2`만 Spring으로. 저장소 https://github.com/kimzoo5676-del/Zoolog (공개), 이미지 `ghcr.io/kimzoo5676-del/*` (공개)
 
 ## 열린 이슈

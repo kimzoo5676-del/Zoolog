@@ -19,6 +19,20 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  # 알림 메일: Gmail SMTP 587 + STARTTLS (Lightsail은 25번만 막힘)
+  # 비밀번호는 Google 계정 "앱 비밀번호"(2단계 인증 필요). 개발·테스트는 비워 둠 (발송은 운영 프로필에서만 켜짐)
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   security:
     oauth2:
       client:
@@ -36,3 +50,12 @@ zoolog:
   storage:
     endpoint: ${S3_ENDPOINT:http://storage:8333}
     bucket: ${S3_BUCKET}
+  # 매일 정해진 시각 알림 메일 (받는 사람: owner-email, 시각: zone 기준)
+  # 운영(prod)에서만 켬: 개발 컨테이너에서 bootRun 중일 때 같은 메일이 두 번 오지 않도록
+  reminders:
+    enabled: false
+    items:
+      - cron: "0 0 7 * * *"
+        subject: AWS-SAA 공부 시간입니다
+      - cron: "0 0 18 * * *"
+        subject: 영어 공부 시간입니다

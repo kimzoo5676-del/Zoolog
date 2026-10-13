@@ -10,3 +10,8 @@ server:
         same-site: lax
   # 배포로 파드가 바뀔 때 처리 중인 요청을 마치고 종료
   shutdown: graceful
+
+zoolog:
+  # 알림 메일 발송 (MAIL_USERNAME, MAIL_PASSWORD 필요)
+  reminders:
+    enabled: true
