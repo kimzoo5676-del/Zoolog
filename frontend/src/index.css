@@ -1733,6 +1733,11 @@ a {
   animation: calc(var(--dur-travel) * 0.6) ease calc(var(--dur-travel) * 0.3) both vt-fade-in;
 }
 
+/* 화면 제목(h1)은 짝이 없어도 기다리지 않고 바로 떠오름 (예: 글 화면에서 뒤로 와 주제 화면 제목이 새로 생길 때) */
+::view-transition-new(*.page-heading):only-child {
+  animation: var(--dur-ui) var(--ease-out-soft) both vt-rise-in;
+}
+
 ::view-transition-old(*.category-title):only-child {
   animation: var(--dur-fade) ease both vt-fade-out;
 }
@@ -1889,6 +1894,11 @@ a {
 
 :root:active-view-transition .post-card {
   animation-delay: calc(var(--dur-travel) * 0.6 + var(--i, 0) * 30ms);
+}
+
+/* 글 화면에서 돌아온 카드: 제목이 이 카드로 되돌아오므로 카드는 바로 보임 */
+:root:active-view-transition .post-card.is-return {
+  animation: none;
 }
 
 /* 8칸 판: 16칸마다 (1줄 짝수 칸, 2줄 홀수 칸) 진한 러스트 */

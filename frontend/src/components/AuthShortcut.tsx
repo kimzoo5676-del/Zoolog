@@ -38,7 +38,7 @@ export function AuthShortcut() {
     async function goToLogin() {
       const me = await fetchMe().catch(() => null)
       if (me) {
-        navigate(href('/login'))
+        navigate(href('/login'), { viewTransition: true })
       } else {
         // 라우터 이동이 아닌 전체 페이지 이동: 백엔드가 Google 동의 화면으로 리다이렉트
         window.location.assign('/oauth2/authorization/google')

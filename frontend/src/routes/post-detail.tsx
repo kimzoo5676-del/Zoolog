@@ -6,6 +6,7 @@ import { RouteError } from '../components/RouteError'
 import { ViewSwitch } from '../components/ViewSwitch'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
 import { formatDate } from '../utils/date'
+import { nameForTransition } from '../utils/viewTransition'
 import type { Route } from './+types/post-detail'
 
 export async function clientLoader({ params, request }: Route.ClientLoaderArgs) {
@@ -41,25 +42,39 @@ export default function PostDetail({ loaderData }: Route.ComponentProps) {
           className="view-switch post-view-switch"
         />
         {/* 그래프의 글 별을 눌러 들어오면 별 자리의 제목이 이 자리로 이동 (view-transition-name: post-title) */}
-        <h1 className="post-title">{post.title}</h1>
+        {/* data-post-id: 뒤로 가거나 주제 화면으로 갈 때 이 글의 카드가 제목을 이어받도록 (PostCards) */}
+        <h1 className="post-title" data-post-id={post.id}>
+          {post.title}
+        </h1>
       </header>
       <MetaList
         className="meta-cells"
         items={[
           {
             label: 'Category',
-            value: <Link to={href('/categories/:slug', { slug: post.categorySlug })}>{post.categoryName}</Link>,
+            // 주제 이름이 주제 화면 제목 자리로 이어서 이동 (머리글 메뉴와 같은 방식, cat-<id>)
+            value: (
+              <Link
+                to={href('/categories/:slug', { slug: post.categorySlug })}
+                viewTransition
+                onClick={(e) => nameForTransition(e.currentTarget, `cat-${post.categoryId}`)}
+              >
+                {post.categoryName}
+              </Link>
+            ),
           },
           { label: 'Date', value: <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time> },
         ]}
       />
       {me && (
         <div className="owner-actions">
-          <Link to={href('/posts/:postId/edit', { postId: String(post.id) })} className="button-link">
+          {/* 글 제목이 편집기 제목 칸으로 이어서 이동 (편집기 제목 칸도 post-title) */}
+          <Link to={href('/posts/:postId/edit', { postId: String(post.id) })} viewTransition className="button-link">
             수정
           </Link>
           <Form
             method="post"
+            viewTransition
             onSubmit={(event) => {
               if (!window.confirm('이 글을 삭제할까요? 되돌릴 수 없어요.')) {
                 event.preventDefault()

@@ -50,7 +50,7 @@ export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
       <PageHeader
         eyebrow={ancestors.length > 0 ? ancestors.map((c) => c.name).join(' / ') : 'Category'}
         title={category.name}
-        titleStyle={categoryTitleTransition(category.id)}
+        titleStyle={categoryTitleTransition(category.id, true)}
       >
         <div className="page-header-side">
           <ViewSwitch

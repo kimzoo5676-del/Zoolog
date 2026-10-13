@@ -16,7 +16,11 @@ export function PostCards({ posts }: { posts: PostSummary[] }) {
     <>
       <ul className="post-cards" aria-label="글">
         {shown.map((post, i) => (
-          <li key={post.id} className="post-card" style={{ '--i': i } as CSSProperties}>
+          <li
+            key={post.id}
+            className={leavingPost(post.id) ? 'post-card is-return' : 'post-card'}
+            style={{ '--i': i } as CSSProperties}
+          >
             <CardLink post={post} />
           </li>
         ))}
@@ -51,7 +55,8 @@ function emptyCount(count: number): number {
 // 누른 카드 제목만 view-transition-name "post-title"을 가짐 (글 화면 제목과 짝)
 function CardLink({ post }: { post: PostSummary }) {
   const to = href('/posts/:postId', { postId: String(post.id) })
-  const isTransitioning = useViewTransitionState(to)
+  // 글 화면에서 돌아올 때(뒤로 가기, 주제 링크): 방금 보던 글의 제목이 이 카드로 되돌아옴
+  const isTransitioning = useViewTransitionState(to) || leavingPost(post.id)
   return (
     <Link to={to} viewTransition className="post-card-link roll-trigger">
       <span className="post-card-title" style={isTransitioning ? { viewTransitionName: 'post-title' } : undefined}>
@@ -59,4 +64,9 @@ function CardLink({ post }: { post: PostSummary }) {
       </span>
     </Link>
   )
+}
+
+// 화면 전환으로 새 화면을 그리는 순간에는 떠나는 글 화면이 아직 문서에 있음 → 그 글의 제목(h1)이면 이 카드가 짝
+function leavingPost(id: number) {
+  return typeof document !== 'undefined' && document.querySelector(`h1.post-title[data-post-id="${id}"]`) !== null
 }

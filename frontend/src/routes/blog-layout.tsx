@@ -40,7 +40,7 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
         <header className="site-header">
           {/* 첫 글자만 러스트 강조. span으로 나뉜 글자를 "Z oolog"로 띄어 읽지 않도록 aria-label 지정 */}
           <div className="site-brand">
-            <Link to="/" className="site-title" aria-label="Zoolog">
+            <Link to="/" viewTransition className="site-title" aria-label="Zoolog">
               <Logo />
             </Link>
             {/* 로고 옆 칸: Streak(모두), 글쓰기(소유자 로그인 시만). 주제 메뉴와 섞이지 않도록 */}
@@ -53,7 +53,7 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
               <RollText>Streak</RollText>
             </NavLink>
             {me && (
-              <NavLink to={href('/posts/new')} className="site-brand-link roll-trigger">
+              <NavLink to={href('/posts/new')} viewTransition className="site-brand-link roll-trigger">
                 <RollText>글쓰기</RollText>
               </NavLink>
             )}

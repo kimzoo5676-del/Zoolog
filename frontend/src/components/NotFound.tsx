@@ -11,7 +11,7 @@ export function NotFound({ message = '페이지를 찾을 수 없어요' }: NotF
       <title>찾을 수 없음 | zoolog</title>
       <PageHeader eyebrow="404 Not Found" title={message} />
       <div className="page-section">
-        <Link to="/" className="button-link">
+        <Link to="/" viewTransition className="button-link">
           글 목록으로 돌아가기
         </Link>
       </div>

@@ -82,12 +82,15 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
   }
 
   return (
-    <Form method="post" className="editor">
+    // 저장 후 글 화면으로 갈 때도 화면 전환 (편집기 제목 칸 → 글 화면 제목)
+    <Form method="post" viewTransition className="editor">
       <div className="editor-head">
         {/* 제목은 한 줄 값: Enter는 줄바꿈 대신 본문으로 이동 */}
         <textarea
           name="title"
           className="editor-title"
+          // 글 화면 제목(h1)과 같은 전환 이름: 수정 들어올 때·나갈 때·저장할 때 제목이 이어서 이동
+          style={{ viewTransitionName: 'post-title' }}
           aria-label="제목"
           placeholder="제목"
           required
@@ -136,7 +139,7 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
         </section>
       </div>
       <div className="editor-footer">
-        <Link to={exitTo} className="button-link">
+        <Link to={exitTo} viewTransition className="button-link">
           나가기
         </Link>
         {/* 이미지 버튼: 숨은 파일 선택 칸을 엶 (끌어놓기·붙여넣기도 가능) */}
