@@ -10,7 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 // 매일 아침 기사 메일: 후보 모으기 → Claude 선정 → 소유자에게 발송
-// 한 단계가 실패해도 가능한 만큼 보냄 (Claude 실패 시 목록 앞쪽 기사, 요약이 있으면 그 문장을 소개로)
+// 선정은 Claude API 키가 있으면 Claude, 없거나 실패하면 규칙(핫이슈는 주요 기사 1위, IT는 NewsRanker), 소개는 기사 앞부분 문장
+// 한 단계가 실패해도 가능한 만큼 보냄
 @Service
 public class NewsDigestService {
 
@@ -46,7 +47,7 @@ public class NewsDigestService {
             picks.careerNews().forEach((pick) -> careerPicks.add(new Selected(career.get(pick.index()), pick.intro())));
         }, () -> {
             hot.stream().limit(1).forEach((article) -> hotPicks.add(new Selected(article, article.summary())));
-            career.stream().limit(2).forEach((article) -> careerPicks.add(new Selected(article, article.summary())));
+            NewsRanker.top(career, 2).forEach((article) -> careerPicks.add(new Selected(article, article.summary())));
         });
         LocalDate today = LocalDate.now(clock);
         mailer.send(today.getMonthValue() + "월 " + today.getDayOfMonth() + "일 아침 기사", format(hotPicks, careerPicks));

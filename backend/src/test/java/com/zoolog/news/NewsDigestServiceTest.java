@@ -76,15 +76,16 @@ class NewsDigestServiceTest {
     }
 
     @Test
-    @DisplayName("Claude 선정에 실패하면 목록 앞쪽 기사를 요약과 함께 보낸다")
+    @DisplayName("Claude 키가 없으면 핫이슈는 주요 기사 1위, IT는 규칙으로 고른 기사를 요약과 함께 보낸다")
     void fallbackWhenCuratorFails() {
         given(curator.pick(hot, career)).willReturn(Optional.empty());
 
         service.sendDailyDigest();
 
         assertThat(sentText("10월 14일 아침 기사"))
-                .contains("- 첫 기사 (한겨레)\n  https://hot/1", "AWS 리전 확장 (a.co.kr)\n  AWS 요약", "주가 등락")
-                .doesNotContain("둘째 기사", "네이버 개발자 채용");
+                .contains("- 첫 기사 (한겨레)\n  https://hot/1\n\nIT · 취업\n\n- 네이버 개발자 채용 (c.co.kr)\n  채용 요약",
+                        "- AWS 리전 확장 (a.co.kr)\n  AWS 요약")
+                .doesNotContain("둘째 기사", "주가 등락");
     }
 
     @Test
