@@ -1539,7 +1539,7 @@ a {
   color: var(--color-accent-strong);
 }
 
-/* 머리글 메뉴에서 튀어나오는 별: 화면 위 고정 층, 메뉴 글자 크기의 작은 별 */
+/* 머리글 메뉴에서 튀어나오는 ◎ 별: 화면 위 고정 층, 그래프 하위 주제 별 크기 */
 .star-markers {
   position: fixed;
   inset: 0;
@@ -1547,9 +1547,17 @@ a {
   pointer-events: none;
 }
 
-.gather-marker.is-small {
-  --marker-size: 1.75rem;
+.gather-marker.is-sub {
+  /* 커질 때 흐리게 번지지 않도록 처음부터 큼직하게 (그래프 쪽 큰 별 표지와 비슷한 크기) */
+  --marker-size: 3.5rem;
+  fill: currentColor;
+  scale: 1;
 }
+
+.gather-marker.is-sub svg {
+  overflow: visible;
+}
+
 
 /* 시작: 그래프의 큰 주제 별 크기(지름 약 28px)와 색 */
 @starting-style {

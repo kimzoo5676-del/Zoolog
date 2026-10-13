@@ -36,26 +36,30 @@ export function clearPendingNames() {
   spawned.clear()
 }
 
-const SPARKLE = 'M0 -14 Q0 0 14 0 Q0 0 0 14 Q0 0 -14 0 Q0 0 0 -14 Z' // 그래프 큰 주제 별(✦)과 같은 모양
+// 그래프의 하위 주제 별(◎ 고리 두른 별)과 같은 모양
+export const SUB_STAR_SVG =
+  '<svg viewBox="-12 -12 24 24" focusable="false"><circle r="4.6"/><circle r="9.66" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>'
 
-// 머리글 주제 메뉴 → 주제 화면: 메뉴 글자 자리에 하위 주제 수만큼 작은 별을 띄워 두면(칸 색, tile-<id>)
-// 화면 전환에서 각 별이 자기 하위 주제 칸 자리로 날아가 칸이 됨. 새 화면을 그리는 순간 clearPendingNames()가 지움
+// 머리글 주제 메뉴 → 주제 화면: 메뉴 글자 아래에 하위 주제 수만큼 ◎ 별(칸 색)을 띄워 두면(tile-<id>)
+// 화면 전환에서 그래프 → Card와 같은 방식으로 각 별이 모양을 유지한 채 자기 하위 주제 칸 자리로 날아가며 커지다 칸이 됨
+// 새 화면을 그리는 순간 clearPendingNames()가 띄운 별을 지움
 export function spawnTileStars(from: Element | null, items: { id: number; dark: boolean }[]) {
   if (!from || items.length === 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) return
   const rect = from.getBoundingClientRect()
   const layer = document.createElement('div')
   layer.className = 'star-markers'
   layer.setAttribute('aria-hidden', 'true')
-  for (const { id, dark } of items) {
+  items.forEach(({ id, dark }, index) => {
     const marker = document.createElement('span')
-    marker.className = dark ? 'gather-marker is-small is-dark' : 'gather-marker is-small'
-    marker.style.left = `${rect.left + rect.width / 2}px`
-    marker.style.top = `${rect.top + rect.height / 2}px`
+    marker.className = dark ? 'gather-marker is-sub is-dark' : 'gather-marker is-sub'
+    // 메뉴 글자 아래쪽에서 살짝 흩어져 시작 (한 점에 겹치지 않도록)
+    marker.style.left = `${rect.left + rect.width / 2 + (index - (items.length - 1) / 2) * 60}px`
+    marker.style.top = `${rect.bottom + 40}px`
     marker.style.setProperty('view-transition-name', `tile-${id}`)
     marker.style.setProperty('view-transition-class', 'gather-tile')
-    marker.innerHTML = `<svg viewBox="-14 -14 28 28" focusable="false"><path d="${SPARKLE}"/></svg>`
+    marker.innerHTML = SUB_STAR_SVG
     layer.append(marker)
-  }
+  })
   document.body.append(layer)
   spawned.add(layer)
 }

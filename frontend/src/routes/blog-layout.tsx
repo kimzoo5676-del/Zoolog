@@ -70,7 +70,7 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
                     }
                     viewTransition
                     // 메뉴 글자가 주제 화면 제목 자리로 이어서 이동 (주제 칸과 같은 전환 이름 cat-<id>)
-                    // 하위 주제 수만큼 별이 메뉴 자리에서 튀어나와 각자의 칸 자리로 날아가 칸이 됨 (2칸 바둑판 색 순서)
+                    // 하위 주제 수만큼 ◎ 별(칸 색)이 메뉴 아래에서 튀어나와 각자의 칸 자리로 날아가며 커지다 칸이 됨 (그래프 → Card와 같은 방식)
                     onClick={(e) => {
                       const label = e.currentTarget.querySelector('.roll')
                       nameForTransition(label, `cat-${category.id}`)
