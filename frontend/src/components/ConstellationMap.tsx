@@ -430,7 +430,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
               onActivate={() => setActiveId(node.id)}
               onLeave={() => setActiveId((current) => (current === node.id ? null : current))}
               onZoom={zoomTo}
-              isTarget={node.kind === 'post' && node.id === activeId}
+              isTarget={node.id === activeId}
               onOpenPost={openPost}
               gather={gathering ? gatherOffset.get(node.id) : undefined}
             />
@@ -529,12 +529,26 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
           ))}
         </ul>
 
+        {/* 가리킨 주제 별(✦ ◎ ◆): 작은 이름 자리(별 아래)에서 글 별과 같은 크기의 큰 이름이 커지며 나타남, 위에는 상위 주제
+            누르면 지금처럼 지도 안 확대 (화면 이동이 없어 공유 요소 전환 이름은 붙이지 않음) */}
+        {active && active.kind !== 'post' && (
+          <HoverTitle
+            node={active}
+            group={active.parentId ? byId.get(active.parentId)?.label : undefined}
+            x={(active.x - box.x) * scale + offsetX}
+            y={(active.y - box.y) * scale + offsetY + topicTitleOffset(active.depth)}
+            stageWidth={size.width}
+            placement={{ anchor: 'middle', dx: 0, dy: 1 }}
+          />
+        )}
+
         {/* 가리킨 글 별: 별이 커지고 주제 + 큰 제목이 별 쪽에서부터 커지며 나타남
             방향은 작은 제목이 있던 쪽(이름표 배치 결과), 없으면 오른쪽(화면 오른쪽 끝이라 넘칠 때만 왼쪽)
             큰 제목은 글 화면 제목(h1)과 같은 view-transition-name이라, 클릭하면 그대로 글 화면 제목 자리로 이동·확대 */}
         {active?.kind === 'post' && (
           <HoverTitle
             node={active}
+            group={active.group}
             x={(active.x - box.x) * scale + offsetX}
             y={(active.y - box.y) * scale + offsetY}
             stageWidth={size.width}
@@ -657,8 +671,17 @@ function Star({
   )
 }
 
+// 주제 별 큰 이름의 세로 위치 보정(화면 px): 작은 이름 글자의 윗변 높이에서 시작하도록
+// (.hover-title.is-below가 0.75rem 아래로 내리므로 그만큼 뺌)
+function topicTitleOffset(depth: number) {
+  const size = STAR[Math.min(3, Math.max(1, depth)) as 1 | 2 | 3]
+  return size.labelY - size.label - 12
+}
+
 type HoverTitleProps = {
   node: StarNode
+  // 큰 제목 위 작은 글자: 글은 주제 이름, 주제는 상위 주제 이름(큰 주제는 없음)
+  group?: string
   x: number
   y: number
   stageWidth: number
@@ -666,7 +689,7 @@ type HoverTitleProps = {
 }
 
 // 큰 제목이 놓일 쪽: right(별 오른쪽), left(별 왼쪽), above(별 위), below(별 아래)
-function HoverTitle({ node, x, y, stageWidth, placement }: HoverTitleProps) {
+function HoverTitle({ node, group, x, y, stageWidth, placement }: HoverTitleProps) {
   const side = placement
     ? placement.anchor === 'end'
       ? 'left'
@@ -681,8 +704,12 @@ function HoverTitle({ node, x, y, stageWidth, placement }: HoverTitleProps) {
       : 'right'
 
   return (
-    <div className={`hover-title is-${side}`} style={{ left: x, top: y }} aria-hidden="true">
-      <span className="hover-title-group">{node.group}</span>
+    <div
+      className={`hover-title is-${side}${node.kind === 'post' ? '' : ' is-topic'}`}
+      style={{ left: x, top: y }}
+      aria-hidden="true"
+    >
+      {group && <span className="hover-title-group">{group}</span>}
       <span className="hover-title-text">{node.label}</span>
     </div>
   )

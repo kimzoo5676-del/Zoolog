@@ -1242,9 +1242,9 @@ a {
   }
 }
 
-/* 마우스를 올린 글 별: 커지고, 자기 작은 제목은 숨김 (떠오른 큰 제목과 겹치지 않도록)
+/* 마우스를 올린 별: 자기 작은 제목은 숨김 (떠오른 큰 제목과 겹치지 않도록), 글 별은 커짐 (주제 별은 is-lit 크기)
    이름표는 등장 애니메이션(label-in)이 투명도를 덮어쓰므로 visibility로 숨김 */
-.star.is-target .star-core {
+.star-post.is-target .star-core {
   scale: 2.4;
   transition: scale var(--dur-ui) var(--ease-out-soft);
 }
@@ -1315,6 +1315,11 @@ a {
   -webkit-text-stroke: 5px var(--color-bg);
   paint-order: stroke fill;
   view-transition-name: post-title;
+}
+
+/* 주제 별의 큰 이름: 누르면 지도 안 확대라 화면 전환 공유 요소가 아님 */
+.hover-title.is-topic .hover-title-text {
+  view-transition-name: none;
 }
 
 /* 축소된 지도: 작은 주제 이름은 그 별자리를 가리킬 때만 (이름끼리 겹치지 않도록) */
