@@ -14,8 +14,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   return { board: await fetchBoard(request.signal) }
 }
 
-const WEEKDAY_LONG = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
-
 // 일정 보드 (2026-10-12 결정: 방문자도 보기, 등록·체크는 소유자)
 // 참고: Things 3 Today(하루 일정 한 목록), Apple 피트니스(날짜별 달성 링, 위쪽 주간 줄로 날짜 이동)
 // 구성: 날짜 머리 칸(큰 날짜 + 달성 링) → 주간 줄(월~일, 칸마다 링) → 고른 날 목록(둥근 체크) → 습관 카드 격자
@@ -95,7 +93,7 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
           <p className="day-hero-date">
             {Number(month)}.{Number(day)}
           </p>
-          <p className="day-hero-weekday">{WEEKDAY_LONG[weekdayIndex]}</p>
+          <p className="day-hero-weekday">{DAYS[weekdayIndex].long}</p>
         </div>
         <div className="day-hero-ring">
           <ProgressRing done={selectedStats.done} total={selectedStats.due.length} size={148} stroke={14} />
@@ -108,7 +106,7 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
 
       {/* 주간 줄: 날짜를 고르면 그날 목록으로 (미래 날짜는 고를 수 없음) */}
       <nav className="week-strip" aria-label="이번 주">
-        {week.map(({ label, date }) => {
+        {week.map(({ label, long, date }) => {
           const stats = dayStats(date)
           const future = date > board.today
           return (
@@ -117,15 +115,14 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
               type="button"
               className="week-day"
               aria-pressed={date === selected}
-              aria-label={`${label}요일 ${Number(date.slice(8))}일, ${stats.due.length}개 중 ${stats.done}개 완료`}
+              aria-label={`${long} ${Number(date.slice(8))}일, ${stats.due.length}개 중 ${stats.done}개 완료`}
               disabled={future}
               onClick={() => setSelected(date)}
             >
+              {/* 요일 약어를 크게, 날짜는 그 아래 작게, 달성 링은 맨 아래 */}
               <span className="week-day-label">{label}</span>
-              <span className="week-day-ring">
-                <ProgressRing done={stats.done} total={stats.due.length} size={44} stroke={5} />
-                <span className="week-day-number">{Number(date.slice(8))}</span>
-              </span>
+              <span className="week-day-number">{Number(date.slice(8))}</span>
+              <ProgressRing className="week-day-ring" done={stats.done} total={stats.due.length} size={36} stroke={4} />
             </button>
           )
         })}

@@ -1837,21 +1837,22 @@ a {
 }
 
 .week-day-label {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-}
-
-.week-day-ring {
-  position: relative;
-  display: grid;
-  place-items: center;
+  font-size: clamp(1rem, 2.4vw, 1.5rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.01em;
 }
 
 .week-day-number {
-  position: absolute;
-  font-weight: 900;
+  margin-top: -0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.week-day-ring {
+  margin-top: 0.25rem;
 }
 
 /* 그날 목록: 넓은 행, 시각 | 제목·정보 | 둥근 체크 */
@@ -2147,7 +2148,7 @@ button.habit-day:hover {
   }
 
   .week-day-label {
-    font-size: 0.6875rem;
+    font-size: 0.875rem;
   }
 }
 
