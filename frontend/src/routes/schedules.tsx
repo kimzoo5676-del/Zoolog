@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useRevalidator } from 'react-router'
 import { DAYS, deleteSchedule, fetchBoard, setDone, type BoardItem } from '../api/schedule'
 import { HabitCard } from '../components/HabitCard'
-import { ProgressRing } from '../components/ProgressRing'
 import { RouteError } from '../components/RouteError'
 import { ScheduleForm } from '../components/ScheduleForm'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
@@ -95,13 +94,11 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
           </p>
           <p className="day-hero-weekday">{DAYS[weekdayIndex].long}</p>
         </div>
-        <div className="day-hero-ring">
-          <ProgressRing done={selectedStats.done} total={selectedStats.due.length} size={148} stroke={14} />
-          <p className="day-hero-count">
-            <strong>{selectedStats.done}</strong>
-            <span>/ {selectedStats.due.length}</span>
-          </p>
-        </div>
+        {/* 그날 완료 수 / 해야 할 수 (달성 링은 써 보고 제외, 2026-10-13 소유자 결정) */}
+        <p className="day-hero-count" aria-label={`${selectedStats.due.length}개 중 ${selectedStats.done}개 완료`}>
+          <strong>{selectedStats.done}</strong>
+          <span>/ {selectedStats.due.length}</span>
+        </p>
       </section>
 
       {/* 주간 줄: 날짜를 고르면 그날 목록으로 (미래 날짜는 고를 수 없음) */}
@@ -119,10 +116,9 @@ export default function Schedules({ loaderData }: Route.ComponentProps) {
               disabled={future}
               onClick={() => setSelected(date)}
             >
-              {/* 요일 약어를 크게, 날짜는 그 아래 작게, 달성 링은 맨 아래 */}
+              {/* 요일 약어를 크게, 날짜는 그 아래 작게 */}
               <span className="week-day-label">{label}</span>
               <span className="week-day-number">{Number(date.slice(8))}</span>
-              <ProgressRing className="week-day-ring" done={stats.done} total={stats.due.length} size={36} stroke={4} />
             </button>
           )
         })}
