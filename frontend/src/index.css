@@ -1540,22 +1540,9 @@ a {
   color: var(--color-accent-strong);
 }
 
-/* 머리글 메뉴에서 튀어나오는 ◎ 별: 화면 위 고정 층, 그래프 하위 주제 별 크기 */
-.star-markers {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  pointer-events: none;
-}
-
 .gather-marker.is-sub {
   /* 하위 주제 ◎도 ✦와 같은 크기까지 커지고(초점), 칸으로 나뉠 때는 더 커지지 않음 (2026-10-13 소유자 결정) */
   fill: currentColor;
-}
-
-/* 머리글 메뉴에서 띄운 ◎: 화면 전환이 곧바로 시작되므로 커지는 단계 없이 처음부터 이 크기 */
-.gather-marker.is-menu {
-  scale: 1;
 }
 
 .gather-marker.is-sub svg {
