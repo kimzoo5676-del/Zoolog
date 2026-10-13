@@ -4,13 +4,13 @@
 
 ## 한 줄 소개
 
-공부 기록을 별자리 그래프로 보여 주는 개인 블로그 + 일정 비서를 기획부터 k3s GitOps 운영까지 혼자 만든 프로젝트
+공부 기록을 별자리 그래프와 주제별 글 스트릭 달력으로 보여 주는 개인 블로그를 기획부터 k3s GitOps 운영까지 혼자 만든 프로젝트
 
 ## GitHub 프로필용 (기존 프로젝트와 같은 형식)
 
-**Zoolog — 공부 기록 그래프 블로그 + 일정 비서** `2026.10 -`
+**Zoolog — 공부 기록 그래프 블로그** `2026.10 -`
 
-> 공부 글을 주제 3단계로 정리해 별자리 그래프로 보여 주고, 매일 반복하는 공부 일정을 체크해 기록하는 개인 서비스. **https://zoolog.site 운영 중**
+> 공부 글을 주제 3단계로 정리해 별자리 그래프로 보여 주고, 글 쓴 날을 주제별 달력에 하위 주제 색으로 쌓아 가는 개인 서비스. **https://zoolog.site 운영 중**
 
 **Role** · 1인 개발 (Infra / Backend / Frontend) | `Spring Boot` `PostgreSQL` `React` `k3s` `Argo CD` `GitHub Actions` `Caddy` `AWS Lightsail`
 

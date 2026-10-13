@@ -39,9 +39,9 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
             <Link to="/" className="site-title" aria-label="Zoolog">
               <Logo />
             </Link>
-            {/* 로고 옆 칸: 일정(모두), 글쓰기(소유자 로그인 시만). 주제 메뉴와 섞이지 않도록 */}
-            <NavLink to={href('/schedules')} className="site-brand-link roll-trigger">
-              <RollText>일정</RollText>
+            {/* 로고 옆 칸: Streak(모두), 글쓰기(소유자 로그인 시만). 주제 메뉴와 섞이지 않도록 */}
+            <NavLink to={href('/streak')} className="site-brand-link roll-trigger">
+              <RollText>Streak</RollText>
             </NavLink>
             {me && (
               <NavLink to={href('/posts/new')} className="site-brand-link roll-trigger">

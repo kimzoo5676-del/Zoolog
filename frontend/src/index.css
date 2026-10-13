@@ -1726,221 +1726,67 @@ a {
   gap: 1rem 2rem;
 }
 
-/* ---------- 일정 보드: 날짜 머리 칸 → 주간 줄 → 그날 목록 → 습관 카드 ---------- */
+/* ---------- Streak: 큰 주제마다 한 달 달력, 글 쓴 날을 하위 주제 색으로 ---------- */
 
-/* 날짜 머리 칸: 포스터형 큰 날짜 + 오른쪽 완료 수 */
-.day-hero {
+/* 달 이동: ← 2026.10 → (머리 칸 오른쪽) */
+.month-nav {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1.5rem;
-  padding: clamp(2rem, 5vw, 3.5rem) var(--cell-pad-x) 2rem;
-  border-bottom: var(--grid-line);
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.day-hero p {
+.month-nav-label {
   margin: 0;
-}
-
-.day-hero-date {
-  font-size: clamp(4.5rem, 14vw, 10rem);
+  min-width: 5.5ch;
+  font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 900;
   font-variant-numeric: tabular-nums;
-  line-height: 0.9;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.03em;
+  text-align: center;
 }
 
-.day-hero .day-hero-weekday {
-  margin-top: 0.75rem;
-  font-size: 1.25rem;
-  font-weight: 800;
-}
-
-.day-hero .day-hero-count {
-  display: flex;
-  align-items: baseline;
-  gap: 0.375rem;
-  font-size: 1.25rem;
-  font-weight: 800;
-}
-
-.day-hero-count strong {
-  font-size: clamp(3rem, 7vw, 4.5rem);
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-}
-
-/* 주간 줄: 7칸이 화면 폭을 채움, 고른 날은 진한 러스트 칸 */
-.week-strip {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  border-bottom: var(--grid-line);
-}
-
-.week-day {
-  display: grid;
-  justify-items: center;
-  gap: 0.5rem;
-  padding: 1rem 0.25rem 1.125rem;
+.month-nav-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
   font: inherit;
+  font-size: 1.125rem;
+  font-weight: 800;
   color: var(--color-text);
   background: transparent;
-  border: 0;
+  border: var(--grid-line);
   cursor: pointer;
   transition:
     color 0.2s ease,
     background-color 0.2s ease;
 }
 
-.week-day + .week-day {
-  border-left: var(--grid-line);
+.month-nav-button:hover:not(:disabled) {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
 }
 
-.week-day:hover:not(:disabled) {
-  background-color: var(--color-surface);
-}
-
-.week-day:disabled {
-  color: var(--color-text-muted);
+.month-nav-button:disabled {
+  color: var(--color-line);
+  border-color: var(--color-line);
   cursor: default;
 }
 
-.week-day[aria-pressed="true"] {
-  color: var(--color-bg);
-  background-color: var(--color-accent-strong);
-}
-
-.week-day-label {
-  font-size: clamp(1rem, 2.4vw, 1.5rem);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.01em;
-}
-
-.week-day-number {
-  margin-top: -0.25rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.75;
-}
-
-/* 그날 목록: 넓은 행, 시각 | 제목·정보 | 둥근 체크 */
-.agenda-empty {
-  margin: 0;
-  padding: 2rem var(--cell-pad-x);
-  border-bottom: var(--grid-line);
-}
-
-.agenda-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.agenda-row {
+/* 카드 격자: 칸 사이 격자선 (오른쪽·아래 선, 바깥은 기둥 테두리와 겹치도록 -1px) */
+.streak-grid {
   display: grid;
-  grid-template-columns: 5.5rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 1rem;
-  min-height: 5rem;
-  padding: 0.75rem var(--cell-pad-x);
-  border-bottom: var(--grid-line);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+  animation: streak-in 0.45s var(--ease-out-soft) both;
 }
 
-.agenda-time {
-  font-size: 1.375rem;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
+@keyframes streak-in {
+  from {
+    opacity: 0;
+    translate: 0 0.35rem;
+  }
 }
 
-.agenda-main {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.agenda-title {
-  font-size: clamp(1.125rem, 2.2vw, 1.5rem);
-  font-weight: 800;
-  transition: color 0.3s ease;
-}
-
-.agenda-meta {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.agenda-row.is-done .agenda-title {
-  color: var(--color-text-muted);
-}
-
-/* 둥근 체크 (Apple 미리 알림 방식): 빈 원 → 완료하면 러스트로 채워지며 체크가 나타남 */
-.agenda-check {
-  display: grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  padding: 0;
-  font: inherit;
-  font-size: 1.125rem;
-  font-weight: 900;
-  color: transparent;
-  background: transparent;
-  border: 2px solid var(--color-accent-strong);
-  border-radius: 50%;
-  transition:
-    color 0.25s ease,
-    background-color 0.3s var(--ease-out-soft),
-    scale 0.3s var(--ease-out-soft);
-}
-
-button.agenda-check {
-  cursor: pointer;
-}
-
-button.agenda-check:hover {
-  background-color: var(--color-surface);
-}
-
-button.agenda-check:active {
-  scale: 0.9;
-}
-
-.agenda-row.is-done .agenda-check {
-  color: var(--color-bg);
-  background-color: var(--color-accent-strong);
-}
-
-.agenda-error {
-  padding: 0.75rem var(--cell-pad-x);
-}
-
-/* 습관 카드 격자 */
-.habits {
-  border-bottom: var(--grid-line);
-}
-
-.habits-title {
-  margin: 0;
-  padding: clamp(2rem, 5vw, 3rem) var(--cell-pad-x) 1rem;
-  font-size: clamp(2.25rem, 6vw, 3.5rem);
-  font-weight: 900;
-  line-height: 1.1;
-  letter-spacing: -0.04em;
-  border-bottom: var(--grid-line);
-}
-
-.habit-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
-}
-
-/* 칸 사이 격자선: 오른쪽·아래 선, 바깥은 기둥 테두리와 겹치도록 -1px */
-.habit-card {
+.streak-card {
   display: grid;
   align-content: start;
   gap: 1rem;
@@ -1950,31 +1796,24 @@ button.agenda-check:active {
   border-bottom: var(--grid-line);
 }
 
-.habit-title {
+.streak-title {
   margin: 0;
   font-size: 1.375rem;
   font-weight: 900;
   line-height: 1.25;
 }
 
-.habit-meta {
-  margin: 0.25rem 0 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.habit-numbers {
+.streak-numbers {
   display: flex;
   gap: 2rem;
 }
 
-.habit-numbers p {
+.streak-numbers p {
   display: grid;
   margin: 0;
 }
 
-.habit-numbers strong {
+.streak-numbers strong {
   font-size: 2.75rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
@@ -1982,26 +1821,27 @@ button.agenda-check:active {
   letter-spacing: -0.03em;
 }
 
-.habit-numbers span {
+.streak-numbers span {
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
-/* 최근 5주 달력: 월~일 7열이 카드 폭을 채움 */
-.habit-calendar {
+/* 한 달 달력: 월~일 7열이 카드 폭을 채움 */
+.streak-calendar {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 4px;
 }
 
-.habit-weekday {
+.streak-weekday {
   font-size: 0.6875rem;
   font-weight: 800;
   text-align: center;
 }
 
-.habit-day {
+.streak-day {
   display: grid;
   place-items: center;
   aspect-ratio: 1;
@@ -2009,358 +1849,138 @@ button.agenda-check:active {
   font: inherit;
   font-size: 0.6875rem;
   font-weight: 700;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: 1px solid transparent;
-}
-
-.habit-day-number {
   font-variant-numeric: tabular-nums;
-}
-
-/* 완료: 진한 러스트 칸 + 세이지 숫자 / 놓침: 옅은 테두리 / 오늘 아직: 점선 / 쉬는 날: 옅은 면 */
-.habit-day.is-done {
-  color: var(--color-bg);
-  background-color: var(--color-accent-strong);
-}
-
-.habit-day.is-missed {
-  border-color: var(--color-line);
-}
-
-.habit-day.is-pending {
-  color: var(--color-text);
-  border: 1px dashed var(--color-accent-strong);
-}
-
-.habit-day.is-off {
-  background-color: color-mix(in srgb, var(--color-surface) 60%, transparent);
-}
-
-.habit-day.is-future {
-  visibility: hidden;
-}
-
-button.habit-day {
-  cursor: pointer;
-  transition: scale 0.15s ease;
-}
-
-button.habit-day:hover {
-  scale: 1.08;
-}
-
-/* 수정 · 삭제 (소유자) */
-.habit-actions {
-  display: flex;
-  gap: 1rem;
-  font-size: 0.8125rem;
-}
-
-/* 수정 중인 카드: 그 자리에서 입력 칸으로 바뀜 (칸이 위에서 살짝 내려오며 나타남) */
-.habit-card.is-editing {
-  padding: 1.25rem var(--cell-pad-x) 1.5rem;
-}
-
-@media (max-width: 40rem) {
-  /* 좁은 화면: 링을 날짜 오른쪽에 작게 */
-  .day-hero {
-    flex-wrap: nowrap;
-  }
-
-  .day-hero-count strong {
-    font-size: 2.5rem;
-  }
-
-  .agenda-row {
-    grid-template-columns: 4rem minmax(0, 1fr) auto;
-  }
-
-  .agenda-time {
-    font-size: 1.125rem;
-  }
-
-  .week-day-label {
-    font-size: 0.875rem;
-  }
-}
-
-/* 글자 버튼 (삭제 등 덜 중요한 실행) */
-.text-link {
-  padding: 0;
-  font: inherit;
   color: var(--color-text-muted);
-  background: none;
+  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
   border: 0;
-  text-decoration: underline;
-  text-underline-offset: 0.25em;
-  cursor: pointer;
 }
 
-.text-link:hover {
+.streak-day.is-today {
   color: var(--color-text);
+  outline: 1px dashed var(--color-accent-strong);
+  outline-offset: -1px;
 }
 
-/* 일정 추가·수정 (소유자 전용): 큰 제목 한 줄 + 요약 문장 + 반복·시각·기간 줄 */
-.schedule-add {
-  padding: 1.25rem var(--cell-pad-x) 3rem;
-}
-
-.schedule-composer {
-  container-type: inline-size;
-  display: grid;
-  gap: 1rem;
-  transition:
-    opacity 0.4s ease,
-    translate 0.5s var(--ease-out-soft);
-}
-
-@starting-style {
-  .schedule-composer {
-    opacity: 0;
-    translate: 0 -0.4rem;
-  }
-}
-
-/* 새 일정: + 일정 칩 자리에서 펼쳐짐 (칩 크기에서 시작해 전체로, 큰 크기 변화라 1초 ease-in-out) */
-.schedule-composer.composer-new {
-  padding-bottom: 0.25rem;
-  clip-path: inset(0 0 0 0);
-  transition:
-    clip-path 1s var(--ease-in-out-soft),
-    opacity 0.4s ease;
-}
-
-@starting-style {
-  .schedule-composer.composer-new {
-    opacity: 1;
-    translate: none;
-    clip-path: inset(0 calc(100% - 6rem) calc(100% - 2.5rem) 0);
-  }
-}
-
-/* 제목: 편집기 제목처럼 테두리 없는 큰 글자. 뒤에 같은 글자를 투명하게 깔아 알아들은 말에 밑줄 */
-.composer-title {
-  display: grid;
-}
-
-.composer-title > * {
-  grid-area: 1 / 1;
-  margin: 0;
-  padding: 0;
-  font: inherit;
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  font-weight: 900;
-  line-height: 1.2;
-  letter-spacing: -0.03em;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: keep-all;
-}
-
-.composer-title-mirror {
-  color: transparent;
-  pointer-events: none;
-}
-
-.composer-title-mirror mark {
-  color: transparent;
+.streak-day.is-future {
   background: none;
-  text-decoration: underline;
-  text-decoration-color: var(--color-accent-strong);
-  text-decoration-thickness: 3px;
-  text-underline-offset: 0.15em;
-}
-
-.composer-title textarea {
-  field-sizing: content;
-  min-height: 1.2em;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  outline: none;
-  resize: none;
-}
-
-.composer-title textarea::placeholder {
-  color: var(--color-text);
   opacity: 0.35;
 }
 
-/* 고른 내용 한 문장 요약 */
-.composer-summary {
-  margin: 0;
-  padding-bottom: 1rem;
-  font-size: 0.875rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  border-bottom: var(--grid-line);
-}
-
-.composer-row {
-  display: grid;
-  grid-template-columns: 6rem minmax(0, 1fr);
-  align-items: center;
-  gap: 0.75rem;
-  margin: 0;
-}
-
-/* 반복·요일: 같은 폭으로 붙어 있는 칸 묶음 (보기 전환과 같은 모양: 고른 칸은 진한 러스트 + 세이지 글자) */
-.composer-segments {
-  display: grid;
-  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
-  max-width: 30rem;
-}
-
-.composer-segment {
-  min-width: 0;
-  margin: 0 -1px 0 0;
-  padding: 0.5rem 0.25rem;
-  text-align: center;
-  white-space: nowrap;
-  font: inherit;
-  font-size: 0.8125rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: var(--grid-line);
-  cursor: pointer;
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
-}
-
-.composer-segment:hover {
-  color: var(--color-text);
-}
-
-.composer-segment[aria-checked="true"],
-.composer-segment[aria-pressed="true"] {
+/* 글 쓴 날: 하위 주제 색 칸 + 세이지 숫자 (색은 인라인 style) */
+.streak-day.is-filled {
   color: var(--color-bg);
-  background-color: var(--color-accent-strong);
+  cursor: pointer;
+  transition: scale 0.2s var(--ease-out-soft);
 }
 
-.composer-days {
+.streak-day.is-filled:hover,
+.streak-day.is-filled[aria-expanded="true"] {
+  scale: 1.1;
+}
+
+/* 그날 글 팁: 칸 아래에서 작게 시작해 커지며 나타남 */
+.streak-tip {
+  position: absolute;
+  z-index: 5;
+  min-width: 12rem;
+  max-width: min(20rem, 100%);
+  /* 하루에 글이 많으면 팁 안에서 스크롤 */
+  max-height: 18rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.75rem 0.875rem;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-accent-strong);
+  transform-origin: top left;
   transition:
-    opacity 0.4s ease,
-    translate 0.5s var(--ease-out-soft);
+    opacity 0.3s ease,
+    scale 0.4s var(--ease-out-soft);
+}
+
+.streak-tip[style*="right"] {
+  transform-origin: top right;
 }
 
 @starting-style {
-  .composer-days {
+  .streak-tip {
     opacity: 0;
-    translate: 0 -0.4rem;
+    scale: 0.92;
   }
 }
 
-/* 시각: 큰 숫자, 테두리 없음 */
-.composer-time {
-  justify-self: start;
-  padding: 0;
-  font: inherit;
-  font-size: 1.75rem;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  outline: none;
-}
-
-.composer-time:focus-visible,
-.composer-period input:focus-visible {
-  text-decoration: underline;
-  text-decoration-color: var(--color-accent-strong);
-  text-underline-offset: 0.2em;
-}
-
-.composer-row > .text-link {
-  justify-self: start;
-}
-
-.composer-period-fields {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-  font-weight: 800;
-}
-
-.composer-period input {
-  min-width: 0;
-  padding: 0;
-  font: inherit;
-  font-size: 1.125rem;
-  font-weight: 800;
-  color: var(--color-text);
-  background: transparent;
-  border: 0;
-  outline: none;
-}
-
-.composer-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding-top: 1rem;
-  border-top: var(--grid-line);
-}
-
-/* 단축키 안내: 키 모양 글자 */
-.composer-keys {
-  margin-right: auto;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--color-text-muted);
-}
-
-.composer-keys kbd {
-  padding: 0.125rem 0.375rem;
-  font: inherit;
-  font-weight: 800;
-  border: 1px solid var(--color-line);
-}
-
-.composer-keys kbd + kbd,
-.composer-keys kbd ~ kbd {
-  margin-left: 0.5rem;
-}
-
-.schedule-composer .form-error {
+.streak-tip ul {
+  display: grid;
+  gap: 0.625rem;
   margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-/* 좁은 자리(휴대폰, 습관 카드 안 수정): 이름표를 칸 위로 */
-@container (max-width: 34rem) {
-  .composer-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.375rem;
-  }
-
-  .composer-days .picker-label {
-    display: none;
-  }
-
-  .composer-segment {
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
-  }
+.streak-tip li {
+  display: grid;
+  gap: 0.125rem;
 }
 
-@media (max-width: 40rem) {
-  .composer-keys {
-    display: none;
-  }
+.streak-tip-group {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.streak-tip-title {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--color-text);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 0.2s ease;
+}
+
+.streak-tip-title:hover,
+.streak-tip-title:focus-visible {
+  text-decoration-color: var(--color-accent-strong);
+}
+
+/* 색 범례 (그래프 범례와 같은 작은 대문자 라벨) */
+.streak-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.streak-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.streak-swatch {
+  display: inline-block;
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .schedule-composer,
-  .schedule-composer.composer-new,
-  .composer-days {
+  .streak-grid {
+    animation: none;
+  }
+
+  .streak-day.is-filled,
+  .streak-tip {
     transition: none;
   }
 }
