@@ -265,6 +265,8 @@ a {
 }
 
 .site-header {
+  /* 화면 전환 때 머리글은 제자리 (새 화면이 떠오를 때 머리글까지 함께 움직여 겹쳐 보이지 않도록) */
+  view-transition-name: site-header;
   display: flex;
   flex-wrap: wrap;
   border-bottom: var(--grid-line);
@@ -418,98 +420,6 @@ a {
 
 .page-header > p {
   margin: 0;
-}
-
-/* ---------- 글 목록: 번호 칸 | 제목·정보 칸 ---------- */
-
-.post-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.post-row {
-  position: relative; /* 제목 링크를 행 전체로 넓히기 위한 기준 */
-  display: grid;
-  grid-template-columns: 3.5rem 1fr;
-  border-bottom: var(--grid-line);
-}
-
-.post-row-index {
-  display: flex;
-  justify-content: center;
-  padding-top: 1.5rem;
-  border-right: var(--grid-line);
-}
-
-/* 번호: 현재 메뉴 칸과 같은 진한 러스트 칸 + 세이지 글자 (4.59:1) */
-.post-row-number {
-  align-self: flex-start;
-  padding: 0.125rem 0.375rem;
-  font-size: 1rem;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.4;
-  color: var(--color-bg);
-  background-color: var(--color-accent-strong);
-}
-
-.post-row-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem 2rem;
-  padding: 1.5rem var(--cell-pad-x);
-}
-
-.post-row-title {
-  margin: 0;
-  font-size: clamp(1.125rem, 2.5vw, 1.5rem);
-  font-weight: 800;
-  line-height: 1.4;
-}
-
-.post-row-title a {
-  text-decoration: none;
-  text-underline-offset: 0.25em;
-}
-
-/* 행 어디를 눌러도 글로 이동 */
-.post-row-title a::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-/* 움직임 줄이기 설정이면 글자 올림 효과 대신 제목 밑줄 표시 */
-@media (prefers-reduced-motion: reduce) {
-  .post-row:hover .post-row-title a,
-  .post-row:focus-within .post-row-title a {
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
-  }
-}
-
-.post-row-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 1rem;
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-@media (min-width: 48rem) {
-  .post-row {
-    grid-template-columns: 5rem 1fr;
-  }
-
-  .post-row-number {
-    font-size: 1.25rem;
-  }
 }
 
 /* ---------- 글 상세: 제목 칸 | 정보 칸 | 망점 띠 | 본문 ---------- */
@@ -1598,9 +1508,69 @@ a {
   }
 }
 
+/* 모여든 별 표지: 큰 주제 별 자리에서 별들이 모여드는 동안 작게 시작해 커짐 (칸 색, 다음 화면에서 칸으로 날아감) */
+.gather-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gather-marker {
+  position: absolute;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin: -1.25rem 0 0 -1.25rem;
+  background-color: var(--color-accent);
+  transition:
+    scale var(--dur-travel) var(--ease-in-out-soft),
+    opacity var(--dur-fade) ease;
+}
+
+.gather-marker.is-dark {
+  background-color: var(--color-accent-strong);
+}
+
+@starting-style {
+  .gather-marker {
+    scale: 0;
+    opacity: 0;
+  }
+}
+
+/* Card로 갈 때: 하위 주제·글 별이 각자의 큰 주제 별로 모여들며 사라지고(선도 함께 사라짐), 큰 주제 별은 살짝 커짐
+   별 <g>의 transform 속성은 그대로 두고 CSS translate(지도 단위 px)를 더해 이동 */
+.constellation.is-gathering .star {
+  pointer-events: none;
+  transition:
+    translate var(--dur-travel) var(--ease-in-out-soft),
+    opacity var(--dur-travel) ease;
+}
+
+.constellation.is-gathering .star:not(.star-top) {
+  translate: var(--gx, 0) var(--gy, 0);
+  opacity: 0;
+}
+
+.constellation.is-gathering .star-top .star-core {
+  scale: 1.5;
+  transition: scale var(--dur-travel) var(--ease-in-out-soft);
+}
+
+.constellation.is-gathering .constellation-edges line,
+.constellation.is-gathering .constellation-legend,
+.constellation.is-gathering .constellation-bar {
+  opacity: 0;
+  transition: opacity var(--dur-ui) ease;
+}
+
 /* 화면 전환(View Transition, 별 확대 뒤 주제 화면으로): 이전 화면이 흐려지며 새 화면이 떠오름 */
 ::view-transition-old(root) {
   animation: var(--dur-ui) var(--ease-out-soft) both vt-fade-out;
+}
+
+/* 머리글: 두 화면에서 같은 모양이라 그대로 두되, 활성 메뉴 색 변화만 교차 */
+::view-transition-group(site-header) {
+  animation-duration: var(--dur-fade);
 }
 
 ::view-transition-new(root) {
@@ -1682,6 +1652,42 @@ a {
   animation: var(--dur-ui) var(--ease-out-soft) calc(var(--dur-travel) * 0.6) both vt-rise-in;
 }
 
+/* 모여든 별 표지 → Category 칸: 표지 자리에서 칸 자리로 날아가며 커짐, 표지는 금방 칸 모습으로 바뀜 */
+::view-transition-group(*.gather-tile) {
+  animation-duration: var(--dur-travel);
+  animation-timing-function: var(--ease-travel);
+}
+
+::view-transition-old(*.gather-tile) {
+  animation: var(--dur-fade) ease both vt-fade-out;
+}
+
+::view-transition-new(*.gather-tile) {
+  animation: var(--dur-fade) ease both vt-fade-in;
+}
+
+/* 홈 그래프의 Card 글자 → Category 화면 제목: 자리·크기는 이어지고 글자는 Card에서 Category로 서서히 바뀜 */
+::view-transition-group(view-title) {
+  animation-duration: var(--dur-travel);
+  animation-timing-function: var(--ease-travel);
+}
+
+::view-transition-old(view-title),
+::view-transition-new(view-title) {
+  width: auto;
+  height: 100%;
+  object-fit: contain;
+  object-position: left center;
+}
+
+::view-transition-old(view-title) {
+  animation: calc(var(--dur-travel) * 0.6) ease both vt-fade-out;
+}
+
+::view-transition-new(view-title) {
+  animation: calc(var(--dur-travel) * 0.6) ease calc(var(--dur-travel) * 0.3) both vt-fade-in;
+}
+
 ::view-transition-old(*.category-title):only-child {
   animation: var(--dur-fade) ease both vt-fade-out;
 }
@@ -1701,6 +1707,12 @@ a {
   ::view-transition-group(category-board),
   ::view-transition-old(category-board),
   ::view-transition-new(category-board),
+  ::view-transition-group(*.gather-tile),
+  ::view-transition-old(*.gather-tile),
+  ::view-transition-new(*.gather-tile),
+  ::view-transition-group(view-title),
+  ::view-transition-old(view-title),
+  ::view-transition-new(view-title),
   ::view-transition-group(*.category-title),
   ::view-transition-old(*.category-title),
   ::view-transition-new(*.category-title) {
@@ -1741,6 +1753,11 @@ a {
 /* 다른 주제 화면에서 넘어올 때(화면 전환 중)는 이동하는 제목이 먼저 자리를 잡은 뒤 칸이 떠오름 */
 :root:active-view-transition .category-tile {
   animation-delay: calc(var(--dur-travel) * 0.6 + var(--i, 0) * 60ms);
+}
+
+/* 그래프에서 넘어오는 Category 칸: 칸 자체가 표지에서 날아와 커지므로 따로 떠오르지 않음 */
+:root:active-view-transition .category-tiles.is-quick .category-tile {
+  animation: none;
 }
 
 /* 바둑판: 2칸 판은 4칸마다(2·3번째), 4칸 판은 8칸마다(2·4·5·7번째) 진한 러스트 */

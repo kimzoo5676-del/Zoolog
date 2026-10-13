@@ -5,3 +5,8 @@ import type { CSSProperties } from 'react'
 export function categoryTitleTransition(id: number): CSSProperties {
   return { viewTransitionName: `cat-${id}`, viewTransitionClass: 'category-title' } as CSSProperties
 }
+
+// 큰 주제 칸 자체의 전환 이름: 홈 그래프에서 모여든 별(표지)이 이 칸 자리로 날아가 칸으로 커짐 (Category 화면에서만)
+export function topTileTransition(id: number): CSSProperties {
+  return { viewTransitionName: `tile-${id}`, viewTransitionClass: 'gather-tile' } as CSSProperties
+}

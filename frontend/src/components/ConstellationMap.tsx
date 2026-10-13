@@ -5,6 +5,7 @@ import type { PostSummary } from '../api/post'
 import { useMapHighlight } from '../hooks/mapHighlight'
 import { layoutConstellation, type StarNode } from '../utils/constellation'
 import { centeredLabelRect, placeLabels, textWidth, type LabelPlacement } from '../utils/labelPlacement'
+import { topTileTransition } from '../utils/viewTransition'
 import { ViewSwitch } from './ViewSwitch'
 
 type ConstellationMapProps = {
@@ -16,6 +17,7 @@ type ConstellationMapProps = {
 }
 
 // 확대·축소 시간: 첫 진입 프리로더(Z 채움 1.3초, 로고 이동 0.8초)와 비슷한 속도감
+const GATHER_MS = 800 // index.css --dur-travel과 같게 유지 (별이 큰 주제 별로 모여드는 시간)
 const ZOOM_MS = 1000 // index.css --dur-move와 같게 유지 (크기·위치가 크게 바뀌는 움직임)
 
 // 단계마다 다른 별 모양 (성도에서 등급마다 기호를 달리하는 방식)
@@ -109,6 +111,8 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
   const stageRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [activeId, setActiveId] = useState<string | null>(null)
+  // Card(전체 주제 바둑판)로 갈 때: 별들이 각자의 큰 주제 별로 모여든 뒤 화면 전환 (2026-10-13 소유자 결정)
+  const [gathering, setGathering] = useState(false)
   const navigate = useNavigate()
 
   // 좁은 화면(모바일)은 별자리를 세로로 쌓고, 넓은 화면은 화면 비율에 맞춰 가로로 펼침
@@ -128,6 +132,21 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     return layoutConstellation(categories, posts, roundedAspect, Math.min(3, 1 / fit))
   }, [categories, posts, roundedAspect, layoutWidth, layoutHeight])
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
+  // 큰 주제 별 (주제 id 순 = Category 화면 칸 순서)
+  const topNodes = useMemo(
+    () => nodes.filter((n) => n.kind === 'top').sort((a, b) => Number(a.id.slice(4)) - Number(b.id.slice(4))),
+    [nodes],
+  )
+  // 모여들 자리: 각 별의 큰 주제 별까지의 거리 (지도 단위)
+  const gatherOffset = useMemo(() => {
+    const map = new Map<string, { x: number; y: number }>()
+    for (const node of nodes) {
+      let top = node
+      while (top.parentId && byId.get(top.parentId)) top = byId.get(top.parentId)!
+      map.set(node.id, { x: top.x - node.x, y: top.y - node.y })
+    }
+    return map
+  }, [nodes, byId])
 
   // 별마다 상위 별 목록 (강조·확대 범위 계산용)
   const ancestors = useMemo(() => {
@@ -200,6 +219,17 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
       return
     }
     navigate(to, { viewTransition: !prefersReducedMotion() })
+  }
+
+  // 전체 지도에서 Card: 별들이 큰 주제 별로 모여든 뒤(--dur-travel) 큰 주제 바둑판 화면으로
+  // 움직임 줄이기 설정이나 새 탭 열기는 그대로 이동
+  function gatherThenOpenCards(event: MouseEvent) {
+    if (event.metaKey || event.ctrlKey || prefersReducedMotion()) return
+    event.preventDefault()
+    setActiveId(null)
+    setGathering(true)
+    // 별이 거의 다 모였을 때 화면 전환을 시작해 모인 별이 곧바로 바둑판으로 이어지도록
+    window.setTimeout(() => navigate('/posts', { viewTransition: true }), GATHER_MS * 0.8)
   }
 
   // preserveAspectRatio="xMidYMid meet": 보이는 범위 전체가 들어가는 배율, 남는 쪽은 가운데 정렬 여백
@@ -319,7 +349,9 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
   }, [showPostLabels, focusGroup, nodes, targetScale, byId])
 
   return (
-    <div className={`constellation${lit ? ' has-focus' : ''}${focus ? ' is-zoomed' : ''}`}>
+    <div
+      className={`constellation${lit ? ' has-focus' : ''}${focus ? ' is-zoomed' : ''}${gathering ? ' is-gathering' : ''}`}
+    >
       {/* 무대: svg와 글 카드의 공통 기준 (크기 측정, 카드 위치 계산) */}
       <div ref={stageRef} className="constellation-stage" onPointerLeave={() => setActiveId(null)}>
         <svg
@@ -369,9 +401,28 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
               onZoom={zoomTo}
               isTarget={node.kind === 'post' && node.id === activeId}
               onOpenPost={openPost}
+              gather={gathering ? gatherOffset.get(node.id) : undefined}
             />
           ))}
         </svg>
+
+        {/* Card로 갈 때: 큰 주제 별 자리에 그 주제 칸 색의 표지가 생기고(별들이 모여드는 동안 커짐),
+            화면 전환에서 이 표지가 Category 화면의 칸 자리로 날아가 칸으로 커짐 (tile-<id>) */}
+        {gathering && (
+          <div className="gather-markers" aria-hidden="true">
+            {topNodes.map((node, i) => (
+              <span
+                key={node.id}
+                className={(Math.floor(i / 2) + (i % 2)) % 2 === 1 ? 'gather-marker is-dark' : 'gather-marker'}
+                style={{
+                  left: (node.x - box.x) * scale + offsetX,
+                  top: (node.y - box.y) * scale + offsetY,
+                  ...topTileTransition(Number(node.id.slice(4))),
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         {/* 확대 상태 막대: [esc] 경로(누르면 그 단계로)
             항상 그려 두고 확대할 때만 보이게 전환 (갑자기 생기거나 사라지지 않도록), 숨김 상태는 inert */}
@@ -415,6 +466,9 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
           graphTo={focus ? { pathname: '/', search: `?focus=${encodeURIComponent(focus.slug ?? '')}` } : '/'}
           listTo={focus?.slug ? href('/categories/:slug', { slug: focus.slug }) : '/posts'}
           className="view-switch constellation-switch"
+          onListClick={focus ? undefined : gatherThenOpenCards}
+          // 전체 지도의 Card 글자 → Category 화면 제목 (글자가 이동하며 Card에서 Category로 바뀜)
+          listStyle={focus ? undefined : { viewTransitionName: 'view-title' }}
         />
 
         <ul className="constellation-legend">
@@ -464,6 +518,8 @@ type StarProps = {
   onZoom: (event: MouseEvent, node: StarNode) => void
   // 마우스를 올린 글 별 (커지고, 자기 작은 제목은 숨김: 떠오른 큰 제목과 겹치지 않도록)
   isTarget?: boolean
+  // Card로 갈 때 큰 주제 별까지 모여들 거리 (지도 단위)
+  gather?: { x: number; y: number }
   onOpenPost: (event: MouseEvent, node: StarNode) => void
 }
 
@@ -480,11 +536,16 @@ function Star({
   onZoom,
   isTarget,
   onOpenPost,
+  gather,
 }: StarProps) {
   const className = `star star-${node.kind}${lit === false ? ' is-dim' : ''}${lit ? ' is-lit' : ''}${
     faint ? ' is-faint' : ''
   }${hideLabel ? ' is-label-hidden' : ''}${isTarget ? ' is-target' : ''}`
-  const style = { '--reveal': node.reveal, '--twinkle': (node.postId ?? 0) % 7 } as CSSProperties
+  const style = {
+    '--reveal': node.reveal,
+    '--twinkle': (node.postId ?? 0) % 7,
+    ...(gather && { '--gx': `${gather.x}px`, '--gy': `${gather.y}px` }),
+  } as CSSProperties
   const transform = `translate(${node.x} ${node.y})`
 
   if (node.kind === 'post') {
