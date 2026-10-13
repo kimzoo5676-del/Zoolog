@@ -5,7 +5,7 @@ import type { CategoryNode } from './categoryTree'
 
 // 하위 주제 색 (세이지 배경 대비 4.2:1 이상, 칸 안 세이지 숫자도 읽힘). 하위 주제가 더 많으면 반복
 export const SUB_COLORS = ['#853d2b', '#2c5f66', '#3d4a8a', '#4d5a1e', '#74315f']
-// 하위 주제 없이 큰 주제에 바로 쓴 글: 하위 주제가 있으면 차콜(구분), 없으면 첫 색
+// 하위 주제 없이 큰 주제에 바로 쓴 글: 하위 주제가 있으면 차콜(범례 없이 구분만, 소유자 결정 2026-10-13), 없으면 첫 색
 export const DIRECT_COLOR = '#252a27'
 
 export type StreakPost = PostSummary & { date: string; color: string; groupName: string }
@@ -22,12 +22,6 @@ const seoulFormatter = new Intl.DateTimeFormat('en-CA', {
 // 글 쓴 시각(UTC) → 한국 날짜 "YYYY-MM-DD"
 export function seoulDate(iso: string | Date): string {
   return seoulFormatter.format(typeof iso === 'string' ? new Date(iso) : iso)
-}
-
-export function addDays(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() + days)
-  return d.toISOString().slice(0, 10)
 }
 
 // "2026-10" → 그 달 달력 칸: 월요일 시작, 1일 앞은 빈칸(null)
@@ -67,19 +61,5 @@ export function streakOf(top: CategoryNode, posts: PostSummary[]): { posts: Stre
     const group = groupBySlug.get(post.categorySlug)
     return group ? [{ ...post, date: seoulDate(post.createdAt), color: group.color, groupName: group.name }] : []
   })
-  if (mine.some((p) => p.color === directColor && top.children.length > 0)) {
-    groups.push({ name: top.name, color: directColor })
-  }
   return { posts: mine, groups }
-}
-
-// 연속 일수: 오늘까지 글 쓴 날이 이어진 수 (오늘 아직 안 썼으면 어제부터)
-export function currentStreak(dates: Set<string>, today: string): number {
-  let day = dates.has(today) ? today : addDays(today, -1)
-  let count = 0
-  while (dates.has(day)) {
-    count++
-    day = addDays(day, -1)
-  }
-  return count
 }

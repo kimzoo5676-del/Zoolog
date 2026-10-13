@@ -5,11 +5,11 @@ import { Logo } from './Logo'
 // 단계별 시간(ms): (화면·글꼴 준비 대기) → Z 채움 → 잠시 멈춤 → 로고 이동·선 그리기 → 화면 걷힘
 const FILL_MS = 1300 // index.css .preloader .logo-accent 애니메이션 시간과 같게 유지
 const HOLD_MS = 150
-const MOVE_MS = 800
+const MOVE_MS = 800 // index.css --dur-travel과 같게 유지
 const LINE_START_MS = 150
 const LINE_MS = 600
 const LINE_STAGGER_MS = 250
-const FADE_MS = 350
+const FADE_MS = 300 // index.css --dur-fade(.preloader 투명도 전환)와 같게 유지
 
 // wait: 차콜 로고만 표시하며 화면 데이터·글꼴 준비를 기다림 (Z 채움 전)
 type Phase = 'wait' | 'fill' | 'move' | 'fade' | 'done'
@@ -116,11 +116,7 @@ export function Preloader() {
   if (!playing) return null
 
   return (
-    <PreloaderStage
-      phase={phase}
-      logoRef={logoRef}
-      logoStyle={{ transform: logoTransform }}
-    >
+    <PreloaderStage phase={phase} logoRef={logoRef} logoStyle={{ transform: logoTransform }}>
       {lines.map((line, index) => (
         <span
           key={index}
@@ -133,9 +129,10 @@ export function Preloader() {
             height: line.height,
             backgroundColor: line.color,
             // 위쪽·왼쪽 선부터 차례로 그어짐
-            animationDelay: `${LINE_START_MS + Math.round(
-              (line.vertical ? line.x / window.innerWidth : line.y / window.innerHeight) * LINE_STAGGER_MS,
-            )}ms`,
+            animationDelay: `${
+              LINE_START_MS +
+              Math.round((line.vertical ? line.x / window.innerWidth : line.y / window.innerHeight) * LINE_STAGGER_MS)
+            }ms`,
           }}
         />
       ))}

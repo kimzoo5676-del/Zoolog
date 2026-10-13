@@ -16,6 +16,13 @@
   --grid-line: 1px solid var(--color-accent-strong); /* 격자선 */
   --ease-out-soft: cubic-bezier(0.32, 0.72, 0, 1); /* 빠르게 시작해 부드럽게 멈춤 (iOS 시트 계열 곡선) */
   --ease-in-out-soft: cubic-bezier(0.65, 0, 0.25, 1); /* 천천히 출발해 가속 후 부드럽게 멈춤, 프리로더와 같은 계열. 크기·위치가 크게 바뀌는 움직임용 */
+  --ease-travel: cubic-bezier(0.7, 0, 0.2, 1); /* 요소가 다른 자리로 옮겨 가는 움직임 (프리로더 로고, 제목 공유 요소 전환) */
+  /* 움직임 시간 (2026-10-13 통일): 용도별 5단계만 사용, 프리로더·그래프 첫 등장 연출만 예외 */
+  --dur-quick: 0.2s; /* 가리킴 반응: 색, 배경, 밑줄, 살짝 커짐 */
+  --dur-fade: 0.3s; /* 투명도만 바뀌는 나타남·사라짐 */
+  --dur-ui: 0.45s; /* 작은 요소의 등장·펼침 (칩, 팁, 글자 올림) */
+  --dur-travel: 0.8s; /* 다른 자리로 이동 (프리로더 로고, 제목 공유 요소 전환) */
+  --dur-move: 1s; /* 크기·위치가 크게 바뀜 (그래프 확대, 막대 폭) */
   interpolate-size: allow-keywords; /* height: auto 같은 크기 키워드로도 전환 가능 (지원 브라우저만) */
 }
 
@@ -139,7 +146,7 @@ a {
 .roll-text {
   display: inline-block;
   padding-block: 0.2em;
-  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+  transition: transform var(--dur-ui) var(--ease-in-out-soft);
 }
 
 /* 복제본은 원래 글자 바로 아래에서 대기 (여러 줄 제목도 같은 폭으로 줄바꿈) */
@@ -176,7 +183,7 @@ a {
   display: grid;
   place-items: center;
   background-color: var(--color-bg);
-  transition: opacity 0.35s ease;
+  transition: opacity var(--dur-fade) ease;
 }
 
 /* root.tsx 인라인 스크립트가 skip으로 표시하면(이미 본 탭, 움직임 줄이기) 처음부터 숨김 */
@@ -192,7 +199,7 @@ a {
 .preloader .logo {
   font-size: clamp(3.5rem, 14vw, 9rem);
   transform-origin: 0 0;
-  transition: transform 0.8s cubic-bezier(0.7, 0, 0.2, 1);
+  transition: transform var(--dur-travel) var(--ease-travel);
 }
 
 /* Z 채움: 아래 절반 진한 러스트, 위 절반 차콜인 2배 높이 배경을 글자 모양으로 잘라(background-clip: text) 위로 밀어 올림
@@ -302,8 +309,8 @@ a {
   text-decoration: none;
   border-right: var(--grid-line);
   transition:
-    color 0.15s ease,
-    background-color 0.15s ease;
+    color var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
 }
 
 .site-brand-link[aria-current="page"],
@@ -332,8 +339,8 @@ a {
   font-weight: 600;
   text-decoration: none;
   transition:
-    color 0.15s ease,
-    background-color 0.15s ease;
+    color var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
 }
 
 /* 현재 주제, 마우스를 올린 주제: 진한 러스트 칸 + 세이지 글자 (4.59:1). NavLink가 aria-current="page" 자동 설정
@@ -891,7 +898,7 @@ a {
   display: inline-flex;
   align-items: stretch;
   border: 1px dashed var(--color-accent-strong);
-  transition: border-color 0.3s var(--ease-out-soft);
+  transition: border-color var(--dur-quick) var(--ease-out-soft);
 }
 
 .chip-add.is-open {
@@ -911,8 +918,8 @@ a {
   border: 0;
   cursor: pointer;
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+    color var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
 }
 
 .chip-add-toggle:hover {
@@ -924,7 +931,7 @@ a {
 .chip-add-icon {
   display: block;
   line-height: 1;
-  transition: transform 0.5s var(--ease-out-soft);
+  transition: transform var(--dur-ui) var(--ease-out-soft);
 }
 
 .is-open .chip-add-icon {
@@ -935,7 +942,7 @@ a {
 .chip-add-field {
   display: grid;
   grid-template-columns: 0fr;
-  transition: grid-template-columns 0.5s var(--ease-out-soft);
+  transition: grid-template-columns var(--dur-ui) var(--ease-out-soft);
 }
 
 .is-open .chip-add-field {
@@ -955,8 +962,8 @@ a {
   opacity: 0;
   transform: translateY(0.4rem);
   transition:
-    opacity 0.3s ease,
-    transform 0.5s var(--ease-out-soft);
+    opacity var(--dur-fade) ease,
+    transform var(--dur-ui) var(--ease-out-soft);
 }
 
 .is-open .chip-add-inner input,
@@ -1008,10 +1015,10 @@ a {
 .chip,
 .picker-row-sub {
   transition:
-    opacity 0.4s ease,
-    translate 0.5s var(--ease-out-soft),
-    color 0.15s ease,
-    background-color 0.15s ease;
+    opacity var(--dur-fade) ease,
+    translate var(--dur-ui) var(--ease-out-soft),
+    color var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
 }
 
 @starting-style {
@@ -1144,7 +1151,7 @@ a {
   text-decoration-thickness: 2px;
   text-underline-offset: 0.35em;
   cursor: pointer;
-  transition: text-decoration-thickness 0.2s ease;
+  transition: text-decoration-thickness var(--dur-quick) ease;
 }
 
 .more-button:hover {
@@ -1215,9 +1222,9 @@ a {
   pointer-events: none;
   /* 폭이 바뀌는 속도를 확대 움직임(1.1초)과 비슷하게: 너무 빠르면 "뚝딱" 느낌 */
   transition:
-    opacity 0.5s ease,
-    translate 0.9s var(--ease-in-out-soft),
-    width 0.9s var(--ease-in-out-soft);
+    opacity var(--dur-fade) ease,
+    translate var(--dur-move) var(--ease-in-out-soft),
+    width var(--dur-move) var(--ease-in-out-soft);
 }
 
 .constellation-bar.is-visible {
@@ -1266,8 +1273,8 @@ a {
   border: 1px solid var(--color-accent-strong);
   border-bottom-width: 3px; /* 키보드 키처럼 아래 두께 (그림자 대신 평면 테두리) */
   transition:
-    translate 0.15s ease,
-    border-bottom-width 0.15s ease;
+    translate var(--dur-quick) ease,
+    border-bottom-width var(--dur-quick) ease;
 }
 
 /* 누르는 느낌: 아래 두께만큼 내려앉음 */
@@ -1308,8 +1315,8 @@ a {
 
 .bar-trail li {
   transition:
-    opacity 0.6s ease,
-    translate 0.9s var(--ease-in-out-soft);
+    opacity var(--dur-fade) ease,
+    translate var(--dur-move) var(--ease-in-out-soft);
 }
 
 @starting-style {
@@ -1340,7 +1347,7 @@ a {
    이름표는 등장 애니메이션(label-in)이 투명도를 덮어쓰므로 visibility로 숨김 */
 .star.is-target .star-core {
   scale: 2.4;
-  transition: scale 0.45s var(--ease-out-soft);
+  transition: scale var(--dur-ui) var(--ease-out-soft);
 }
 
 .star.is-target .star-label {
@@ -1356,7 +1363,7 @@ a {
   gap: 0.125rem;
   max-width: min(26rem, 70vw);
   pointer-events: none;
-  animation: title-grow 0.45s var(--ease-out-soft) both;
+  animation: title-grow var(--dur-ui) var(--ease-out-soft) both;
 }
 
 .hover-title.is-right {
@@ -1414,7 +1421,7 @@ a {
 /* 축소된 지도: 작은 주제 이름은 그 별자리를 가리킬 때만 (이름끼리 겹치지 않도록) */
 .star.is-label-hidden .star-label {
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity var(--dur-fade) ease;
 }
 
 .star.is-label-hidden.is-lit .star-label,
@@ -1427,7 +1434,7 @@ a {
   stroke: var(--color-accent);
   stroke-dasharray: 1;
   opacity: 0.45;
-  transition: opacity 0.4s var(--ease-out-soft);
+  transition: opacity var(--dur-ui) var(--ease-out-soft);
   animation: edge-draw 1.1s var(--ease-out-soft) calc(0.3s + var(--reveal) * 0.9s) both;
 }
 
@@ -1451,7 +1458,7 @@ a {
 .star {
   cursor: pointer;
   outline: none;
-  transition: opacity 0.4s var(--ease-out-soft);
+  transition: opacity var(--dur-ui) var(--ease-out-soft);
 }
 
 .constellation.has-focus .star.is-dim {
@@ -1477,7 +1484,7 @@ a {
   transform-origin: center;
   /* 등장: 가운데에서 가까운 별부터 바깥으로 물결처럼 커지며 나타남 */
   animation: star-in 0.9s var(--ease-out-soft) calc(var(--reveal) * 0.9s) both;
-  transition: scale 0.35s var(--ease-out-soft);
+  transition: scale var(--dur-ui) var(--ease-out-soft);
 }
 
 .star:hover .star-core,
@@ -1533,7 +1540,7 @@ a {
 /* 확대했을 때 글 별 옆 제목 */
 .star-post-label {
   font-weight: 600;
-  animation: label-in 0.4s ease both;
+  animation: label-in var(--dur-fade) ease both;
 }
 
 /* 범례: 지도 왼쪽 아래 작은 대문자 라벨 + 모양 */
@@ -1605,11 +1612,11 @@ a {
 
 /* 화면 전환(View Transition, 별 확대 뒤 주제 화면으로): 이전 화면이 흐려지며 새 화면이 떠오름 */
 ::view-transition-old(root) {
-  animation: 0.35s var(--ease-out-soft) both vt-fade-out;
+  animation: var(--dur-ui) var(--ease-out-soft) both vt-fade-out;
 }
 
 ::view-transition-new(root) {
-  animation: 0.5s var(--ease-out-soft) both vt-rise-in;
+  animation: var(--dur-ui) var(--ease-out-soft) both vt-rise-in;
 }
 
 @keyframes vt-fade-out {
@@ -1627,8 +1634,8 @@ a {
 
 /* 제목 이동 (공유 요소 전환): 프리로더 로고 이동과 같은 0.8초, cubic-bezier(0.7, 0, 0.2, 1) */
 ::view-transition-group(post-title) {
-  animation-duration: 0.8s;
-  animation-timing-function: cubic-bezier(0.7, 0, 0.2, 1);
+  animation-duration: var(--dur-travel);
+  animation-timing-function: var(--ease-travel);
 }
 
 /* 작은 제목 → 큰 제목: 가로세로 비율이 달라도 글자가 늘어나 보이지 않게 높이 기준으로 맞춤 */
@@ -1642,11 +1649,11 @@ a {
 
 /* 출발·도착 제목이 오래 겹쳐 잔상(이중 글자)이 보이지 않도록 교차 시간을 짧게 */
 ::view-transition-old(post-title) {
-  animation: 0.25s ease both vt-fade-out;
+  animation: var(--dur-fade) ease both vt-fade-out;
 }
 
 ::view-transition-new(post-title) {
-  animation: 0.3s ease both vt-fade-in;
+  animation: var(--dur-fade) ease both vt-fade-in;
 }
 
 @keyframes vt-fade-in {
@@ -1681,8 +1688,8 @@ a {
   color: var(--color-text-muted);
   text-decoration: none;
   transition:
-    color 0.3s ease,
-    background-color 0.3s ease;
+    color var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
 }
 
 .view-switch a + a {
@@ -1757,8 +1764,8 @@ a {
   border: var(--grid-line);
   cursor: pointer;
   transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+    color var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
 }
 
 .month-nav-button:hover:not(:disabled) {
@@ -1776,7 +1783,7 @@ a {
 .streak-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-  animation: streak-in 0.45s var(--ease-out-soft) both;
+  animation: streak-in var(--dur-ui) var(--ease-out-soft) both;
 }
 
 @keyframes streak-in {
@@ -1789,7 +1796,7 @@ a {
 .streak-card {
   display: grid;
   align-content: start;
-  gap: 1rem;
+  gap: 1.25rem;
   margin: 0 -1px -1px 0;
   padding: 1.5rem var(--cell-pad-x) 1.75rem;
   border-right: var(--grid-line);
@@ -1803,31 +1810,7 @@ a {
   line-height: 1.25;
 }
 
-.streak-numbers {
-  display: flex;
-  gap: 2rem;
-}
-
-.streak-numbers p {
-  display: grid;
-  margin: 0;
-}
-
-.streak-numbers strong {
-  font-size: 2.75rem;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  letter-spacing: -0.03em;
-}
-
-.streak-numbers span {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-/* 한 달 달력: 월~일 7열이 카드 폭을 채움 */
+/* 한 달 달력: 월~일 7열이 카드 폭을 채움. 글 쓴 날만 색 칸, 나머지는 숫자만 */
 .streak-calendar {
   position: relative;
   display: grid;
@@ -1847,30 +1830,28 @@ a {
   aspect-ratio: 1;
   padding: 0;
   font: inherit;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-muted);
-  background: color-mix(in srgb, var(--color-surface) 60%, transparent);
+  background: none;
   border: 0;
 }
 
 .streak-day.is-today {
+  font-weight: 900;
   color: var(--color-text);
-  outline: 1px dashed var(--color-accent-strong);
-  outline-offset: -1px;
 }
 
 .streak-day.is-future {
-  background: none;
-  opacity: 0.35;
+  opacity: 0.4;
 }
 
-/* 글 쓴 날: 하위 주제 색 칸 + 세이지 숫자 (색은 인라인 style) */
+/* 글 쓴 날: 하위 주제 색 N등분 + 세이지 숫자 (색은 인라인 style) */
 .streak-day.is-filled {
   color: var(--color-bg);
   cursor: pointer;
-  transition: scale 0.2s var(--ease-out-soft);
+  transition: scale var(--dur-quick) var(--ease-out-soft);
 }
 
 .streak-day.is-filled:hover,
@@ -1878,73 +1859,122 @@ a {
   scale: 1.1;
 }
 
-/* 그날 글 팁: 칸 아래에서 작게 시작해 커지며 나타남 */
-.streak-tip {
+/* 그날 글 팝오버 (Apple HIG Popovers): 화살표가 칸을 가리킴, 칸 아래에 떠서 칸을 가리지 않음
+   다른 칸으로 옮기면 같은 팝오버가 미끄러져 이동, 처음에는 화살표 쪽에서 작게 시작해 커짐. 평면(그림자 없음) */
+.streak-pop {
   position: absolute;
   z-index: 5;
-  min-width: 12rem;
-  max-width: min(20rem, 100%);
-  /* 하루에 글이 많으면 팁 안에서 스크롤 */
-  max-height: 18rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: 0.75rem 0.875rem;
+  padding: 0.25rem 0;
   background-color: var(--color-bg);
   border: 1px solid var(--color-accent-strong);
-  transform-origin: top left;
+  transform-origin: var(--arrow-x) top;
   transition:
-    opacity 0.3s ease,
-    scale 0.4s var(--ease-out-soft);
-}
-
-.streak-tip[style*="right"] {
-  transform-origin: top right;
+    left var(--dur-ui) var(--ease-out-soft),
+    top var(--dur-ui) var(--ease-out-soft),
+    opacity var(--dur-fade) ease,
+    scale var(--dur-ui) var(--ease-out-soft);
 }
 
 @starting-style {
-  .streak-tip {
+  .streak-pop {
     opacity: 0;
-    scale: 0.92;
+    scale: 0.94;
   }
 }
 
-.streak-tip ul {
+/* 화살표: 테두리 색 삼각형 위에 배경색 삼각형을 1px 겹침 */
+.streak-pop::before,
+.streak-pop::after {
+  content: "";
+  position: absolute;
+  left: var(--arrow-x);
+  border: 8px solid transparent;
+  border-top: 0;
+  translate: -50% 0;
+  transition: left var(--dur-ui) var(--ease-out-soft);
+}
+
+.streak-pop::before {
+  top: -9px;
+  border-bottom-color: var(--color-accent-strong);
+}
+
+.streak-pop::after {
+  top: -8px;
+  border-bottom-color: var(--color-bg);
+}
+
+/* 목록: 4편까지 보이고 펼치면 같은 자리에서 늘어남 (높이 전환), 아주 길 때만 안에서 스크롤 */
+.streak-pop-list {
   display: grid;
-  gap: 0.625rem;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   list-style: none;
+  transition: height var(--dur-ui) var(--ease-out-soft);
 }
 
-.streak-tip li {
+.streak-pop-list[data-scroll="true"] {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.streak-pop-list li {
   display: grid;
-  gap: 0.125rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
 }
 
-.streak-tip-group {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.streak-pop-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--color-line) 60%, transparent);
 }
 
-.streak-tip-title {
-  font-size: 1rem;
+.streak-pop-title {
+  font-size: 0.9375rem;
   font-weight: 800;
   line-height: 1.35;
   color: var(--color-text);
   text-decoration: underline;
   text-decoration-color: transparent;
   text-underline-offset: 0.2em;
-  transition: text-decoration-color 0.2s ease;
+  transition: text-decoration-color var(--dur-quick) ease;
 }
 
-.streak-tip-title:hover,
-.streak-tip-title:focus-visible {
+.streak-pop-title:hover,
+.streak-pop-title:focus-visible {
   text-decoration-color: var(--color-accent-strong);
+}
+
+.streak-pop-more {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.875rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: left;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--color-line) 60%, transparent);
+  cursor: pointer;
+  transition: color var(--dur-quick) ease;
+}
+
+.streak-pop-more:hover {
+  color: var(--color-text);
+}
+
+/* 색 점 (범례·팝오버 공용) */
+.streak-dot {
+  display: inline-block;
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
 }
 
 /* 색 범례 (그래프 범례와 같은 작은 대문자 라벨) */
@@ -1967,20 +1997,16 @@ a {
   gap: 0.375rem;
 }
 
-.streak-swatch {
-  display: inline-block;
-  flex: none;
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .streak-grid {
     animation: none;
   }
 
   .streak-day.is-filled,
-  .streak-tip {
+  .streak-pop,
+  .streak-pop::before,
+  .streak-pop::after,
+  .streak-pop-list {
     transition: none;
   }
 }
