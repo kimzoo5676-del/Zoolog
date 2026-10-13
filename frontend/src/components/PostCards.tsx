@@ -20,6 +20,7 @@ export function PostCards({ posts }: { posts: PostSummary[] }) {
             <Link
               to={href('/posts/:postId', { postId: String(post.id) })}
               viewTransition
+              onClick={markFadeTransition}
               className="post-card-link roll-trigger"
             >
               <span className="post-card-title">
@@ -54,4 +55,10 @@ export function PostCards({ posts }: { posts: PostSummary[] }) {
 
 function emptyCount(count: number): number {
   return count === 0 ? 8 : (8 - (count % 8)) % 8
+}
+
+// 이번 화면 전환만 페이드 방식으로 (index.css :root[data-vt="fade"]), 전환이 끝날 즈음 표시를 지움
+function markFadeTransition() {
+  document.documentElement.dataset.vt = 'fade'
+  window.setTimeout(() => delete document.documentElement.dataset.vt, 1200)
 }

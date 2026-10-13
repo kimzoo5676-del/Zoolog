@@ -1649,6 +1649,18 @@ a {
   animation: var(--dur-fade) ease both vt-fade-in;
 }
 
+/* 글 카드 → 글 화면 (2026-10-13 소유자 결정: 공유 요소 없이 페이드): 이전 화면이 먼저 흐려지고, 조금 뒤 글 화면이 살짝 떠오름
+   카드를 누를 때 :root[data-vt="fade"]를 잠깐 붙임 (PostCards). 글 화면 제목(post-title)도 화면과 함께 떠오르게 해 먼저 튀어나오지 않도록 */
+:root[data-vt="fade"]::view-transition-old(root),
+:root[data-vt="fade"]::view-transition-old(category-board) {
+  animation: var(--dur-ui) ease both vt-fade-out;
+}
+
+:root[data-vt="fade"]::view-transition-new(root),
+:root[data-vt="fade"]::view-transition-new(post-title) {
+  animation: var(--dur-ui) var(--ease-out-soft) var(--dur-fade) both vt-rise-in;
+}
+
 /* 하위 주제 판 ↔ 판(2칸 → 4칸 → 글 카드): 판 자리와 크기는 이어지고 내용은 서서히 흐려지며 바뀜 */
 ::view-transition-group(category-board) {
   animation-duration: var(--dur-travel);
