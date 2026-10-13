@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { href, Link, NavLink, Outlet, useParams, type ShouldRevalidateFunctionArgs } from 'react-router'
+import { useLayoutEffect, useMemo, useState } from 'react'
+import { href, Link, NavLink, Outlet, useLocation, useParams, type ShouldRevalidateFunctionArgs } from 'react-router'
 import { fetchMe } from '../api/auth'
 import { fetchCategories } from '../api/category'
 import { AuthShortcut } from '../components/AuthShortcut'
@@ -9,6 +9,7 @@ import { RollText } from '../components/RollText'
 import { MapHighlightContext } from '../hooks/mapHighlight'
 import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree'
 import { onlyFocusChanged } from '../utils/focusParam'
+import { clearPendingNames, nameForTransition } from '../utils/viewTransition'
 import type { Route } from './+types/blog-layout'
 
 // request.signal: 다른 링크로 이동하면 라우터가 진행 중인 요청을 취소 (기존 ignore 플래그 대체)
@@ -28,6 +29,9 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
   // 아래 단계 주제 화면이면 그 큰 주제 메뉴도 활성 표시
   const { slug: currentSlug } = useParams()
   const [highlightSlug, setHighlightSlug] = useState<string | null>(null)
+  // 메뉴를 눌러 붙인 전환 이름은 새 화면이 그려지는 순간 지움 (새 화면 제목과 겹치지 않도록)
+  const { key: locationKey } = useLocation()
+  useLayoutEffect(() => clearPendingNames(), [locationKey])
   const highlight = useMemo(() => ({ slug: highlightSlug, setSlug: setHighlightSlug }), [highlightSlug])
 
   return (
@@ -40,7 +44,12 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
               <Logo />
             </Link>
             {/* 로고 옆 칸: Streak(모두), 글쓰기(소유자 로그인 시만). 주제 메뉴와 섞이지 않도록 */}
-            <NavLink to={href('/streak')} className="site-brand-link roll-trigger">
+            <NavLink
+              to={href('/streak')}
+              viewTransition
+              className="site-brand-link roll-trigger"
+              onClick={(e) => nameForTransition(e.currentTarget.querySelector('.roll'), 'streak-title')}
+            >
               <RollText>Streak</RollText>
             </NavLink>
             {me && (
@@ -59,6 +68,9 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
                     className={({ isActive }) =>
                       isActive || hasSlug(category.children, currentSlug) ? 'roll-trigger is-active' : 'roll-trigger'
                     }
+                    viewTransition
+                    // 메뉴 글자가 주제 화면 제목 자리로 이어서 이동 (주제 칸과 같은 전환 이름 cat-<id>)
+                    onClick={(e) => nameForTransition(e.currentTarget.querySelector('.roll'), `cat-${category.id}`)}
                     onPointerEnter={() => setHighlightSlug(category.slug)}
                     onPointerLeave={() => setHighlightSlug(null)}
                     onFocus={() => setHighlightSlug(category.slug)}

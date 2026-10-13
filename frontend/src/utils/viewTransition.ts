@@ -10,3 +10,25 @@ export function categoryTitleTransition(id: number): CSSProperties {
 export function topTileTransition(id: number): CSSProperties {
   return { viewTransitionName: `tile-${id}`, viewTransitionClass: 'gather-tile' } as CSSProperties
 }
+
+// 머리글 메뉴 → 화면 제목: 누른 메뉴 글자에 다음 화면 제목과 같은 전환 이름을 잠깐 줌
+// 머리글은 화면이 바뀌어도 그대로 남는 요소라 새 화면에서는 이름을 지워야 함 (제목과 이름이 겹치면 전환이 통째로 건너뛰어짐)
+// → blog-layout이 주소가 바뀌는 순간(useLayoutEffect, 새 화면 캡처 전) clearPendingNames() 호출
+const pending = new Set<HTMLElement>()
+
+export function nameForTransition(element: Element | null, name: string) {
+  if (!(element instanceof HTMLElement)) return
+  // 이미 같은 이름을 가진 요소가 있으면(예: Category 화면의 같은 주제 칸) 그쪽이 이어지도록 양보
+  if (document.querySelector(`[style*="view-transition-name: ${name};"]`)) return
+  element.style.setProperty('view-transition-name', name)
+  element.style.setProperty('view-transition-class', 'category-title')
+  pending.add(element)
+}
+
+export function clearPendingNames() {
+  for (const element of pending) {
+    element.style.removeProperty('view-transition-name')
+    element.style.removeProperty('view-transition-class')
+  }
+  pending.clear()
+}

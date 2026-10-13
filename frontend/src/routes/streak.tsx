@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { fetchPosts } from '../api/post'
 import { PageHeader } from '../components/PageHeader'
 import { RouteError } from '../components/RouteError'
@@ -30,7 +30,10 @@ export default function Streak({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <title>Streak | zoolog</title>
-      <PageHeader title="Streak">
+      <PageHeader
+        title="Streak"
+        titleStyle={{ viewTransitionName: 'streak-title', viewTransitionClass: 'category-title' } as CSSProperties}
+      >
         <nav className="month-nav" aria-label="달 이동">
           <button
             type="button"
