@@ -406,8 +406,8 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
           ))}
         </svg>
 
-        {/* Card로 갈 때: 큰 주제 별 자리에 그 주제 칸 색의 표지가 생기고(별들이 모여드는 동안 커짐),
-            화면 전환에서 이 표지가 Category 화면의 칸 자리로 날아가 칸으로 커짐 (tile-<id>) */}
+        {/* Card로 갈 때: 큰 주제 별 자리에서 별이 칸 색으로 커지고(별들이 모여드는 동안),
+            화면 전환에서 별 모양 그대로 Category 화면의 칸 자리로 날아가며 커지다 칸으로 바뀜 (tile-<id>) */}
         {gathering && (
           <div className="gather-markers" aria-hidden="true">
             {topNodes.map((node, i) => (
@@ -419,7 +419,12 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
                   top: (node.y - box.y) * scale + offsetY,
                   ...topTileTransition(Number(node.id.slice(4))),
                 }}
-              />
+              >
+                {/* 그래프의 큰 주제 별과 같은 모양 (칸 색) */}
+                <svg viewBox="-14 -14 28 28" focusable="false">
+                  <StarShape depth={1} px={1} />
+                </svg>
+              </span>
             ))}
           </div>
         )}

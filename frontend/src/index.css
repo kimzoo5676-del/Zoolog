@@ -1508,7 +1508,8 @@ a {
   }
 }
 
-/* 모여든 별 표지: 큰 주제 별 자리에서 별들이 모여드는 동안 작게 시작해 커짐 (칸 색, 다음 화면에서 칸으로 날아감) */
+/* 모여든 별 표지: 큰 주제 별 자리에서 그래프 별 크기로 시작해 칸 색으로 커짐 (사각형이 아니라 별 모양 유지)
+   다음 화면에서 별 모양 그대로 칸 자리로 날아가며 커지다 칸으로 바뀜 */
 .gather-markers {
   position: absolute;
   inset: 0;
@@ -1516,25 +1517,40 @@ a {
 }
 
 .gather-marker {
+  --marker-size: 4.5rem;
   position: absolute;
-  width: 2.5rem;
-  height: 2.5rem;
-  margin: -1.25rem 0 0 -1.25rem;
-  background-color: var(--color-accent);
+  width: var(--marker-size);
+  height: var(--marker-size);
+  margin: calc(var(--marker-size) / -2) 0 0 calc(var(--marker-size) / -2);
+  color: var(--color-accent);
   transition:
     scale var(--dur-travel) var(--ease-in-out-soft),
-    opacity var(--dur-fade) ease;
+    color var(--dur-travel) ease;
+}
+
+.gather-marker svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
 }
 
 .gather-marker.is-dark {
-  background-color: var(--color-accent-strong);
+  color: var(--color-accent-strong);
 }
 
+/* 시작: 그래프의 큰 주제 별 크기(지름 약 28px)와 색 */
 @starting-style {
   .gather-marker {
-    scale: 0;
-    opacity: 0;
+    scale: 0.4;
+    color: var(--color-accent);
   }
+}
+
+/* 표지가 덮는 원래 큰 주제 별은 함께 사라짐 (별이 두 개로 보이지 않도록) */
+.constellation.is-gathering .star-top .star-core {
+  opacity: 0;
+  transition: opacity var(--dur-fade) ease;
 }
 
 /* Card로 갈 때: 하위 주제·글 별이 각자의 큰 주제 별로 모여들며 사라지고(선도 함께 사라짐), 큰 주제 별은 살짝 커짐
@@ -1549,11 +1565,6 @@ a {
 .constellation.is-gathering .star:not(.star-top) {
   translate: var(--gx, 0) var(--gy, 0);
   opacity: 0;
-}
-
-.constellation.is-gathering .star-top .star-core {
-  scale: 1.5;
-  transition: scale var(--dur-travel) var(--ease-in-out-soft);
 }
 
 .constellation.is-gathering .constellation-edges line,
@@ -1658,12 +1669,14 @@ a {
   animation-timing-function: var(--ease-travel);
 }
 
+/* 별은 모양을 유지한 채(비율 고정) 칸 크기 쪽으로 커지며 흐려지고, 칸은 이동이 절반쯤 지나 나타남 */
 ::view-transition-old(*.gather-tile) {
-  animation: var(--dur-fade) ease both vt-fade-out;
+  object-fit: contain;
+  animation: calc(var(--dur-travel) * 0.5) ease calc(var(--dur-travel) * 0.3) both vt-fade-out;
 }
 
 ::view-transition-new(*.gather-tile) {
-  animation: var(--dur-fade) ease both vt-fade-in;
+  animation: calc(var(--dur-travel) * 0.45) ease calc(var(--dur-travel) * 0.45) both vt-fade-in;
 }
 
 /* 홈 그래프의 Card 글자 → Category 화면 제목: 자리·크기는 이어지고 글자는 Card에서 Category로 서서히 바뀜 */
