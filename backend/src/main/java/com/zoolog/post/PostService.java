@@ -50,6 +50,8 @@ public class PostService {
         Post post = getPostWithCategory(id);
         post.update(getCategory(request.categoryId()), request.title(), request.content());
         imageService.syncImages(post);
+        // 수정 시각(@LastModifiedDate)은 DB 반영(flush) 때 정해지므로 먼저 반영한 뒤 응답을 만듦 (안 하면 이전 updatedAt)
+        postRepository.flush();
         return PostDetailResponse.from(post);
     }
 

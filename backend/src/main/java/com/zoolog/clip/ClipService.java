@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.temporal.WeekFields;
 import java.util.Objects;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +56,12 @@ public class ClipService {
         Category month = findOrCreate(monthName(request.date()), top);
         Category week = findOrCreate(weekName(request.date()), month);
         PostDetailResponse created = postService.create(new PostRequest(week.getId(), title(request), content(request, url)));
-        clipRepository.save(new NewsClip(url.toString(), postRepository.getReferenceById(created.id())));
+        try {
+            clipRepository.save(new NewsClip(url.toString(), postRepository.getReferenceById(created.id())));
+        } catch (DataIntegrityViolationException e) {
+            // 같은 기사를 동시에 두 번 게시: 먼저 저장된 쪽만 남고 이 요청은 글까지 롤백
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 스크랩한 기사예요");
+        }
         return created;
     }
 
@@ -109,6 +115,15 @@ public class ClipService {
                     }
                     return found;
                 })
-                .orElseGet(() -> categoryRepository.save(new Category(name, slug, parent)));
+                .orElseGet(() -> create(name, slug, parent));
+    }
+
+    // 두 요청이 동시에 같은 주제를 만들면 한쪽이 UNIQUE 위반: 500 대신 409로 다시 시도를 안내
+    private Category create(String name, String slug, Category parent) {
+        try {
+            return categoryRepository.save(new Category(name, slug, parent));
+        } catch (DataIntegrityViolationException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "잠시 후 다시 시도해 주세요");
+        }
     }
 }

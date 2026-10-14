@@ -134,6 +134,23 @@ class PostWriteApiTest {
     }
 
     @Test
+    @DisplayName("수정 응답의 updatedAt은 이번 수정 시각이다")
+    void updateResponseHasNewUpdatedAt() throws Exception {
+        Post post = postRepository.saveAndFlush(new Post(category, "원래 제목", "원래 본문"));
+        java.time.Instant before = post.getUpdatedAt();
+        Thread.sleep(5);
+
+        String response = mockMvc.perform(put("/api/posts/{id}", post.getId()).with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(category.getId(), "새 제목", "새 본문")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        String updatedAt = com.jayway.jsonpath.JsonPath.read(response, "$.updatedAt");
+        assertThat(java.time.Instant.parse(updatedAt)).isAfter(before);
+    }
+
+    @Test
     @DisplayName("없는 글을 수정하면 404를 받는다")
     void updateMissing() throws Exception {
         mockMvc.perform(put("/api/posts/{id}", -1).with(oidcLogin()).with(csrf())

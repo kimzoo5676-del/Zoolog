@@ -14,6 +14,8 @@ import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -54,8 +56,18 @@ public class ImageService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNSUPPORTED_MEDIA_TYPE, "JPEG, PNG, GIF, WebP 이미지만 올릴 수 있어요"));
         String fileName = UUID.randomUUID() + "." + type.extension;
-        storage.put(KEY_PREFIX + fileName, type.contentType, bytes);
-        postImageRepository.save(new PostImage(KEY_PREFIX + fileName, type.contentType, clock.instant()));
+        String key = KEY_PREFIX + fileName;
+        postImageRepository.save(new PostImage(key, type.contentType, clock.instant()));
+        // 저장소 업로드는 DB 트랜잭션 밖이라 롤백되지 않음: 기록 저장(커밋)이 실패하면 올린 파일을 지워 기록 없는 파일이 남지 않게 함
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    storage.delete(key);
+                }
+            }
+        });
+        storage.put(key, type.contentType, bytes);
         return new ImageResponse(URL_PREFIX + fileName);
     }
 
