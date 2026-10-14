@@ -653,7 +653,6 @@ a {
 
 .markdown thead th {
   font-weight: 800;
-  border-bottom: var(--grid-line);
 }
 
 /* GFM 체크리스트(- [ ] 할 일): 글머리 기호 대신 체크박스 표시 (remark-gfm이 붙이는 클래스) */
@@ -735,12 +734,12 @@ a {
   letter-spacing: -0.04em;
 }
 
-/* 뉴스 스크랩 코멘트 화면 (clip-new): 편집기 머리 칸 구성 + 질문 라벨 + 코멘트 칸 + 하단 고정 바 */
+/* 뉴스 스크랩 화면 (clip-new): 글 편집기와 같은 구성. 제목은 고칠 수 없어 입력 칸 대신 편집기 제목과 같은 크기의 글자 */
 .clip-title {
   margin: 0.75rem 0 0;
-  font-size: clamp(1.75rem, 4.5vw, 2.75rem);
+  font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 900;
-  line-height: 1.2;
+  line-height: 1.15;
   letter-spacing: -0.04em;
 }
 
@@ -758,28 +757,13 @@ a {
   text-underline-offset: 0.2em;
 }
 
-.clip-body {
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-  padding: 2rem var(--cell-pad-x);
-}
-
+/* 이미 스크랩한 기사: 본문 칸 자리에 안내와 그 글 링크 */
 .clip-notice {
+  margin: 0;
+  padding: 2rem var(--cell-pad-x);
   font-size: 1.25rem;
   font-weight: 800;
-}
-
-.clip-comment {
-  width: 100%;
-  padding: 1rem;
-  font: inherit;
-  font-size: 1.0625rem;
-  line-height: 1.7;
-  color: var(--color-text);
-  background: transparent;
-  border: var(--grid-line);
-  resize: vertical;
+  border-bottom: var(--grid-line);
 }
 
 /* 주제 선택 (CategoryPicker): 줄마다 작은 라벨 | 칩들 | (만들기 글자 버튼)

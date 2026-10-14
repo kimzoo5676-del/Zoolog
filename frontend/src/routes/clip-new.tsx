@@ -1,7 +1,10 @@
+import { useRef, useState } from 'react'
 import { data, Form, href, Link, redirect, useNavigation } from 'react-router'
 import { createClip, findClippedPostId } from '../api/clip'
+import { MarkdownContent } from '../components/MarkdownContent'
 import { RouteError } from '../components/RouteError'
-import { clipMonthName, clipWeekName, isHttpUrl, parseClipDate } from '../utils/clip'
+import { usePreviewTip } from '../hooks/usePreviewTip'
+import { clipMarkdown, clipMonthName, clipWeekName, isHttpUrl, parseClipDate } from '../utils/clip'
 import { errorMessage } from '../utils/postForm'
 import { requireOwner } from '../utils/requireOwner'
 import type { Route } from './+types/clip-new'
@@ -48,12 +51,18 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   }
 }
 
+// 뉴스 스크랩도 글 편집기와 같은 구성 (2026-10-15 소유자 요청): 머리 칸(경로·제목·원문 보기) → 원문 | 미리보기 → 하단 고정 바
+// 제목·주제는 메일 링크로 정해져 있어 고칠 칸이 없고, 본문 칸에 코멘트만 마크다운으로 씀
+// 미리보기는 실제로 게시될 글 본문(기사 제목 링크 · 언론사 + 코멘트), 좁은 화면은 편집기와 같은 미리보기 팁
 export default function ClipNew({ loaderData, actionData }: Route.ComponentProps) {
   const { clippedPostId, title, url, source, date, path, heading } = loaderData
   const submitting = useNavigation().state === 'submitting'
+  const [comment, setComment] = useState('')
+  const contentRef = useRef<HTMLTextAreaElement>(null)
+  const tip = usePreviewTip(contentRef)
 
   return (
-    <Form method="post" viewTransition className="clip-form">
+    <Form method="post" viewTransition className="editor">
       <title>뉴스 스크랩 | zoolog</title>
       <div className="editor-head">
         <p className="eyebrow">{path}</p>
@@ -65,29 +74,33 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
           </a>
         </p>
       </div>
-      <div className="clip-body">
-        {clippedPostId === null ? (
-          // 질문은 쓰지 않음 (2026-10-15 소유자 결정): 메일 링크의 옛 q 값도 무시
+      {clippedPostId === null ? (
+        <div className="editor-panes">
           <textarea
-            id="clip-comment"
+            ref={contentRef}
             name="comment"
-            className="clip-comment"
-            aria-label="코멘트"
-            placeholder="코멘트"
-            rows={4}
+            className="editor-content"
+            aria-label="코멘트 (마크다운)"
+            placeholder="코멘트를 마크다운으로 작성"
             maxLength={500}
             required
             autoFocus
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            {...tip.contentProps}
           />
-        ) : (
-          <p className="clip-notice">
-            이미 스크랩한 기사예요.{' '}
-            <Link to={href('/posts/:postId', { postId: String(clippedPostId) })} viewTransition>
-              스크랩한 글 보기
-            </Link>
-          </p>
-        )}
-      </div>
+          <section className="editor-preview" aria-label="미리보기" {...tip.previewProps}>
+            <MarkdownContent>{clipMarkdown(title, url, source, comment)}</MarkdownContent>
+          </section>
+        </div>
+      ) : (
+        <p className="clip-notice">
+          이미 스크랩한 기사예요.{' '}
+          <Link to={href('/posts/:postId', { postId: String(clippedPostId) })} viewTransition>
+            스크랩한 글 보기
+          </Link>
+        </p>
+      )}
       <input type="hidden" name="title" value={title} />
       <input type="hidden" name="url" value={url} />
       <input type="hidden" name="source" value={source} />
@@ -96,6 +109,11 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
         <Link to="/" viewTransition className="button-link">
           나가기
         </Link>
+        {clippedPostId === null && (
+          <button type="button" className="button-link editor-preview-toggle" {...tip.toggleProps}>
+            미리보기
+          </button>
+        )}
         {actionData?.error && (
           <p className="form-error" role="alert">
             {actionData.error}

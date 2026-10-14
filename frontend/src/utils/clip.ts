@@ -26,3 +26,10 @@ export function isHttpUrl(value: string | null) {
     return false
   }
 }
+
+// 게시될 글 본문 (백엔드 ClipService.content와 같은 모양): [기사 제목](<주소>) · 언론사 + 빈 줄 + 코멘트
+// 제목의 \ [ ] 는 링크 문법이 깨지지 않도록 이스케이프, 꺾쇠로 감싼 주소는 괄호가 들어 있어도 링크 유지
+export function clipMarkdown(title: string, url: string, source: string, comment: string) {
+  const link = `[${title.trim().replace(/([\\[\]])/g, '\\$1')}](<${url}>)`
+  return `${link}${source.trim() ? ` · ${source.trim()}` : ''}\n\n${comment.trim()}\n`
+}
