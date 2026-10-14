@@ -235,6 +235,14 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 6. 2차 기능: 알림 메일 07:00·18:00 완료(2026-10-13, 운영 반영 2026-10-14). 06:00 아침 기사 메일 완료(2026-10-13, 운영 반영 2026-10-14, `ANTHROPIC_API_KEY` 없이 규칙 선정). 뉴스 스크랩(메일 링크 → 코멘트 → 글) 완료(2026-10-14).
 7. (완료) 배포 (2026-10-13): https://zoolog.site 운영 중. Lightsail + k3s + Argo CD + Caddy ("운영" 절). React 빌드는 Caddy가 제공하고 `/api`·`/oauth2`·`/login/oauth2`만 Spring으로. 저장소 https://github.com/kimzoo5676-del/Zoolog (공개), 이미지 `ghcr.io/kimzoo5676-del/*` (공개)
 
+## 보류 · 나중에 할 일 (2026-10-14 정리)
+
+- 백엔드 무중단 배포: 보류(소유자 결정). 이유와 판단 기준 `docs/learn/01-zero-downtime.md`
+- 백엔드를 2개 이상으로 늘리기 전 필수 순서: 세션을 DB로(Spring Session JDBC) → 예약 작업 분산 잠금(ShedLock) → CPU requests. `docs/learn/05-scale-out-prerequisites.md`
+- 백업을 서버 밖 유료 저장소로 복사: 하지 않음(2026-10-14 소유자 결정, 비용). 서버 손실 시 최대 하루치 손실을 감수, 무료 대안은 노트북으로 `scp`. 자동 스냅샷은 인스턴스 삭제 시 함께 삭제되므로 서버를 지우거나 다시 만들기 전 수동 스냅샷 먼저. `docs/learn/06-backup-where.md`
+- 소유자 몫: AWS-SAA `작성 예정` 글 27개 본문, 12월 맥북 이전, 404 화면 문구("글 목록으로 돌아가기"가 그래프 홈으로 감)
+- GitHub 프로필(kimzoo5676-del/kimzoo5676-del)에 Zoolog 카드 반영(2026-10-14, 모디 다음 자리). 문구는 `docs/portfolio/resume-notes.md`와 같게 유지
+
 ## 열린 이슈
 
 - 없음 (2026-10-14 배경 흰색 건은 소유자 결정으로 목록에서 삭제)
