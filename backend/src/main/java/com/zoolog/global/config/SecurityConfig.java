@@ -22,7 +22,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/**", "/api/posts", "/api/posts/**",
-                                "/api/auth/me", "/api/images/**", "/api/schedules/board").permitAll()
+                                "/api/auth/me", "/api/images/**").permitAll()
                         .anyRequest().authenticated())
                 // /oauth2/authorization/google → Google 동의 화면 → /login/oauth2/code/google 콜백 → 세션 발급
                 .oauth2Login(oauth2 -> oauth2

@@ -1,7 +1,7 @@
 # zoolog
 
 개인 일정 비서 + 공개 개발 공부 기록 블로그. 1인 개발, AWS Lightsail 서버 1대에서 상시 운영(비상업). 노트북은 개발 전용.
-글쓰기와 일정 관리는 소유자만, 방문자는 읽기만 가능.
+글쓰기는 소유자만, 방문자는 읽기만 가능. 일정 알림·아침 기사는 소유자 메일로만.
 
 ## 기능 범위
 
@@ -11,7 +11,7 @@
 3. 공부 글: 마크다운 원문 저장 + 사진, 주제(category) 3단계 분류 (예: Cloud Engineer > AWS-SAA > 컴퓨팅)
 4. 방문자 조회: 주제별 목록, 글 상세
 5. Streak (2026-10-13 소유자 결정으로 반복 일정 등록을 대체): 큰 주제마다 한 달 달력이 저절로 생기고, 글을 쓴 날이 하위 주제 색으로 칠해짐
-6. (삭제) 일정 완료 체크·일정 보드 화면. 일정 알림 메일은 화면 없이 받을 예정(2차 Gmail, 무엇을 알릴지 설계 필요)
+6. (삭제) 일정 완료 체크·일정 보드 화면, 일정 백엔드(2026-10-14 삭제, V5). 알림은 7번 메일로
 
 2차
 7. Gmail 알림 (2026-10-13 일부 완료): 화면 없이 소유자 메일로만. 매일 07:00 `AWS-SAA 공부 시간입니다`, 18:00 `영어 공부 시간입니다`(설정 파일 고정 목록). 06:00 아침 기사 메일(아래 운영 절 참고, 2026-10-13)
@@ -61,7 +61,7 @@
 - 빌드는 서버 밖(노트북 또는 GitHub Actions)에서, 서버는 실행만 (Lightsail은 버스트형 CPU라 빌드로 CPU 크레딧을 쓰지 않도록)
 - 백업: Lightsail 자동 스냅샷 + `pg_dump` CronJob(매일 03:00 Asia/Seoul, 서버 `/var/backups/zoolog`, 14일 보관)
 - 메일 발송: Gmail SMTP 587(STARTTLS), `spring-boot-starter-mail`. 계정 `MAIL_USERNAME`(Gmail 주소) + `MAIL_PASSWORD`(Google 계정 앱 비밀번호, 2단계 인증 필요), 받는 사람 `OWNER_EMAIL`. Lightsail은 25번 포트가 기본 차단
-- 알림 메일(2026-10-13): `application.yaml` `zoolog.reminders.items`(cron + 제목, Asia/Seoul)를 `ReminderScheduler`(SchedulingConfigurer)가 cron 작업으로 등록, `ReminderMailer`가 `[Zoolog] 제목` + 본문 한 줄 발송, 실패는 로그만. `enabled`는 기본 false, `application-prod.yaml`에서만 true(개발 bootRun과 중복 발송 방지). 알림 추가·변경은 목록 수정 후 배포
+- 알림 메일(2026-10-13): `application.yaml` `zoolog.reminders.items`(cron + 제목, Asia/Seoul)를 `ReminderScheduler`(SchedulingConfigurer)가 cron 작업으로 등록, `OwnerMailer`가 `[Zoolog] 제목` + 본문 한 줄 발송, 실패는 로그만. `enabled`는 기본 false, `application-prod.yaml`에서만 true(개발 bootRun과 중복 발송 방지). 알림 추가·변경은 목록 수정 후 배포
 - 아침 기사 메일(2026-10-13 소유자 결정, `com.zoolog.news`): 매일 06:00 핫이슈 1개 + Cloud·SW 엔지니어 취준생용 IT 대기업·취업 기사 2개, 각 제목·한 줄 소개·원문 링크. 후보: 핫이슈는 Google 뉴스 한국 주요 기사 RSS 15개(Google 중요도 순, 키 불필요, XXE 차단), IT는 네이버 뉴스 검색 API(네이버 클라우드 NAVER API HUB, `naverapihub.apigw.ntruss.com/search/v1/news`, 헤더 `X-NCP-APIGW-API-KEY-ID`·`X-NCP-APIGW-API-KEY`, 개발자센터 검색 API는 이관되어 신규 키는 openapi.naver.com에서 401, 한시적 무료·월 775,000회) 최신순(`zoolog.news.queries` 검색어마다 10개, 24시간 안, 제목 중복 제거, 최대 40개, 네이버는 인기순 정렬이 없음). 선정·소개: `NewsCurator`가 Claude API(`anthropic-java` 2.34.0, `claude-opus-5-5`, 구조화된 출력 `NewsPicks`로 후보 번호 + 소개만 받아 링크는 원래 후보에서 꺼냄, `fallbacks: "default"`). 현재는 Claude API 키 없이 운영(2026-10-13 소유자 결정: 구독과 별도 결제라 무료 규칙 사용): 핫이슈는 주요 기사 1위, IT는 `NewsRanker`(제목의 주가·광고성 단어 제외, 채용 단어 제목 3점·주제 단어 2점·요약 1점·IT 대기업 이름 1점, 같으면 최신, 제목 낱말 50% 이상 겹치면 같은 사건), 소개는 네이버 기사 앞부분 문장. `ANTHROPIC_API_KEY`를 넣으면 Claude 선정으로 바뀜. 네이버가 실패하면 IT 기사 생략, 그래도 메일은 발송. `zoolog.news.enabled`는 prod에서만 true
 
 ## 명령
@@ -92,7 +92,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - N+1 방지: 연관 객체가 필요한 조회는 JPQL `join fetch` 사용 (`PostRepository` 참고). DTO 변환은 트랜잭션 안(서비스)에서 완료 (`open-in-view: false`)
 - 스키마는 Flyway가 소유: `src/main/resources/db/migration/V<번호>__<이름>.sql`. 적용된 마이그레이션 수정 금지, 변경은 새 버전 파일로. `ddl-auto: validate`
 - 컬럼 규칙: 시각 `TIMESTAMPTZ NOT NULL`, PK `BIGINT GENERATED ALWAYS AS IDENTITY`, FK마다 인덱스, 값 범위는 CHECK 제약
-- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. V3: `category.parent_id`(NULL이면 큰 주제). V4: `post_image.post_id` NULL 허용(작성 중 업로드), `content_type` 추가. 깊이 제한은 `CategoryService.MAX_DEPTH = 3`(2026-10-12 2단계 → 3단계, V3 파일 주석의 "2단계"는 적용된 마이그레이션이라 수정하지 않음). 엔티티 구현 완료: `Category`, `Post`, `Member`, `PostImage`, `Schedule`, `ScheduleRecord`
+- V1에 이미 있는 테이블: `member`, `category`, `post`, `post_image`, `schedule`, `schedule_record`. V2: `member`를 Google 로그인용(`google_sub` UNIQUE, `email`)으로 변경. V3: `category.parent_id`(NULL이면 큰 주제). V4: `post_image.post_id` NULL 허용(작성 중 업로드), `content_type` 추가. V5: `schedule`, `schedule_record` 삭제(2026-10-14, 일정 기능 삭제). 깊이 제한은 `CategoryService.MAX_DEPTH = 3`(2026-10-12 2단계 → 3단계, V3 파일 주석의 "2단계"는 적용된 마이그레이션이라 수정하지 않음). 엔티티: `Category`, `Post`, `Member`, `PostImage`
 - 오류 응답: `spring.mvc.problemdetails.enabled: true`로 RFC 9457 ProblemDetail JSON (`status`, `title`, `detail`, `instance`). `ResponseStatusException(상태, "이유")`의 이유가 `detail`로 전달되어 화면에 그대로 표시. 입력값 검증 실패 문구는 `messages.properties`(`입력값을 확인해 주세요`)
 - 글은 하위 주제(2단계 이상)에만 쓸 수 있음 (2026-10-13 소유자 결정, `PostService.getCategory`가 큰 주제면 400 "하위 주제를 골라 주세요"). 편집기 주제 선택도 SUB 줄을 반드시 고름(`선택 안 함`은 SECTION 줄만)
 - 상태 코드: 없는 리소스 404, 요청 본문의 잘못된 참조(없는 주제 id) 400, 중복 409
@@ -100,7 +100,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 
 ## 보안 (현재 상태)
 
-- `SecurityConfig` 규칙 순서: ERROR 디스패치 `permitAll` → GET `/api/categories`, `/api/categories/**`, `/api/posts`, `/api/posts/**`, `/api/auth/me`, `/api/images/**`, `/api/schedules/board` `permitAll` → `anyRequest().authenticated()`
+- `SecurityConfig` 규칙 순서: ERROR 디스패치 `permitAll` → GET `/api/categories`, `/api/categories/**`, `/api/posts`, `/api/posts/**`, `/api/auth/me`, `/api/images/**` `permitAll` → `anyRequest().authenticated()`
 - ERROR 디스패치 허용은 필수: 없으면 404 같은 오류 응답이 `/error` 단계에서 막혀 403으로 바뀜
 - 로그인: Spring Security `oauth2Login` + Google OIDC, 서버 세션(JSESSIONID 쿠키) 방식 (2026-10-12 결정, JWT 아님). scope `openid, email`
 - 흐름: `/oauth2/authorization/google` → Google 동의 화면 → `/login/oauth2/code/google` 콜백 → 성공 `/`, 실패 `/login?error`
@@ -109,7 +109,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - CSRF: `csrf.spa()`. `XSRF-TOKEN` 쿠키(JS 읽기 가능) 값을 쓰기 요청의 `X-XSRF-TOKEN` 헤더로 전송 (`src/api/auth.ts`의 `csrfHeaders()`)
 - `/api/**` 비로그인 거절은 로그인 페이지 리다이렉트 대신 401. `NullRequestCache`로 거절된 요청을 세션에 저장하지 않음(방문자에게 JSESSIONID 발급 안 함)
 - 로그아웃: `POST /api/auth/logout` (CSRF 헤더 필수), 204
-- 작성·관리 화면(글 작성·수정, 일정 추가·수정·삭제·체크, 주제 추가)은 소유자 전용, 방문자에게 절대 보이면 안 됨 (2026-10-13 소유자 강조). 두 겹으로 지킴: 화면은 `me`(로그인 확인)·`requireOwner()` 뒤에서만 그림, 서버는 비로그인 쓰기 요청 401. 새 소유자 화면을 만들면 방문자 상태로 렌더링해 버튼·입력 칸이 0개인지 확인
+- 작성·관리 화면(글 작성·수정·삭제, 주제 추가, 이미지 업로드)은 소유자 전용, 방문자에게 절대 보이면 안 됨 (2026-10-13 소유자 강조). 두 겹으로 지킴: 화면은 `me`(로그인 확인)·`requireOwner()` 뒤에서만 그림, 서버는 비로그인 쓰기 요청 401. 새 소유자 화면을 만들면 방문자 상태로 렌더링해 버튼·입력 칸이 0개인지 확인
 - SeaweedFS(S3)는 절대 외부(인터넷) 공개 금지. 운영에서도 Caddy 80/443만 공개. 이미지는 백엔드를 거쳐 업로드
 - 이미지 제공: SeaweedFS는 외부 비공개라 presigned URL은 브라우저에서 접근 불가. 프론트에 주는 이미지 URL은 백엔드(또는 같은 도메인 프록시) 경로로 설계
 
@@ -121,8 +121,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 소유자 전용(로그인 + CSRF 헤더): `POST /api/posts` 201 + Location, `PUT /api/posts/{id}` 200, `DELETE /api/posts/{id}` 204 (완전 삭제, 2026-10-12 결정). 요청 본문 `{ categoryId, title(200자 이하), content }`
 - `POST /api/categories` `{ name(50자 이하), parentId? }` 201. 3단계 주제 아래 추가는 400(3단계 제한). slug(주소용 이름)는 이름에서 자동 생성(소문자, 글자·숫자 외 문자 묶음은 하이픈, 한글 유지. 예: `AWS SAA` → `aws-saa`). 이름·slug 중복 409 (Ghost 방식 참고, 2026-10-12 결정)
 - 이미지 (2026-10-12): `POST /api/images`(소유자, multipart `file`, 10MB, JPEG·PNG·GIF·WebP를 파일 서명으로 판별, 아니면 415, 초과 413) → `{ url: "/api/images/{uuid}.{ext}" }`. `GET /api/images/{uuid}.{ext}`(공개, 백엔드가 저장소에서 읽어 전달, `Cache-Control: max-age=31536000, public, immutable`). 원본 그대로 저장(가공 없음). 글 저장 시 본문에 쓰인 이미지 주소를 찾아 `post_image`를 그 글과 연결, 빠지면 연결 해제, 글 삭제 전 연결 해제(FK). 연결 없이 1일(`ImageService.UNUSED_GRACE`, 소유자 결정, 해제 시점 `updatedAt` 기준) 지난 이미지는 `ImageCleanupScheduler`가 매일 04:00(Asia/Seoul) 저장소 파일 → 기록 순으로 삭제 (2026-10-13)
-- 일정 API (2026-10-12, 화면은 2026-10-13 삭제, 백엔드는 2차 Gmail 알림 설계 때 재사용 또는 삭제 결정): `GET /api/schedules/board?weeks=12`(공개), 소유자 전용 `POST /api/schedules`, `PUT`·`DELETE /api/schedules/{id}`, `PUT`·`DELETE /api/schedules/{id}/records/{YYYY-MM-DD}`
-- 일정 규칙: "오늘"은 `zoolog.zone: Asia/Seoul` 기준 `Clock` 빈(`ClockConfig`, 테스트는 `@MockitoBean Clock`으로 날짜 고정). 반복 요일은 `repeat_days` "MON,WED,FRI"(`RepeatDaysConverter`). 완료(DONE)만 저장하고 놓침은 계산(스키마의 MISSED는 쓰지 않음). 연속 일수는 해야 했던 날만 세고 오늘 미완료면 어제부터
+- 시각 기준: `zoolog.zone: Asia/Seoul`의 `Clock` 빈(`ClockConfig`, 테스트는 `@MockitoBean Clock` 또는 `Clock.fixed`로 고정). 이미지 정리 기준 시각, 기사 메일 날짜·24시간 범위에 사용
 - `GET /api/auth/me`: 로그인 상태면 200 `{ email }`, 비로그인이면 204 (방문자 화면 콘솔 오류 방지로 401 대신)
 - 시각 필드는 ISO-8601 UTC 문자열 (예: `2026-10-12T04:05:29.717131Z`)
 
@@ -226,9 +225,9 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 1. (완료) 프론트: React Router로 주제별 글 목록, 글 상세 화면 + 마크다운 렌더링
 2. (완료) Google 로그인, 글 작성·수정·삭제(소유자 전용), 편집기에서 주제 추가
 3. (완료) 이미지 업로드 (SeaweedFS S3, `post_image.object_key`). 연결 없는 이미지 정리, 대체 텍스트(alt) 입력 안내 완료(2026-10-13)
-4. (완료) Streak 화면 (2026-10-13, 일정 보드 대체). 일정 백엔드는 남아 있음
+4. (완료) Streak 화면 (2026-10-13, 일정 보드 대체). 일정 백엔드는 2026-10-14 삭제
 5. (완료) 첫 진입 프리로더
-6. 2차 기능: 알림 메일 07:00·18:00 완료(2026-10-13, 운영 Secret에 `MAIL_USERNAME`·`MAIL_PASSWORD` 추가 필요). 06:00 아침 기사 메일 완료(2026-10-13, 운영 Secret에 `NAVER_CLIENT_ID`·`NAVER_CLIENT_SECRET` 추가 필요, `ANTHROPIC_API_KEY`는 선택). 남은 일: 뉴스 스크랩(코멘트 → 글 게시). 일정 백엔드(`schedule` 패키지·API·테이블)는 화면이 없고 알림도 설정 파일 방식이라 삭제 예정
+6. 2차 기능: 알림 메일 07:00·18:00 완료(2026-10-13, 운영 반영 2026-10-14). 06:00 아침 기사 메일 완료(2026-10-13, 운영 반영 2026-10-14, `ANTHROPIC_API_KEY` 없이 규칙 선정). 남은 일: 뉴스 스크랩(코멘트 → 글 게시).
 7. (완료) 배포 (2026-10-13): https://zoolog.site 운영 중. Lightsail + k3s + Argo CD + Caddy ("운영" 절). React 빌드는 Caddy가 제공하고 `/api`·`/oauth2`·`/login/oauth2`만 Spring으로. 저장소 https://github.com/kimzoo5676-del/Zoolog (공개), 이미지 `ghcr.io/kimzoo5676-del/*` (공개)
 
 ## 열린 이슈
