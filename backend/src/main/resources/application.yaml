@@ -65,7 +65,8 @@ zoolog:
   # 운영(prod)에서만 켬
   news:
     enabled: false
-    cron: "0 0 6 * * *"
+    # 06:00 발송, 그날 못 보냈으면 23:00까지 매시 정각에 다시 시도 (보낸 날은 건너뜀)
+    cron: "0 0 6-23 * * *"
     model: claude-opus-5-5
     queries:
       - 클라우드
