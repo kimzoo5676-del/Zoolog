@@ -1,7 +1,6 @@
-import { csrfHeaders } from './auth'
-import { toApiError } from './error'
+import { csrfHeaders, toApiError } from './http'
 
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 백엔드 spring.servlet.multipart.max-file-size와 같게
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 백엔드 spring.servlet.multipart.max-file-size와 같게
 
 // 이미지 업로드(소유자 전용): 본문 마크다운에 넣을 주소를 돌려받음 (예: /api/images/3f2a....png)
 // Content-Type은 브라우저가 multipart 경계값과 함께 자동 지정하므로 직접 넣지 않음

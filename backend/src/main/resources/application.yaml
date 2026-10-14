@@ -46,7 +46,7 @@ zoolog:
   owner-email: ${OWNER_EMAIL}
   # 메일 속 링크의 사이트 주소 (개발: Vite 개발 서버, 운영: application-prod.yaml)
   site-url: ${SITE_URL:http://localhost:5173}
-  # 일정의 "오늘" 기준 시간대
+  # 시각 기준 시간대: Clock 빈(이미지 정리·기사 날짜), cron 작업(알림·기사·정리)
   zone: Asia/Seoul
   # 이미지 저장소 (SeaweedFS S3 API, 컨테이너 안 주소). 외부 공개 금지
   storage:

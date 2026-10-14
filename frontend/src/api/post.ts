@@ -1,5 +1,4 @@
-import { csrfHeaders } from './auth'
-import { toApiError } from './error'
+import { getJson, send, sendJson } from './http'
 
 export type PostSummary = {
   id: number
@@ -25,13 +24,9 @@ type FetchPostsOptions = {
   signal?: AbortSignal
 }
 
-export async function fetchPosts({ category, signal }: FetchPostsOptions = {}): Promise<PostSummary[]> {
+export function fetchPosts({ category, signal }: FetchPostsOptions = {}): Promise<PostSummary[]> {
   const query = category ? `?${new URLSearchParams({ category })}` : ''
-  const response = await fetch(`/api/posts${query}`, { signal })
-  if (!response.ok) {
-    throw new Error(`글 목록을 불러오지 못했어요 (HTTP ${response.status})`)
-  }
-  return response.json()
+  return getJson(`/api/posts${query}`, '글 목록을 불러오지 못했어요', signal)
 }
 
 // 없는 글(404)은 오류가 아닌 null로 반환, 404 화면 처리는 라우트에서 담당
@@ -54,36 +49,14 @@ export type PostInput = {
   content: string
 }
 
-export async function createPost(input: PostInput): Promise<PostDetail> {
-  const response = await fetch('/api/posts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
-    body: JSON.stringify(input),
-  })
-  if (!response.ok) {
-    throw await toApiError(response, '글을 저장하지 못했어요')
-  }
-  return response.json()
+export function createPost(input: PostInput): Promise<PostDetail> {
+  return sendJson('POST', '/api/posts', input, '글을 저장하지 못했어요')
 }
 
-export async function updatePost(id: number, input: PostInput): Promise<PostDetail> {
-  const response = await fetch(`/api/posts/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
-    body: JSON.stringify(input),
-  })
-  if (!response.ok) {
-    throw await toApiError(response, '글을 수정하지 못했어요')
-  }
-  return response.json()
+export function updatePost(id: number, input: PostInput): Promise<PostDetail> {
+  return sendJson('PUT', `/api/posts/${id}`, input, '글을 수정하지 못했어요')
 }
 
 export async function deletePost(id: number): Promise<void> {
-  const response = await fetch(`/api/posts/${id}`, {
-    method: 'DELETE',
-    headers: csrfHeaders(),
-  })
-  if (!response.ok) {
-    throw await toApiError(response, '글을 삭제하지 못했어요')
-  }
+  await send('DELETE', `/api/posts/${id}`, '글을 삭제하지 못했어요')
 }

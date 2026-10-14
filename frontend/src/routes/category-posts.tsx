@@ -7,7 +7,7 @@ import { CategoryTiles } from '../components/CategoryTiles'
 import { PostCards } from '../components/PostCards'
 import { RouteError } from '../components/RouteError'
 import { ViewSwitch } from '../components/ViewSwitch'
-import { categoryPath, descendantIds } from '../utils/categoryTree'
+import { categoryPath, childTiles } from '../utils/categoryTree'
 import { categoryTitleTransition } from '../utils/viewTransition'
 import type { Route } from './+types/category-posts'
 
@@ -24,20 +24,14 @@ export async function clientLoader({ params, request }: Route.ClientLoaderArgs) 
   // 상위 경로 (큰 주제부터, 자기 자신 제외): 라벨 자리에 "Cloud Engineer / AWS-SAA"
   const ancestors = categoryPath(categories, category.id).slice(0, -1)
   // 하위 주제 칸: 각 하위 주제 아래 모든 단계의 글 수
-  const tiles = categories
-    .filter((c) => c.parentId === category.id)
-    .map((child) => {
-      const ids = descendantIds(categories, child.id)
-      const slugs = new Set(categories.filter((c) => ids.has(c.id)).map((c) => c.slug))
-      return { category: child, postCount: posts.filter((p) => slugs.has(p.categorySlug)).length }
-    })
+  const tiles = childTiles(categories, posts, category.id)
   // 글 카드는 이 주제에 바로 쓴 글만 (하위 주제 글은 그 칸으로 들어가서 봄)
   const ownPosts = posts.filter((p) => p.categorySlug === category.slug)
   return { category, ancestors, tiles, ownPosts, totalPosts: posts.length }
 }
 
 // 주제 화면 (2026-10-13 소유자 결정): 글 목록을 한 번에 보여 주지 않음
-// 하위 주제가 있으면 하위 주제 칸(한 줄 2칸), 이 주제에 바로 쓴 글은 카드(한 줄 4개)
+// 큰 주제는 하위 주제 칸 한 줄 2칸, 하위 주제는 한 줄 4칸, 이 주제에 바로 쓴 글은 카드(한 줄 8개)
 // 하위 주제 칸을 누르면 그 이름이 다음 화면 제목 자리로 이어서 이동 (칸 이름과 제목이 주제 id로 같은 전환 이름)
 export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
   const { category, ancestors, tiles, ownPosts, totalPosts } = loaderData
@@ -65,7 +59,6 @@ export default function CategoryPosts({ loaderData }: Route.ComponentProps) {
       {(tiles.length > 0 || isTop) && (
         <CategoryTiles key={`tiles-${category.slug}`} tiles={tiles} columns={isTop ? 2 : 4} />
       )}
-      {/* 하위 주제가 없으면 글 카드 판 (글이 없어도 빈 바둑판 한 줄) */}
       {/* 하위 주제가 없는 하위 주제(세부 주제 등)는 글 카드 판 (글이 없어도 빈 줄) */}
       {(ownPosts.length > 0 || (tiles.length === 0 && !isTop)) && (
         <PostCards key={`cards-${category.slug}`} posts={ownPosts} />

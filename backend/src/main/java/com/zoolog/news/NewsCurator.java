@@ -38,9 +38,9 @@ public class NewsCurator {
     private final AnthropicClient client;
     private final String model;
 
-    public NewsCurator(@Value("${zoolog.anthropic.api-key}") String apiKey, @Value("${zoolog.news.model}") String model) {
+    public NewsCurator(@Value("${zoolog.anthropic.api-key}") String apiKey, NewsProperties properties) {
         this.client = apiKey.isBlank() ? null : AnthropicOkHttpClient.builder().apiKey(apiKey).build();
-        this.model = model;
+        this.model = properties.model();
     }
 
     public Optional<NewsPicks> pick(List<NewsArticle> hotCandidates, List<NewsArticle> careerCandidates) {

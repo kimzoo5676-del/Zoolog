@@ -34,7 +34,7 @@ public class ImageController {
     }
 
     // 공개: 파일 이름이 UUID라 내용이 바뀌지 않으므로 1년 캐시 + immutable
-    @GetMapping("/{fileName:[0-9a-f-]{36}\\.(?:jpg|png|gif|webp)}")
+    @GetMapping("/{fileName:" + ImageService.FILE_NAME + "}")
     public ResponseEntity<InputStreamResource> get(@PathVariable String fileName) {
         StoredImage image = imageService.load(fileName);
         return ResponseEntity.ok()

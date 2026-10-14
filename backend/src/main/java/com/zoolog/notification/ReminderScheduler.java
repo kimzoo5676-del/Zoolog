@@ -1,5 +1,6 @@
 package com.zoolog.notification;
 
+import java.time.ZoneId;
 import java.util.TimeZone;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -21,7 +22,8 @@ public class ReminderScheduler implements SchedulingConfigurer {
     public ReminderScheduler(ReminderProperties properties, OwnerMailer mailer, @Value("${zoolog.zone}") String zone) {
         this.properties = properties;
         this.mailer = mailer;
-        this.zone = TimeZone.getTimeZone(zone);
+        // ZoneId.of: 잘못된 시간대 이름이면 시작할 때 실패 (TimeZone.getTimeZone(String)은 조용히 GMT로 바꿈)
+        this.zone = TimeZone.getTimeZone(ZoneId.of(zone));
     }
 
     @Override

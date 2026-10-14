@@ -294,7 +294,7 @@ a {
   letter-spacing: -0.05em;
 }
 
-/* 로고 첫 글자: 현재 메뉴 칸·목록 번호 칸과 같은 진한 러스트 (세이지 대비 4.59:1) */
+/* 로고 첫 글자: 현재 메뉴 칸과 같은 진한 러스트 (세이지 대비 4.59:1) */
 .logo-accent {
   color: var(--color-accent-strong);
 }
@@ -304,7 +304,7 @@ a {
   margin-left: auto;
 }
 
-/* 로고 옆 칸(일정, 소유자 글쓰기): 주제 메뉴 칸과 같은 모양 */
+/* 로고 옆 칸(Streak, 소유자 글쓰기): 주제 메뉴 칸과 같은 모양 */
 .site-brand-link {
   display: flex;
   align-items: center;
@@ -1073,7 +1073,7 @@ a {
   opacity: 0.6;
 }
 
-/* "더 보기" 버튼 (PagedPostList) */
+/* "더 보기" 버튼 (PostCards) */
 .more-row {
   display: flex;
   justify-content: center;
@@ -1527,13 +1527,6 @@ a {
 .legend-shape {
   color: var(--color-accent);
   fill: var(--color-accent);
-}
-
-@keyframes card-in {
-  from {
-    opacity: 0;
-    translate: 0 0.35rem;
-  }
 }
 
 @keyframes label-in {

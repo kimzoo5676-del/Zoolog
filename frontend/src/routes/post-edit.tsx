@@ -1,22 +1,16 @@
-import { data, href, redirect } from 'react-router'
-import { fetchPost, updatePost } from '../api/post'
+import { href, redirect } from 'react-router'
+import { updatePost } from '../api/post'
 import { PostEditor } from '../components/PostEditor'
 import { RouteError } from '../components/RouteError'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
+import { loadPostOr404 } from '../utils/loadPost'
 import { errorMessage, readPostInput } from '../utils/postForm'
 import { requireOwner } from '../utils/requireOwner'
 import type { Route } from './+types/post-edit'
 
 export async function clientLoader({ params, request }: Route.ClientLoaderArgs) {
   await requireOwner(request.signal)
-  if (!/^[1-9]\d*$/.test(params.postId)) {
-    throw data('글을 찾을 수 없어요', { status: 404 })
-  }
-  const post = await fetchPost(Number(params.postId), request.signal)
-  if (!post) {
-    throw data('글을 찾을 수 없어요', { status: 404 })
-  }
-  return { post }
+  return { post: await loadPostOr404(params.postId, request.signal) }
 }
 
 export async function clientAction({ params, request }: Route.ClientActionArgs) {

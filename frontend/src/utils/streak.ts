@@ -4,9 +4,9 @@ import type { CategoryNode } from './categoryTree'
 // 글 스트릭 달력 계산 (2026-10-13 소유자 결정: 일정 대신 큰 주제마다 글 쓴 날을 하위 주제 색으로 칠함)
 
 // 하위 주제 색 (세이지 배경 대비 4.2:1 이상, 칸 안 세이지 숫자도 읽힘). 하위 주제가 더 많으면 반복
-export const SUB_COLORS = ['#853d2b', '#2c5f66', '#3d4a8a', '#4d5a1e', '#74315f']
+const SUB_COLORS = ['#853d2b', '#2c5f66', '#3d4a8a', '#4d5a1e', '#74315f']
 // 하위 주제 없이 큰 주제에 바로 쓴 글: 하위 주제가 있으면 차콜(범례 없이 구분만, 소유자 결정 2026-10-13), 없으면 첫 색
-export const DIRECT_COLOR = '#252a27'
+const DIRECT_COLOR = '#252a27'
 
 export type StreakPost = PostSummary & { date: string; color: string; groupName: string }
 

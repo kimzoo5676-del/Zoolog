@@ -6,6 +6,7 @@ import type { PostInput } from '../api/post'
 import { CategoryPicker } from './CategoryPicker'
 import { MarkdownContent } from './MarkdownContent'
 import { IMAGE_ALT_PLACEHOLDER } from '../utils/imageAlt'
+import { errorMessage } from '../utils/postForm'
 
 type PostEditorProps = {
   categories: Category[]
@@ -83,7 +84,7 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
           setContent((current) => current.replace(placeholders[i], `![${IMAGE_ALT_PLACEHOLDER}](${url})`))
         } catch (e) {
           setContent((current) => current.replace(`${placeholders[i]}\n`, ''))
-          setUploadError(e instanceof Error ? e.message : '이미지를 올리지 못했어요')
+          setUploadError(errorMessage(e, '이미지를 올리지 못했어요'))
         } finally {
           setUploading((n) => n - 1)
         }
@@ -135,7 +136,7 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault()
-              document.getElementById('editor-content')?.focus()
+              contentRef.current?.focus()
             }
           }}
         />

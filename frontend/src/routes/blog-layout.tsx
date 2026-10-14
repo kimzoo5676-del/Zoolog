@@ -82,15 +82,13 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
                       isActive || hasSlug(category.children, currentSlug) ? 'roll-trigger is-active' : 'roll-trigger'
                     }
                     viewTransition
-                    // 메뉴 글자가 주제 화면 제목 자리로 이어서 이동 (주제 칸과 같은 전환 이름 cat-<id>)
-                    // 메뉴 글자가 제목 자리로 이동. 화면에 별이 있는 홈 그래프에서만 별이 모였다가 칸으로 나뉨 (2026-10-13 소유자 결정)
+                    // 메뉴 글자가 주제 화면 제목 자리로 이어서 이동 (주제 칸과 같은 전환 이름 cat-<id>). 화면에 별이 있는 홈 그래프에서만 별이 모였다가 칸으로 나뉨 (2026-10-13 소유자 결정)
                     onClick={(e) => {
                       const label = e.currentTarget.querySelector('.roll')
                       nameForTransition(label, `cat-${category.id}`)
                       // 홈 그래프에서는 그 주제의 ◎ 별에 초점이 생기고 글 별이 모여든 뒤 칸으로 나뉨 (그래프가 처리)
                       if (!e.metaKey && !e.ctrlKey && handleHomeCategory(category.id)) {
                         e.preventDefault()
-                        return
                       }
                     }}
                     onPointerEnter={() => setHighlightSlug(category.slug)}

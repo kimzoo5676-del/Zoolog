@@ -5,7 +5,7 @@ import { PageHeader } from '../components/PageHeader'
 import { RouteError } from '../components/RouteError'
 import { ViewSwitch } from '../components/ViewSwitch'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
-import { descendantIds } from '../utils/categoryTree'
+import { childTiles } from '../utils/categoryTree'
 import type { Route } from './+types/posts'
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
@@ -18,13 +18,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 export default function Posts({ loaderData }: Route.ComponentProps) {
   const { posts } = loaderData
   const { categories } = useBlogLayoutData()
-  const tiles = categories
-    .filter((c) => c.parentId === null)
-    .map((top) => {
-      const ids = descendantIds(categories, top.id)
-      const slugs = new Set(categories.filter((c) => ids.has(c.id)).map((c) => c.slug))
-      return { category: top, postCount: posts.filter((p) => slugs.has(p.categorySlug)).length }
-    })
+  const tiles = childTiles(categories, posts, null)
 
   return (
     <>

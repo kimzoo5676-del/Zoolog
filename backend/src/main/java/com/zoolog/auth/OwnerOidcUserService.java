@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class OwnerOidcUserService extends OidcUserService {
 
-    static final String NOT_OWNER = "not_owner";
+    private static final String NOT_OWNER = "not_owner";
 
     private final MemberService memberService;
     private final String ownerEmail;

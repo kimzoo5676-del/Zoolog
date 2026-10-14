@@ -1,4 +1,6 @@
-export type Me = {
+import { csrfHeaders } from './http'
+
+type Me = {
   email: string
 }
 
@@ -14,6 +16,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<Me | null> {
   return response.json()
 }
 
+// 로그아웃은 ProblemDetail 본문이 없어 상태 코드만 표시
 export async function logout(): Promise<void> {
   const response = await fetch('/api/auth/logout', {
     method: 'POST',
@@ -22,13 +25,4 @@ export async function logout(): Promise<void> {
   if (!response.ok) {
     throw new Error(`로그아웃하지 못했어요 (HTTP ${response.status})`)
   }
-}
-
-// Spring Security csrf.spa(): 서버가 준 XSRF-TOKEN 쿠키 값을 X-XSRF-TOKEN 헤더로 되돌려 보내야 쓰기 요청 허용
-export function csrfHeaders(): Record<string, string> {
-  const token = document.cookie
-    .split('; ')
-    .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
-    ?.slice('XSRF-TOKEN='.length)
-  return token ? { 'X-XSRF-TOKEN': decodeURIComponent(token) } : {}
 }
