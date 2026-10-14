@@ -22,6 +22,13 @@
 | 프로브(Probe) | 컨테이너 상태 검사. startup(켜졌나), readiness(요청 받을 준비 됐나), liveness(살아 있나) |
 | 롤아웃(Rollout) | Deployment가 새 버전으로 파드를 교체하는 과정 |
 
+## 옵션 읽는 법
+
+- 옵션 위치는 자유: `kubectl -n zoolog get pods`와 `kubectl get pods -n zoolog`는 같은 명령
+- `-n <네임스페이스>`(`--namespace`): 어느 구역에서 찾을지. 빼면 `default` 구역을 봐서 "No resources found"가 나옴
+- `-l <키>=<값>`(`--selector`): 라벨(이름표)이 맞는 것만 고름. 예: `kubectl -n zoolog get pods -l app=backend`는 `app: backend` 이름표가 붙은 파드만 (파드 이름은 배포마다 바뀌지만 이름표는 그대로라 찾기 쉬움). 이름표는 `deploy/k8s/*.yaml`의 `labels`에서 정함, 확인은 `kubectl -n zoolog get pods --show-labels`
+- `-o <형식>`(`--output`): 출력 모양. `wide`(열 추가), `yaml`(전체 정의), `jsonpath='{...}'`(원하는 값만)
+
 ## 상태 보기 (가장 자주 씀)
 
 ```bash
