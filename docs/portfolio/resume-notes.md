@@ -22,7 +22,7 @@
 - **아침 기사 메일 · 뉴스 스크랩** — Google 뉴스 RSS · 네이버 검색으로 후보를 모아 규칙 기반 선정, 못 보낸 날 재발송, 메일 링크로 코멘트를 달면 블로그 글로 게시(같은 기사 중복 방지)
 - **그래프 홈** — 힘 기반 배치(force-directed)로 수백 개 글도 겹치지 않는 별자리 그래프, View Transition으로 화면 사이 제목이 이어지는 전환
 
-기술 스택 배지에 React, TypeScript, K3s, Argo CD 추가
+기술 스택 배지(2026-10-14 소유자 정리): 프론트엔드 묶음 삭제, 핵심만(Spring은 Spring Boot 하나, DRF·Spring Security·Data JPA·Session 삭제, AWS EC2·Lightsail은 AWS 하나, GitHub·GitLab은 GitHub Actions·GitLab CI와 겹쳐 삭제), K3s·Argo CD 추가
 
 ## 이력서 bullet 후보
 
