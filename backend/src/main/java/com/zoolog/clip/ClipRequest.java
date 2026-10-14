@@ -12,6 +12,7 @@ public record ClipRequest(
         @NotBlank @Size(max = 2000) String url,
         @Size(max = 100) String source,
         @NotNull LocalDate date,
-        @NotBlank @Size(max = 500) String comment
+        // 본문(마크다운): 일반 글 본문처럼 길이 제한 없음 (2026-10-15 소유자 결정, 이전 500자)
+        @NotBlank String comment
 ) {
 }

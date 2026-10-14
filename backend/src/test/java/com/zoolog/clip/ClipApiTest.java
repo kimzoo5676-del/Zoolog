@@ -77,6 +77,16 @@ class ClipApiTest {
     }
 
     @Test
+    @DisplayName("본문은 일반 글처럼 길이 제한 없이 게시된다")
+    void longComment() throws Exception {
+        String longText = "긴 본문 ".repeat(1000);
+        mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("기사", "https://a.com/long", "", "2026-10-15", longText)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     @DisplayName("http·https가 아닌 기사 주소는 400을 받는다")
     void rejectNonHttpUrl() throws Exception {
         mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())

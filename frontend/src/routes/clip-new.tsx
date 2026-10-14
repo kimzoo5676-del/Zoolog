@@ -52,8 +52,8 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 
 // 뉴스 스크랩도 글 편집기와 같은 구성 (2026-10-15 소유자 요청): 머리 칸(경로·제목·원문 보기) → 원문 | 미리보기 → 하단 고정 바
-// 제목·주제는 메일 링크로 정해져 있어 고칠 칸이 없고, 본문 칸에 코멘트만 마크다운으로 씀
-// 미리보기는 실제로 게시될 글 본문(기사 제목 링크 · 언론사 + 코멘트), 좁은 화면은 편집기와 같은 미리보기 팁
+// 제목·주제는 메일 링크로 정해져 있어 고칠 칸이 없고, 본문은 일반 글처럼 마크다운으로 자유롭게 씀(길이 제한 없음)
+// 미리보기는 실제로 게시될 글 본문(기사 제목 링크 · 언론사 + 쓴 본문), 좁은 화면은 편집기와 같은 미리보기 팁
 export default function ClipNew({ loaderData, actionData }: Route.ComponentProps) {
   const { clippedPostId, title, url, source, date, path, heading } = loaderData
   const submitting = useNavigation().state === 'submitting'
@@ -80,9 +80,8 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
             ref={contentRef}
             name="comment"
             className="editor-content"
-            aria-label="코멘트 (마크다운)"
-            placeholder="코멘트를 마크다운으로 작성"
-            maxLength={500}
+            aria-label="본문 (마크다운)"
+            placeholder="마크다운으로 작성"
             required
             autoFocus
             value={comment}
