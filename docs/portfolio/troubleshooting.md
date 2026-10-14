@@ -44,6 +44,14 @@
 - **같이 확인한 것:** 같은 Events의 `Startup probe failed: connection refused` 4회는 Spring이 켜지는 약 20초 동안 포트가 아직 닫혀 있어서 생긴 예상된 경고(검사 5초 간격, 최대 24회 허용). Warning이라고 모두 장애는 아님
 - **배운 점:** 무해한 경고를 방치하면 진짜 경고가 묻힘. 경고는 원인을 확인해 고치거나 왜 무해한지 기록
 
+### 첫 아침 기사 메일에 IT 기사가 비어 옴: 응답 Content-Type이 text/plain (2026-10-14)
+
+- **증상:** 운영 첫 기사 메일의 IT·취업 칸이 "오늘은 기사를 가져오지 못했어요". 서버에서 curl로 같은 주소를 부르면 200 + 정상 JSON
+- **원인:** 로그 `UnknownContentTypeException: no suitable HttpMessageConverter ... content type [text/plain;charset=UTF-8]`. NAVER API HUB가 JSON 본문을 `text/plain`으로 보내 RestClient가 JSON 변환기를 고르지 못함. curl은 Content-Type을 보지 않아 성공했던 것. 게다가 검색어 9개 중 첫 실패에서 전체가 중단되는 구조
+- **해결:** 본문을 글자(`String`)로 받아 Spring Boot의 `JsonMapper`(Jackson 3)로 직접 읽음. 검색어마다 실패를 따로 처리해 나머지로 계속하고, 실패 이유를 로그로 남김. 모르는 칸이 섞인 실제 응답 모양으로 단위 테스트 추가
+- **배운 점:** 외부 API 연동 확인은 curl의 "200"만이 아니라 실제 클라이언트 코드 경로로. 응답 헤더(Content-Type)도 계약의 일부
+- **같은 날 함께 고침:** 핫이슈의 Google 뉴스 링크가 휴대폰에서 "콘텐츠를 찾을 수 없음"으로 열림(헤드리스 브라우저에서는 원문으로 이동, 메일 앱이 Google 뉴스 앱으로 넘기는 것으로 추정) → 같은 기사를 네이버 관련도순으로 찾아 원문 주소 사용
+
 ### 네이버 검색 API 키를 발급받으려 했더니 서비스가 옮겨져 있음 (2026-10-13)
 
 - **증상:** 계획 단계에서 참고한 네이버 개발자센터(developers.naver.com) 문서대로 뉴스 검색 API 키를 신청하려 했으나 신규 신청이 막혀 있음

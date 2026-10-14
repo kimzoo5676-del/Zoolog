@@ -19,6 +19,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.util.UriComponentsBuilder;
+import tools.jackson.databind.json.JsonMapper;
 
 // 네이버 뉴스 검색 API(NAVER API HUB): IT·취업 기사 후보 (기사 앞부분 문장 description을 소개 근거로 사용)
 // 인기순 정렬이 없어 최신순으로 모은 뒤 고르기는 NewsRanker(또는 Claude)
@@ -37,12 +38,14 @@ public class NaverNewsClient {
     private final String clientId;
     private final String clientSecret;
     private final Clock clock;
+    private final JsonMapper jsonMapper;
 
     public NaverNewsClient(@Value("${zoolog.naver.client-id}") String clientId,
-            @Value("${zoolog.naver.client-secret}") String clientSecret, Clock clock) {
+            @Value("${zoolog.naver.client-secret}") String clientSecret, Clock clock, JsonMapper jsonMapper) {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.clock = clock;
+        this.jsonMapper = jsonMapper;
     }
 
     public boolean isConfigured() {
@@ -97,12 +100,22 @@ public class NaverNewsClient {
                 .encode()
                 .build()
                 .toUri();
-        SearchResponse response = restClient.get().uri(uri)
+        // NAVER API HUB는 JSON 본문을 Content-Type text/plain으로 보냄: body(SearchResponse.class)는 변환기를 못 찾아 실패(2026-10-14 운영)
+        // 그래서 글자로 받아 직접 JSON으로 읽음
+        String body = restClient.get().uri(uri)
                 .header("X-NCP-APIGW-API-KEY-ID", clientId)
                 .header("X-NCP-APIGW-API-KEY", clientSecret)
                 .retrieve()
-                .body(SearchResponse.class);
-        return response == null || response.items() == null ? List.of() : response.items();
+                .body(String.class);
+        return parse(body, jsonMapper);
+    }
+
+    static List<SearchResponse.Item> parse(String body, JsonMapper jsonMapper) {
+        if (body == null || body.isBlank()) {
+            return List.of();
+        }
+        SearchResponse response = jsonMapper.readValue(body, SearchResponse.class);
+        return response.items() == null ? List.of() : response.items();
     }
 
     // 주소가 하나도 없는 기사는 메일에 넣지 않음
