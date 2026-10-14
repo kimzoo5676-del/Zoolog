@@ -1,7 +1,6 @@
 package com.zoolog.image;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -11,6 +10,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import java.util.HexFormat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -45,6 +45,9 @@ class ImageUploadRollbackTest {
             // 처리되지 않은 예외는 MockMvc가 그대로 던짐 (실제 서버에서는 500)
         }
 
-        verify(storage).delete(startsWith("images/"));
+        // 같은 테스트 설정을 쓰는 다른 테스트의 롤백 호출이 섞일 수 있어 이번에 올리려던 파일 이름으로 확인
+        ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
+        verify(storage).put(key.capture(), any(), any());
+        verify(storage).delete(key.getValue());
     }
 }
