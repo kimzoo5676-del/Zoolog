@@ -62,7 +62,6 @@ class NewsDigestServiceTest {
                 - 둘째 기사 (KBS 뉴스)
                   둘째 기사 소개
                   https://hot/2
-                  Q. 이 소식에서 가장 눈에 띈 점은 무엇인가요?
                   코멘트 쓰기: https://zoolog.site/clips/new?title=""");
         assertThat(text).contains("""
 
@@ -71,8 +70,7 @@ class NewsDigestServiceTest {
                 - 네이버 개발자 채용 (c.co.kr)
                   채용 소개
                   https://it/3
-                  Q. 이 소식이 Cloud·SW 엔지니어 일이나 취업 준비에 어떤 의미일까요?
-                """, "- AWS 리전 확장 (a.co.kr)\n  리전 소개\n  https://it/1\n");
+                  코멘트 쓰기:""", "- AWS 리전 확장 (a.co.kr)\n  리전 소개\n  https://it/1\n");
     }
 
     @Test
@@ -136,11 +134,11 @@ class NewsDigestServiceTest {
     }
 
     @Test
-    @DisplayName("코멘트 쓰기 링크에는 기사 제목·주소·언론사·날짜·질문이 주소 형식에 맞게 들어간다")
+    @DisplayName("코멘트 쓰기 링크에는 기사 제목·주소·언론사·날짜가 주소 형식에 맞게 들어가고 질문은 없다")
     void clipLink() {
         String link = NewsDigestService.clipLink("https://zoolog.site",
                 new NewsArticle("AWS & 네이버 \"협력\"", "한겨레", "https://news.example.com/a?id=1&b=2", ""),
-                "질문?", java.time.LocalDate.of(2026, 10, 14));
+                java.time.LocalDate.of(2026, 10, 14));
 
         var params = org.springframework.web.util.UriComponentsBuilder.fromUriString(link).build().getQueryParams();
         assertThat(link).startsWith("https://zoolog.site/clips/new?");
@@ -149,5 +147,6 @@ class NewsDigestServiceTest {
         assertThat(java.net.URLDecoder.decode(params.getFirst("url"), java.nio.charset.StandardCharsets.UTF_8))
                 .isEqualTo("https://news.example.com/a?id=1&b=2");
         assertThat(params.getFirst("date")).isEqualTo("2026-10-14");
+        assertThat(params.containsKey("q")).isFalse();
     }
 }

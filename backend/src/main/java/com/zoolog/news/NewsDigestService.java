@@ -21,9 +21,6 @@ public class NewsDigestService {
     private static final int HOT_CANDIDATES = 15;
     private static final int CAREER_PER_QUERY = 10;
     private static final int CAREER_CANDIDATES = 40;
-    // 코멘트를 이끌어 내는 질문 (기사마다 같은 질문, 뉴스 스크랩 글의 코멘트 칸에도 표시)
-    static final String HOT_QUESTION = "이 소식에서 가장 눈에 띈 점은 무엇인가요?";
-    static final String CAREER_QUESTION = "이 소식이 Cloud·SW 엔지니어 일이나 취업 준비에 어떤 의미일까요?";
 
     private final GoogleNewsClient googleNews;
     private final NaverNewsClient naverNews;
@@ -106,27 +103,26 @@ public class NewsDigestService {
     static String format(List<Selected> hot, List<Selected> career, String siteUrl, LocalDate date) {
         StringBuilder text = new StringBuilder();
         text.append("오늘의 핫이슈\n\n");
-        appendAll(text, hot, HOT_QUESTION, siteUrl, date);
+        appendAll(text, hot, siteUrl, date);
         text.append("IT · 취업\n\n");
-        appendAll(text, career, CAREER_QUESTION, siteUrl, date);
+        appendAll(text, career, siteUrl, date);
         return text.toString();
     }
 
     // 소유자 전용 뉴스 스크랩 화면 주소: 기사 정보와 질문을 채워 둠 (로그인은 화면에서 확인)
-    static String clipLink(String siteUrl, NewsArticle article, String question, LocalDate date) {
+    static String clipLink(String siteUrl, NewsArticle article, LocalDate date) {
         return UriComponentsBuilder.fromUriString(siteUrl)
                 .path("/clips/new")
                 .queryParam("title", article.title())
                 .queryParam("url", article.link())
                 .queryParam("source", article.source())
                 .queryParam("date", date.toString())
-                .queryParam("q", question)
                 .encode()
                 .build()
                 .toUriString();
     }
 
-    private static void appendAll(StringBuilder text, List<Selected> items, String question, String siteUrl,
+    private static void appendAll(StringBuilder text, List<Selected> items, String siteUrl,
             LocalDate date) {
         if (items.isEmpty()) {
             text.append("오늘은 기사를 가져오지 못했어요\n\n");
@@ -143,8 +139,7 @@ public class NewsDigestService {
                 text.append("  ").append(item.intro().strip()).append('\n');
             }
             text.append("  ").append(article.link()).append('\n');
-            text.append("  Q. ").append(question).append('\n');
-            text.append("  코멘트 쓰기: ").append(clipLink(siteUrl, article, question, date)).append("\n\n");
+            text.append("  코멘트 쓰기: ").append(clipLink(siteUrl, article, date)).append("\n\n");
         }
     }
 

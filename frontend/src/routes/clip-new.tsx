@@ -26,7 +26,6 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     url: articleUrl as string,
     source: params.get('source')?.trim() ?? '',
     date: params.get('date') as string,
-    question: params.get('q')?.trim() || '이 기사에 대한 생각을 한두 문장으로',
     path: `News Clipping / ${clipMonthName(date)} / ${clipWeekName(date)}`,
     heading: `${date.getMonth() + 1}.${date.getDate()} ${title}`,
   }
@@ -50,7 +49,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 
 export default function ClipNew({ loaderData, actionData }: Route.ComponentProps) {
-  const { clippedPostId, title, url, source, date, question, path, heading } = loaderData
+  const { clippedPostId, title, url, source, date, path, heading } = loaderData
   const submitting = useNavigation().state === 'submitting'
 
   return (
@@ -68,22 +67,20 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
       </div>
       <div className="clip-body">
         {clippedPostId === null ? (
-          <>
-            <label htmlFor="clip-comment" className="clip-question">
-              {question}
-            </label>
-            <textarea
-              id="clip-comment"
-              name="comment"
-              className="clip-comment"
-              rows={4}
-              maxLength={500}
-              required
-              autoFocus
-            />
-          </>
+          // 질문은 쓰지 않음 (2026-10-15 소유자 결정): 메일 링크의 옛 q 값도 무시
+          <textarea
+            id="clip-comment"
+            name="comment"
+            className="clip-comment"
+            aria-label="코멘트"
+            placeholder="코멘트"
+            rows={4}
+            maxLength={500}
+            required
+            autoFocus
+          />
         ) : (
-          <p className="clip-question">
+          <p className="clip-notice">
             이미 스크랩한 기사예요.{' '}
             <Link to={href('/posts/:postId', { postId: String(clippedPostId) })} viewTransition>
               스크랩한 글 보기
