@@ -30,4 +30,13 @@ class NaverNewsClientTest {
 
         assertThat(NaverNewsClient.toArticle(item).link()).isEqualTo("https://n.news.naver.com/article/1");
     }
+
+    @Test
+    @DisplayName("주소 형식이 잘못된 기사도 오류 없이 언론사 칸만 비운다")
+    void malformedLink() {
+        var item = new NaverNewsClient.SearchResponse.Item("제목", "https://bad host/news 1", "", "요약",
+                "Tue, 13 Oct 2026 15:50:00 +0900");
+
+        assertThat(NaverNewsClient.toArticle(item).source()).isEmpty();
+    }
 }

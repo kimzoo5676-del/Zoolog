@@ -64,7 +64,7 @@ public class NaverNewsClient {
                 continue;
             }
             for (SearchResponse.Item item : response.items()) {
-                if (publishedAt(item.pubDate()).isAfter(since)) {
+                if (hasLink(item) && publishedAt(item.pubDate()).isAfter(since)) {
                     NewsArticle article = toArticle(item);
                     byTitle.putIfAbsent(article.title(), article);
                 }
@@ -73,12 +73,29 @@ public class NaverNewsClient {
         return byTitle.values().stream().limit(limit).toList();
     }
 
+    // 주소가 하나도 없는 기사는 메일에 넣지 않음
+    private static boolean hasLink(SearchResponse.Item item) {
+        return !isBlank(item.originallink()) || !isBlank(item.link());
+    }
+
     // 제목·요약의 <b> 강조 태그와 HTML 문자(&quot; 등)를 일반 글자로. 원문 주소가 없으면 네이버 뉴스 주소
     static NewsArticle toArticle(SearchResponse.Item item) {
-        String link = item.originallink() == null || item.originallink().isBlank() ? item.link() : item.originallink();
-        String source = link == null ? "" : URI.create(link).getHost();
-        return new NewsArticle(clean(item.title()), source == null ? "" : source.replaceFirst("^www\\.", ""), link,
-                clean(item.description()));
+        String link = isBlank(item.originallink()) ? item.link() : item.originallink();
+        return new NewsArticle(clean(item.title()), host(link), link, clean(item.description()));
+    }
+
+    // 언론사 칸: 주소의 호스트(www. 제외). 주소 형식이 잘못된 기사 하나 때문에 IT 기사 전체가 빠지지 않도록 빈 값
+    private static String host(String link) {
+        try {
+            String host = link == null ? null : URI.create(link).getHost();
+            return host == null ? "" : host.replaceFirst("^www\\.", "");
+        } catch (IllegalArgumentException e) {
+            return "";
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private static String clean(String html) {
@@ -86,9 +103,12 @@ public class NaverNewsClient {
     }
 
     private static Instant publishedAt(String pubDate) {
+        if (pubDate == null) {
+            return Instant.EPOCH;
+        }
         try {
             return ZonedDateTime.parse(pubDate, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant();
-        } catch (DateTimeParseException | NullPointerException e) {
+        } catch (DateTimeParseException e) {
             return Instant.EPOCH;
         }
     }
