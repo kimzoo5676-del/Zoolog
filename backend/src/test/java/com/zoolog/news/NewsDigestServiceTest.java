@@ -29,7 +29,8 @@ class NewsDigestServiceTest {
     private final NewsProperties properties = new NewsProperties(true, "0 0 6 * * *", "claude-opus-5-5", List.of("AWS"));
     // 2026-10-14 06:00 한국 시각
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-13T21:00:00Z"), ZoneId.of("Asia/Seoul"));
-    private final NewsDigestService service = new NewsDigestService(googleNews, naverNews, curator, mailer, properties, clock);
+    private final NewsDigestService service = new NewsDigestService(googleNews, naverNews, curator, mailer, properties, clock,
+            "https://zoolog.site");
 
     private final List<NewsArticle> hot = List.of(
             new NewsArticle("첫 기사", "한겨레", "https://hot/1", ""),
@@ -55,24 +56,23 @@ class NewsDigestServiceTest {
         service.sendDailyDigest();
 
         String text = sentText("10월 14일 아침 기사");
-        assertThat(text).isEqualTo("""
+        assertThat(text).startsWith("""
                 오늘의 핫이슈
 
                 - 둘째 기사 (KBS 뉴스)
                   둘째 기사 소개
                   https://hot/2
+                  Q. 이 소식에서 가장 눈에 띈 점은 무엇인가요?
+                  코멘트 쓰기: https://zoolog.site/clips/new?title=""");
+        assertThat(text).contains("""
 
                 IT · 취업
 
                 - 네이버 개발자 채용 (c.co.kr)
                   채용 소개
                   https://it/3
-
-                - AWS 리전 확장 (a.co.kr)
-                  리전 소개
-                  https://it/1
-
-                """);
+                  Q. 이 소식이 Cloud·SW 엔지니어 일이나 취업 준비에 어떤 의미일까요?
+                """, "- AWS 리전 확장 (a.co.kr)\n  리전 소개\n  https://it/1\n");
     }
 
     @Test
@@ -83,7 +83,7 @@ class NewsDigestServiceTest {
         service.sendDailyDigest();
 
         assertThat(sentText("10월 14일 아침 기사"))
-                .contains("- 첫 기사 (한겨레)\n  https://hot/1\n\nIT · 취업\n\n- 네이버 개발자 채용 (c.co.kr)\n  채용 요약",
+                .contains("- 첫 기사 (한겨레)\n  https://hot/1\n", "- 네이버 개발자 채용 (c.co.kr)\n  채용 요약",
                         "- AWS 리전 확장 (a.co.kr)\n  AWS 요약")
                 .doesNotContain("둘째 기사", "주가 등락");
     }
@@ -104,5 +104,21 @@ class NewsDigestServiceTest {
         ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
         verify(mailer).send(eq(subject), text.capture());
         return text.getValue();
+    }
+
+    @Test
+    @DisplayName("코멘트 쓰기 링크에는 기사 제목·주소·언론사·날짜·질문이 주소 형식에 맞게 들어간다")
+    void clipLink() {
+        String link = NewsDigestService.clipLink("https://zoolog.site",
+                new NewsArticle("AWS & 네이버 \"협력\"", "한겨레", "https://news.example.com/a?id=1&b=2", ""),
+                "질문?", java.time.LocalDate.of(2026, 10, 14));
+
+        var params = org.springframework.web.util.UriComponentsBuilder.fromUriString(link).build().getQueryParams();
+        assertThat(link).startsWith("https://zoolog.site/clips/new?");
+        assertThat(java.net.URLDecoder.decode(params.getFirst("title"), java.nio.charset.StandardCharsets.UTF_8))
+                .isEqualTo("AWS & 네이버 \"협력\"");
+        assertThat(java.net.URLDecoder.decode(params.getFirst("url"), java.nio.charset.StandardCharsets.UTF_8))
+                .isEqualTo("https://news.example.com/a?id=1&b=2");
+        assertThat(params.getFirst("date")).isEqualTo("2026-10-14");
     }
 }

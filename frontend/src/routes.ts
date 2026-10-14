@@ -8,6 +8,7 @@ export default [
     route('posts/:postId', 'routes/post-detail.tsx'),
     route('posts/:postId/edit', 'routes/post-edit.tsx'),
     route('categories/:slug', 'routes/category-posts.tsx'),
+    route('clips/new', 'routes/clip-new.tsx'),
     route('streak', 'routes/streak.tsx'),
     route('schedules', 'routes/schedules-redirect.tsx'),
     route('login', 'routes/login.tsx'),

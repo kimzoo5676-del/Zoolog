@@ -1,5 +1,14 @@
 import { useLayoutEffect, useMemo, useState } from 'react'
-import { href, Link, NavLink, Outlet, useLocation, useParams, type ShouldRevalidateFunctionArgs } from 'react-router'
+import {
+  href,
+  Link,
+  NavLink,
+  Outlet,
+  redirect,
+  useLocation,
+  useParams,
+  type ShouldRevalidateFunctionArgs,
+} from 'react-router'
 import { fetchMe } from '../api/auth'
 import { fetchCategories } from '../api/category'
 import { AuthShortcut } from '../components/AuthShortcut'
@@ -9,12 +18,16 @@ import { RollText } from '../components/RollText'
 import { MapHighlightContext } from '../hooks/mapHighlight'
 import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree'
 import { onlyFocusChanged } from '../utils/focusParam'
+import { takeLoginReturn } from '../utils/loginReturn'
 import { clearPendingNames, handleHomeCategory, nameForTransition } from '../utils/viewTransition'
 import type { Route } from './+types/blog-layout'
 
 // request.signal: 다른 링크로 이동하면 라우터가 진행 중인 요청을 취소 (기존 ignore 플래그 대체)
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const [categories, me] = await Promise.all([fetchCategories(request.signal), fetchMe(request.signal)])
+  // 로그인 직후(Google → "/")면 로그인 전에 열려던 소유자 화면으로 이어서 이동
+  const returnTo = me ? takeLoginReturn() : null
+  if (returnTo) throw redirect(returnTo)
   return { categories, me }
 }
 

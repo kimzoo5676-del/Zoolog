@@ -61,7 +61,7 @@ public class CategoryService {
     }
 
     // 주소용 이름(slug): 소문자로 바꾸고 글자·숫자(한글 포함)가 아닌 문자 묶음은 하이픈 하나로 (예: "AWS SAA" → "aws-saa")
-    static String toSlug(String name) {
+    public static String toSlug(String name) {
         return name.toLowerCase(Locale.ROOT)
                 .replaceAll("[^\\p{L}\\p{N}]+", "-")
                 .replaceAll("^-|-$", "");

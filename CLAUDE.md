@@ -15,7 +15,7 @@
 
 2차
 7. Gmail 알림 (2026-10-13 일부 완료): 화면 없이 소유자 메일로만. 매일 07:00 `AWS-SAA 공부 시간입니다`, 18:00 `영어 공부 시간입니다`(설정 파일 고정 목록). 06:00 아침 기사 메일(아래 운영 절 참고, 2026-10-13)
-8. 산업 뉴스 스크랩: 매일 기사 선정 메일 + 코멘트 유도 질문 → 소유자가 1~2문장 코멘트 → "뉴스 스크랩" 글로 게시. 공개 글에는 제목 + 원문 링크 + 본인 코멘트만 (기사 본문 복제 금지, 저작권). 네이버 뉴스 검색 API 예정. 선정 방식, 코멘트 입력 방식, 누락일 처리는 미정 (06:00 발송 시 노트북 절전 문제는 상시 운영 서버로 해결)
+8. 산업 뉴스 스크랩 (2026-10-14 구현): 06:00 아침 기사 메일의 기사마다 질문(`Q.`) + `코멘트 쓰기` 링크 → 소유자 전용 `/clips/new`에서 1~2문장 코멘트 → News Clipping > 달(`2026.10`) > 주(`2026.10 3주`, 월요일 시작, 1일이 든 주가 1주, 주제 이름이 전체에서 겹치면 안 되어 연월 포함) 아래 글, 제목 `10.14 기사 제목`. 기존 계획 문구: 공개 글에는 제목 + 원문 링크 + 본인 코멘트만 (기사 본문 복제 금지, 저작권). 네이버 뉴스 검색 API 예정. 선정 방식, 코멘트 입력 방식, 누락일 처리는 미정 (06:00 발송 시 노트북 절전 문제는 상시 운영 서버로 해결)
 
 ## 스택 (확인된 버전)
 
@@ -109,7 +109,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - CSRF: `csrf.spa()`. `XSRF-TOKEN` 쿠키(JS 읽기 가능) 값을 쓰기 요청의 `X-XSRF-TOKEN` 헤더로 전송 (`src/api/auth.ts`의 `csrfHeaders()`)
 - `/api/**` 비로그인 거절은 로그인 페이지 리다이렉트 대신 401. `NullRequestCache`로 거절된 요청을 세션에 저장하지 않음(방문자에게 JSESSIONID 발급 안 함)
 - 로그아웃: `POST /api/auth/logout` (CSRF 헤더 필수), 204
-- 작성·관리 화면(글 작성·수정·삭제, 주제 추가, 이미지 업로드)은 소유자 전용, 방문자에게 절대 보이면 안 됨 (2026-10-13 소유자 강조). 두 겹으로 지킴: 화면은 `me`(로그인 확인)·`requireOwner()` 뒤에서만 그림, 서버는 비로그인 쓰기 요청 401. 새 소유자 화면을 만들면 방문자 상태로 렌더링해 버튼·입력 칸이 0개인지 확인
+- 작성·관리 화면(글 작성·수정·삭제, 주제 추가, 이미지 업로드, 뉴스 스크랩 코멘트)은 소유자 전용, 방문자에게 절대 보이면 안 됨 (2026-10-13 소유자 강조). 두 겹으로 지킴: 화면은 `me`(로그인 확인)·`requireOwner()` 뒤에서만 그림, 서버는 비로그인 쓰기 요청 401. 새 소유자 화면을 만들면 방문자 상태로 렌더링해 버튼·입력 칸이 0개인지 확인
 - SeaweedFS(S3)는 절대 외부(인터넷) 공개 금지. 운영에서도 Caddy 80/443만 공개. 이미지는 백엔드를 거쳐 업로드
 - 이미지 제공: SeaweedFS는 외부 비공개라 presigned URL은 브라우저에서 접근 불가. 프론트에 주는 이미지 URL은 백엔드(또는 같은 도메인 프록시) 경로로 설계
 
@@ -122,6 +122,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - `POST /api/categories` `{ name(50자 이하), parentId? }` 201. 3단계 주제 아래 추가는 400(3단계 제한). slug(주소용 이름)는 이름에서 자동 생성(소문자, 글자·숫자 외 문자 묶음은 하이픈, 한글 유지. 예: `AWS SAA` → `aws-saa`). 이름·slug 중복 409 (Ghost 방식 참고, 2026-10-12 결정)
 - 이미지 (2026-10-12): `POST /api/images`(소유자, multipart `file`, 10MB, JPEG·PNG·GIF·WebP를 파일 서명으로 판별, 아니면 415, 초과 413) → `{ url: "/api/images/{uuid}.{ext}" }`. `GET /api/images/{uuid}.{ext}`(공개, 백엔드가 저장소에서 읽어 전달, `Cache-Control: max-age=31536000, public, immutable`). 원본 그대로 저장(가공 없음). 글 저장 시 본문에 쓰인 이미지 주소를 찾아 `post_image`를 그 글과 연결, 빠지면 연결 해제, 글 삭제 전 연결 해제(FK). 연결 없이 1일(`ImageService.UNUSED_GRACE`, 소유자 결정, 해제 시점 `updatedAt` 기준) 지난 이미지는 `ImageCleanupScheduler`가 매일 04:00(Asia/Seoul) 저장소 파일 → 기록 순으로 삭제 (2026-10-13)
 - 시각 기준: `zoolog.zone: Asia/Seoul`의 `Clock` 빈(`ClockConfig`, 테스트는 `@MockitoBean Clock` 또는 `Clock.fixed`로 고정). 이미지 정리 기준 시각, 기사 메일 날짜·24시간 범위에 사용
+- `POST /api/clips`(소유자, 2026-10-14) `{ title(300자), url(http·https만, 아니면 400), source?, date(YYYY-MM-DD), comment(500자) }` 201 + Location: `ClipService`가 News Clipping·달·주 주제를 slug로 찾고 없으면 만들어(같은 slug가 다른 자리에 있으면 409) `PostService.create`로 글 저장. 본문은 `[기사 제목](<주소>) · 언론사` + 빈 줄 + 코멘트(기사 본문 복제 금지)
 - `GET /api/auth/me`: 로그인 상태면 200 `{ email }`, 비로그인이면 204 (방문자 화면 콘솔 오류 방지로 401 대신)
 - 시각 필드는 ISO-8601 UTC 문자열 (예: `2026-10-12T04:05:29.717131Z`)
 
@@ -140,6 +141,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 링크 경로는 `href('/posts/:postId', { postId })`로 생성 (경로·파라미터 타입 검사)
 - 쓰기 요청: `fetch`에 `csrfHeaders()` 포함, 실패 시 `toApiError`(`src/api/error.ts`)가 ProblemDetail `detail`을 메시지로 사용
 - 소유자 판별: `blog-layout` `clientLoader`가 주제 목록과 `fetchMe`를 함께 조회, 하위 라우트는 `useBlogLayoutData()`로 재사용. 소유자 전용 화면 `clientLoader`는 `requireOwner()` (비로그인 → `/login`)
+- 뉴스 스크랩 `/clips/new?title&url&source&date&q` (2026-10-14, 소유자 전용): 메일 링크가 기사 정보를 주소에 담음(메일 링크 주소는 `zoolog.site-url`, 운영 `https://${DOMAIN}`). 편집기 머리 칸 구성(경로 라벨, 날짜 + 기사 제목, 언론사·원문 보기) → 질문 라벨 + 코멘트 칸 → 하단 고정 바(나가기, 게시). 기사 정보가 없거나 주소가 http·https가 아니면 404 화면에 안내. 비로그인이면 `requireOwner(signal, returnTo)`가 주소를 sessionStorage(`utils/loginReturn.ts`, 10분)에 기억하고 `/login`으로, Google 로그인 후 `/`에 오면 `blog-layout` clientLoader가 그 주소로 이어서 이동(휴대폰에서 메일 링크를 열 때)
 - 글 작성 `/posts/new`, 수정 `/posts/:postId/edit`: `PostEditor` (velog 구성 참고, 2026-10-12 결정). 테두리 없는 큰 제목 → 주제 칩(`CategoryPicker`, 라디오) → 원문 textarea | 미리보기 나란히 → 하단 고정 바(나가기, 게시/저장). 라벨 대신 placeholder + `aria-label`. 저장은 라우트 `clientAction` → 성공 시 `redirect`, 실패 시 `{ error }` 반환(입력 유지). 삭제는 글 상세 `clientAction` + `window.confirm`
 - 편집기 이미지: 본문 칸에 끌어놓기·붙여넣기, 하단 바 `이미지` 버튼(파일 선택, 여러 장). 커서 자리(줄 중간이면 그 줄 다음)에 `![업로드 중: …]()` 표시 → 올라가면 `![이미지 설명](주소)`로 교체하고, 한 장이며 그동안 본문을 고치지 않았으면 `이미지 설명`을 선택해 바로 타이핑으로 대체 텍스트(alt) 입력(2026-10-13, 제목 칸 등 다른 입력 칸 사용 중이면 포커스 유지). 바꾸지 않은 `이미지 설명`은 화면에서 빈 alt(`utils/imageAlt.ts`), 실패 시 표시 제거 + 하단 바 오류. 올리는 중에는 게시 비활성. 본문 이미지는 `loading="lazy"`, 폭 맞춤
 - 주제 선택(`CategoryPicker`): 고른 경로를 따라 줄이 열림 `CATEGORY`(큰 주제 칩 + `[+]`) → `↳ SUB`(`선택 안 함` + 하위 칩 + `[+]`) → `↳ SECTION`(3단계). 줄 위치로 무엇을 만드는지 구분 (2026-10-12 소유자 결정, 별도 `주제 만들기` 칸은 써 보고 제외). `[+]`는 점선 칩, 누르면 칩이 옆으로 펼쳐지며 입력 칸 등장·`+`가 `×`로 회전(Enter 또는 `↵` 만들기, Esc 또는 `×` 닫기, 소유자 만족). 제출은 숨은 `categoryId` 하나(가장 깊이 고른 주제). 글은 어느 단계에나 가능
@@ -227,7 +229,7 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 3. (완료) 이미지 업로드 (SeaweedFS S3, `post_image.object_key`). 연결 없는 이미지 정리, 대체 텍스트(alt) 입력 안내 완료(2026-10-13)
 4. (완료) Streak 화면 (2026-10-13, 일정 보드 대체). 일정 백엔드는 2026-10-14 삭제
 5. (완료) 첫 진입 프리로더
-6. 2차 기능: 알림 메일 07:00·18:00 완료(2026-10-13, 운영 반영 2026-10-14). 06:00 아침 기사 메일 완료(2026-10-13, 운영 반영 2026-10-14, `ANTHROPIC_API_KEY` 없이 규칙 선정). 남은 일: 뉴스 스크랩(코멘트 → 글 게시).
+6. 2차 기능: 알림 메일 07:00·18:00 완료(2026-10-13, 운영 반영 2026-10-14). 06:00 아침 기사 메일 완료(2026-10-13, 운영 반영 2026-10-14, `ANTHROPIC_API_KEY` 없이 규칙 선정). 뉴스 스크랩(메일 링크 → 코멘트 → 글) 완료(2026-10-14).
 7. (완료) 배포 (2026-10-13): https://zoolog.site 운영 중. Lightsail + k3s + Argo CD + Caddy ("운영" 절). React 빌드는 Caddy가 제공하고 `/api`·`/oauth2`·`/login/oauth2`만 Spring으로. 저장소 https://github.com/kimzoo5676-del/Zoolog (공개), 이미지 `ghcr.io/kimzoo5676-del/*` (공개)
 
 ## 열린 이슈

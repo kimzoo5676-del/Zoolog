@@ -12,9 +12,11 @@ server:
   shutdown: graceful
 
 zoolog:
+  # Secret zoolog-env의 DOMAIN (Caddy 인증서와 같은 값)
+  site-url: https://${DOMAIN}
   # 알림 메일 발송 (MAIL_USERNAME, MAIL_PASSWORD 필요)
   reminders:
     enabled: true
-  # 아침 기사 메일 (NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, ANTHROPIC_API_KEY 필요)
+  # 아침 기사 메일 (NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 필요, ANTHROPIC_API_KEY는 선택)
   news:
     enabled: true
