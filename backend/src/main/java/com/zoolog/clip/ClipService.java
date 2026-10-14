@@ -4,6 +4,7 @@ import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
 import com.zoolog.category.CategoryService;
 import com.zoolog.post.PostDetailResponse;
+import com.zoolog.post.PostRepository;
 import com.zoolog.post.PostRequest;
 import com.zoolog.post.PostService;
 import java.net.URI;
@@ -12,6 +13,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
 import java.util.Objects;
+import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,19 +33,35 @@ public class ClipService {
 
     private final CategoryRepository categoryRepository;
     private final PostService postService;
+    private final PostRepository postRepository;
+    private final NewsClipRepository clipRepository;
 
-    public ClipService(CategoryRepository categoryRepository, PostService postService) {
+    public ClipService(CategoryRepository categoryRepository, PostService postService, PostRepository postRepository,
+            NewsClipRepository clipRepository) {
         this.categoryRepository = categoryRepository;
         this.postService = postService;
+        this.postRepository = postRepository;
+        this.clipRepository = clipRepository;
     }
 
+    // 같은 기사(주소가 같음)를 이미 스크랩했으면 409 (2026-10-14 소유자 결정)
     @Transactional
     public PostDetailResponse create(ClipRequest request) {
         URI url = articleUrl(request.url());
+        if (clipRepository.findByUrl(url.toString()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 스크랩한 기사예요");
+        }
         Category top = findOrCreate(TOP_NAME, null);
         Category month = findOrCreate(monthName(request.date()), top);
         Category week = findOrCreate(weekName(request.date()), month);
-        return postService.create(new PostRequest(week.getId(), title(request), content(request, url)));
+        PostDetailResponse created = postService.create(new PostRequest(week.getId(), title(request), content(request, url)));
+        clipRepository.save(new NewsClip(url.toString(), postRepository.getReferenceById(created.id())));
+        return created;
+    }
+
+    // 코멘트 화면을 열 때 이미 스크랩한 기사인지 확인 (주소 형식이 잘못됐으면 400)
+    public Optional<ClipLookupResponse> findByUrl(String value) {
+        return clipRepository.findByUrl(articleUrl(value).toString()).map(ClipLookupResponse::from);
     }
 
     static String monthName(LocalDate date) {

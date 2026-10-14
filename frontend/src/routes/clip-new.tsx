@@ -1,5 +1,5 @@
 import { data, Form, href, Link, redirect, useNavigation } from 'react-router'
-import { createClip } from '../api/clip'
+import { createClip, findClippedPostId } from '../api/clip'
 import { RouteError } from '../components/RouteError'
 import { clipMonthName, clipWeekName, isHttpUrl, parseClipDate } from '../utils/clip'
 import { errorMessage } from '../utils/postForm'
@@ -18,7 +18,10 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     // RouteError는 404일 때 문구를 그대로 보여 줌
     throw data('기사 정보가 없어요. 메일의 링크로 다시 들어와 주세요', { status: 404 })
   }
+  // 같은 기사를 두 번 스크랩하지 않도록: 이미 썼으면 코멘트 칸 대신 그 글로 가는 링크 (서버도 409로 막음)
+  const clippedPostId = await findClippedPostId(articleUrl as string, request.signal)
   return {
+    clippedPostId,
     title,
     url: articleUrl as string,
     source: params.get('source')?.trim() ?? '',
@@ -47,7 +50,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 
 export default function ClipNew({ loaderData, actionData }: Route.ComponentProps) {
-  const { title, url, source, date, question, path, heading } = loaderData
+  const { clippedPostId, title, url, source, date, question, path, heading } = loaderData
   const submitting = useNavigation().state === 'submitting'
 
   return (
@@ -64,18 +67,29 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
         </p>
       </div>
       <div className="clip-body">
-        <label htmlFor="clip-comment" className="clip-question">
-          {question}
-        </label>
-        <textarea
-          id="clip-comment"
-          name="comment"
-          className="clip-comment"
-          rows={4}
-          maxLength={500}
-          required
-          autoFocus
-        />
+        {clippedPostId === null ? (
+          <>
+            <label htmlFor="clip-comment" className="clip-question">
+              {question}
+            </label>
+            <textarea
+              id="clip-comment"
+              name="comment"
+              className="clip-comment"
+              rows={4}
+              maxLength={500}
+              required
+              autoFocus
+            />
+          </>
+        ) : (
+          <p className="clip-question">
+            이미 스크랩한 기사예요.{' '}
+            <Link to={href('/posts/:postId', { postId: String(clippedPostId) })} viewTransition>
+              스크랩한 글 보기
+            </Link>
+          </p>
+        )}
       </div>
       <input type="hidden" name="title" value={title} />
       <input type="hidden" name="url" value={url} />
@@ -90,9 +104,11 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
             {actionData.error}
           </p>
         )}
-        <button type="submit" className="button-solid" disabled={submitting}>
-          게시
-        </button>
+        {clippedPostId === null && (
+          <button type="submit" className="button-solid" disabled={submitting}>
+            게시
+          </button>
+        )}
       </div>
     </Form>
   )

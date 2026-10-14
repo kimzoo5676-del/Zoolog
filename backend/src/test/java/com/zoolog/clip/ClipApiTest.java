@@ -3,6 +3,8 @@ package com.zoolog.clip;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -66,10 +68,10 @@ class ClipApiTest {
     @Test
     @DisplayName("같은 주의 두 번째 코멘트는 이미 있는 주제를 다시 쓴다")
     void reuseCategories() throws Exception {
-        clip("2026-10-13");
+        clip("2026-10-13", "https://a.com/1");
         long before = categoryRepository.count();
 
-        clip("2026-10-18");
+        clip("2026-10-18", "https://a.com/2");
 
         assertThat(categoryRepository.count()).isEqualTo(before);
     }
@@ -102,11 +104,42 @@ class ClipApiTest {
         assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 31))).isEqualTo("2026.10 Week 5");
     }
 
-    private void clip(String date) throws Exception {
+    @Test
+    @DisplayName("같은 기사를 다시 스크랩하면 409를 받고, 조회하면 먼저 쓴 글 번호가 나온다")
+    void rejectDuplicate() throws Exception {
+        Integer postId = clip("2026-10-14", "https://a.com/dup");
+
         mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("기사", "https://a.com", "", date, "코멘트")))
-                .andExpect(status().isCreated());
+                        .content(body("기사", "https://a.com/dup", "", "2026-10-15", "또 코멘트")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("이미 스크랩한 기사예요"));
+        mockMvc.perform(get("/api/clips").param("url", "https://a.com/dup").with(oidcLogin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.postId").value(postId));
+        mockMvc.perform(get("/api/clips").param("url", "https://a.com/new").with(oidcLogin()))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("스크랩 글을 지우면 같은 기사를 다시 스크랩할 수 있다")
+    void clipAgainAfterDelete() throws Exception {
+        Integer postId = clip("2026-10-14", "https://a.com/again");
+        mockMvc.perform(delete("/api/posts/{id}", postId).with(oidcLogin()).with(csrf()))
+                .andExpect(status().isNoContent());
+        entityManager.flush();
+        entityManager.clear();
+
+        clip("2026-10-14", "https://a.com/again");
+    }
+
+    private Integer clip(String date, String url) throws Exception {
+        String response = mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("기사", url, "", date, "코멘트")))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(response, "$.id");
     }
 
     private static String body(String title, String url, String source, String date, String comment) {
