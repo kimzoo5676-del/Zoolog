@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   href,
   Link,
@@ -16,6 +16,7 @@ import { Logo } from '../components/Logo'
 import { PointerFocusReset } from '../components/PointerFocusReset'
 import { RollText } from '../components/RollText'
 import { MapHighlightContext } from '../hooks/mapHighlight'
+import { useHeaderLayout } from '../hooks/useHeaderLayout'
 import { buildCategoryTree, type CategoryNode } from '../utils/categoryTree'
 import { onlyFocusChanged } from '../utils/focusParam'
 import { takeLoginReturn } from '../utils/loginReturn'
@@ -46,11 +47,14 @@ export default function BlogLayout({ loaderData }: Route.ComponentProps) {
   const { key: locationKey } = useLocation()
   useLayoutEffect(() => clearPendingNames(), [locationKey])
   const highlight = useMemo(() => ({ slug: highlightSlug, setSlug: setHighlightSlug }), [highlightSlug])
+  // 메뉴가 한 줄에 안 들어가면 두 줄 배치 (주제 이름·로그인 여부가 바뀌면 다시 잼)
+  const headerRef = useRef<HTMLElement>(null)
+  useHeaderLayout(headerRef, locationKey, `${categories.map((c) => c.name).join('|')}|${me ? 1 : 0}`)
 
   return (
     <MapHighlightContext value={highlight}>
       <div className="site-shell">
-        <header className="site-header">
+        <header className="site-header" ref={headerRef}>
           {/* 첫 글자만 러스트 강조. span으로 나뉜 글자를 "Z oolog"로 띄어 읽지 않도록 aria-label 지정 */}
           <div className="site-brand">
             <Link to="/" viewTransition className="site-title" aria-label="Zoolog">
