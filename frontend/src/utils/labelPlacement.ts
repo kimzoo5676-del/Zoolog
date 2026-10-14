@@ -33,7 +33,7 @@ function rectOf(x: number, y: number, width: number, p: LabelPlacement): Rect {
   return { left: left - PAD, right: left + width + PAD, top: baseline - FONT_SIZE, bottom: baseline + 3 }
 }
 
-function overlaps(a: Rect, b: Rect) {
+export function overlaps(a: Rect, b: Rect) {
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
 }
 

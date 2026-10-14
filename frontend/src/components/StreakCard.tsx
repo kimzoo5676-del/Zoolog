@@ -25,6 +25,8 @@ export function StreakCard({ name, month, today, posts, groups }: StreakCardProp
   const [shownDate, setShownDate] = useState<string | null>(null)
   const [tip, setTip] = useState({ bottom: 0, left: 0, arrow: 0, width: TIP_WIDTH })
   const closeTimer = useRef<number | undefined>(undefined)
+  // 달을 바꾸면 카드가 새로 그려지므로(key) 남은 닫기 예약을 정리
+  useEffect(() => () => window.clearTimeout(closeTimer.current), [])
   const calendarRef = useRef<HTMLDivElement>(null)
 
   const byDate = new Map<string, StreakPost[]>()

@@ -4,7 +4,7 @@ import type { Category } from '../api/category'
 import type { PostSummary } from '../api/post'
 import { useMapHighlight } from '../hooks/mapHighlight'
 import { layoutConstellation, type StarNode } from '../utils/constellation'
-import { centeredLabelRect, placeLabels, textWidth, type LabelPlacement } from '../utils/labelPlacement'
+import { centeredLabelRect, overlaps, placeLabels, textWidth, type LabelPlacement, type Rect } from '../utils/labelPlacement'
 import { registerHomeCategoryHandler, tileTransition } from '../utils/viewTransition'
 import { ViewSwitch } from './ViewSwitch'
 
@@ -37,6 +37,16 @@ const STAR = {
   3: { core: 6, hit: 14, label: 13, labelY: 22 },
 } as const
 const POST_CORE = 3.6 // 글 별 반지름
+
+// 주제 단계별 별 크기 (4단계 이상이 생겨도 세부 주제 모양)
+function starSize(depth: number) {
+  return STAR[Math.min(3, Math.max(1, depth)) as 1 | 2 | 3]
+}
+
+// 주제 별 id("cat-80") → 주제 id
+function categoryIdOf(node: StarNode) {
+  return Number(node.id.slice(4))
+}
 
 function StarShape({ depth, px }: { depth: number; px: number }) {
   if (depth <= 1) return <path d={sparkle(STAR[1].core * px)} />
@@ -105,7 +115,7 @@ function useAnimatedBox(target: Box, initial: Box): Box {
 }
 
 // 홈 별자리 지도 (Obsidian 그래프 뷰에서 착안, 별자리 표현)
-// 주제 별을 누르면 지도 안에서 그 별자리로 확대 (목록 화면으로 이동하지 않음), 목록은 오른쪽 위 "그래프 | 목록" 전환으로
+// 주제 별을 누르면 지도 안에서 그 별자리로 확대 (목록 화면으로 이동하지 않음), 목록은 오른쪽 위 "Graph | Card" 전환으로
 // 키보드·스크린 리더는 주제 별(링크)로 이동, Enter로 확대, Esc로 한 단계 축소
 export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }: ConstellationMapProps) {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -136,7 +146,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
   // 큰 주제 별 (주제 id 순 = Category 화면 칸 순서)
   const topNodes = useMemo(
-    () => nodes.filter((n) => n.kind === 'top').sort((a, b) => Number(a.id.slice(4)) - Number(b.id.slice(4))),
+    () => nodes.filter((n) => n.kind === 'top').sort((a, b) => categoryIdOf(a) - categoryIdOf(b)),
     [nodes],
   )
   // 모여들 자리까지의 거리 (지도 단위): all은 큰 주제 별, category는 그 주제 안에서 하위 주제 별(2단계)
@@ -160,8 +170,17 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     if (gathering.mode === 'all') return topNodes
     return nodes
       .filter((n) => n.kind === 'sub' && n.parentId === gathering.topId)
-      .sort((a, b) => Number(a.id.slice(4)) - Number(b.id.slice(4)))
+      .sort((a, b) => categoryIdOf(a) - categoryIdOf(b))
   }, [gathering, nodes, topNodes])
+
+  // 별이 모인 뒤 화면 전환하는 예약: 그사이 다른 곳으로 이동하면(뒤로 가기 등) 지도가 사라지며 취소
+  const gatherTimerRef = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(gatherTimerRef.current), [])
+  function navigateAfterGather(to: string) {
+    window.clearTimeout(gatherTimerRef.current)
+    // 별이 거의 다 모였을 때 화면 전환을 시작해 모인 별이 곧바로 칸으로 이어지도록
+    gatherTimerRef.current = window.setTimeout(() => navigate(to, { viewTransition: true }), GATHER_MS * 0.8)
+  }
 
   // 머리글 주제 메뉴를 누르면 이 지도가 받아 별을 모은 뒤 이동 (blog-layout → utils/viewTransition 등록)
   useEffect(() => {
@@ -171,10 +190,11 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
       if (!top?.slug) return false
       setActiveId(null)
       setGathering({ mode: 'category', topId: top.id })
-      const slug = top.slug
-      window.setTimeout(() => navigate(href('/categories/:slug', { slug }), { viewTransition: true }), GATHER_MS * 0.8)
+      navigateAfterGather(href('/categories/:slug', { slug: top.slug }))
       return true
     })
+    // navigateAfterGather는 ref와 navigate만 쓰므로 의존성에서 제외
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [byId, navigate])
 
   // 별마다 상위 별 목록 (강조·확대 범위 계산용)
@@ -234,8 +254,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     const top = h * 0.14
     return { x: (minX + maxX) / 2 - w / 2, y: (minY + maxY) / 2 - h / 2 - top, w, h: h + top }
   }, [focus, nodes, ancestors, fullBox])
-  const targetBox = focusBox
-  const box = useAnimatedBox(targetBox, fullBox)
+  const box = useAnimatedBox(focusBox, fullBox)
 
   // 글 별 클릭: 바로 글 화면으로. 마우스를 올려 떠 있던 큰 제목이 글 화면 제목 자리로 날아감
   // (같은 view-transition-name "post-title"을 가진 두 요소를 브라우저가 이어서 움직임, 공유 요소 전환)
@@ -257,8 +276,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     event.preventDefault()
     setActiveId(null)
     setGathering({ mode: 'all' })
-    // 별이 거의 다 모였을 때 화면 전환을 시작해 모인 별이 곧바로 바둑판으로 이어지도록
-    window.setTimeout(() => navigate('/posts', { viewTransition: true }), GATHER_MS * 0.8)
+    navigateAfterGather('/posts')
   }
 
   // preserveAspectRatio="xMidYMid meet": 보이는 범위 전체가 들어가는 배율, 남는 쪽은 가운데 정렬 여백
@@ -329,20 +347,18 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     !!focus && (focus.depth >= 3 || !nodes.some((n) => n.kind !== 'post' && n.parentId === focus.id))
 
   // 글 제목 자리: 확대가 끝난 배율 기준으로 한 번 계산 (확대 중에 자리가 바뀌며 흔들리지 않도록)
-  const targetScale = size.width > 0 ? Math.min(size.width / targetBox.w, size.height / targetBox.h) : 1
+  const targetScale = size.width > 0 ? Math.min(size.width / focusBox.w, size.height / focusBox.h) : 1
 
   // 주제 이름표 정리: 큰 주제부터 차례로 놓고, 이미 놓인 이름과 겹치는 작은 주제 이름은 숨김(가리키면 보임)
   // 큰 주제 이름은 항상 보임. 확대가 끝난 배율 기준이라 확대 중에 이름이 깜빡이지 않음
   const crowdedLabels = useMemo(() => {
     const hidden = new Set<string>()
-    const placed: ReturnType<typeof centeredLabelRect>[] = []
-    const overlaps = (a: (typeof placed)[number], b: (typeof placed)[number]) =>
-      a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+    const placed: Rect[] = []
     const categoriesInView = nodes
       .filter((n) => n.kind !== 'post' && (!focusGroup || focusGroup.has(n.id)))
       .sort((a, b) => a.depth - b.depth)
     for (const n of categoriesInView) {
-      const size = STAR[Math.min(3, Math.max(1, n.depth)) as 1 | 2 | 3]
+      const size = starSize(n.depth)
       const rect = centeredLabelRect(n.x * targetScale, n.y * targetScale, n.label, size.label, size.labelY)
       if (n.depth > 1 && placed.some((other) => overlaps(rect, other))) {
         hidden.add(n.id)
@@ -370,7 +386,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
       group
         .filter((n) => n.kind !== 'post')
         .map((n) => {
-          const size = STAR[Math.min(3, Math.max(1, n.depth)) as 1 | 2 | 3]
+          const size = starSize(n.depth)
           const p = toScreen(n)
           return centeredLabelRect(p.x, p.y, n.label, size.label, size.labelY)
         }),
@@ -451,7 +467,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
                   left: (node.x - box.x) * scale + offsetX,
                   top: (node.y - box.y) * scale + offsetY,
                   // 별은 모일 때 커진 크기 그대로 칸 가운데까지 날아감 (index.css *.gather-tile)
-                  ...tileTransition(Number(node.id.slice(4))),
+                  ...tileTransition(categoryIdOf(node)),
                 }}
               >
                 {/* 그래프의 별과 같은 모양 (큰 주제 ✦, 하위 주제 ◎), 칸 색 */}
@@ -577,7 +593,7 @@ type StarProps = {
   onZoom: (event: MouseEvent, node: StarNode) => void
   // 마우스를 올린 글 별 (커지고, 자기 작은 제목은 숨김: 떠오른 큰 제목과 겹치지 않도록)
   isTarget?: boolean
-  // Card로 갈 때 큰 주제 별까지 모여들 거리 (지도 단위)
+  // Card·머리글 주제 메뉴로 갈 때 모여들 별까지의 거리 (지도 단위)
   gather?: { x: number; y: number }
   onOpenPost: (event: MouseEvent, node: StarNode) => void
 }
@@ -638,7 +654,7 @@ function Star({
     )
   }
 
-  const size = STAR[Math.min(3, Math.max(1, node.depth)) as 1 | 2 | 3]
+  const size = starSize(node.depth)
   // SVG 안의 Link는 SVG <a>로 렌더링됨. 위치 이동은 바깥 <g>가 담당
   // 일반 클릭·Enter는 지도 안 확대, Ctrl/Cmd 클릭은 주제 목록 화면을 새 탭으로
   return (
@@ -674,7 +690,7 @@ function Star({
 // 주제 별 큰 이름의 세로 위치 보정(화면 px): 작은 이름 글자의 윗변 높이에서 시작하도록
 // (.hover-title.is-below가 0.75rem 아래로 내리므로 그만큼 뺌)
 function topicTitleOffset(depth: number) {
-  const size = STAR[Math.min(3, Math.max(1, depth)) as 1 | 2 | 3]
+  const size = starSize(depth)
   return size.labelY - size.label - 12
 }
 
