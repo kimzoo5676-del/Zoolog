@@ -6,18 +6,23 @@
 
 공부 기록을 별자리 그래프와 주제별 글 스트릭 달력으로 보여 주는 개인 블로그를 기획부터 k3s GitOps 운영까지 혼자 만든 프로젝트
 
-## GitHub 프로필용 (기존 프로젝트와 같은 형식)
+## GitHub 프로필용 (기존 프로젝트와 같은 카드 형식)
 
-**Zoolog — 공부 기록 그래프 블로그** `2026.10 -`
+2026-10-14 프로필(kimzoo5676-del/kimzoo5676-del README)의 모디 다음 자리에 반영한 내용. 바꾸면 양쪽을 함께 수정
 
-> 공부 글을 주제 3단계로 정리해 별자리 그래프로 보여 주고, 글 쓴 날을 주제별 달력에 하위 주제 색으로 쌓아 가는 개인 서비스. **https://zoolog.site 운영 중**
+**Zoolog — 공부 기록 그래프 블로그** `2026.10 -` · 배지: Website(https://zoolog.site), GitHub
 
-**Role** · 1인 개발 (Infra / Backend / Frontend) | `Spring Boot` `PostgreSQL` `React` `k3s` `Argo CD` `GitHub Actions` `Caddy` `AWS Lightsail`
+> 공부 글을 주제 3단계로 정리해 **별자리 그래프로 보여 주고, 글 쓴 날을 주제별 달력에 쌓아 가는** 개인 블로그.
+> **기획 · 디자인 · 백엔드 · 프론트 · 인프라를 혼자 만들어 https://zoolog.site 에서 운영 중.**
 
-- **GitOps 배포** — GitHub Actions(테스트 · 이미지 빌드 · GHCR · 매니페스트 태그 커밋) + Argo CD로 push만으로 k3s에 자동 배포, `git revert`로 되돌리기
-- **무중단 배포** — 화면 서버 RollingUpdate + readiness · preStop으로 배포 중 1초 간격 측정에서 화면 응답 실패 0회
-- **보안** — 외부 공개는 80/443만, 관리 접속은 Tailscale SSH만, 비밀값은 Git 밖 k8s Secret, Google OIDC 소유자 1명 로그인 + CSRF
-- **그래프 홈** — 힘 기반 배치로 수백 개 글도 겹치지 않는 별자리 지도, 주제 확대 애니메이션과 주소 공유
+**Role** · 1인 개발 (Infra / Backend / Frontend) | `Spring Boot` `PostgreSQL` `React` `TypeScript` `k3s` `Argo CD` `GitHub Actions` `Caddy` `AWS Lightsail`
+
+- **GitOps 배포** — GitHub Actions(통합 테스트 → 이미지 빌드 → 매니페스트 태그 커밋) + Argo CD로 push만으로 k3s에 반영, `git revert`로 되돌리기
+- **2GB 서버 운영 설계** — 컨테이너별 메모리 상한과 Argo CD core 설치로 서버 1대에 구성, 화면 서버 RollingUpdate로 배포 중 응답 실패 0회(1초 간격 측정)
+- **아침 기사 메일 · 뉴스 스크랩** — Google 뉴스 RSS · 네이버 검색으로 후보를 모아 규칙 기반 선정, 못 보낸 날 재발송, 메일 링크로 코멘트를 달면 블로그 글로 게시(같은 기사 중복 방지)
+- **그래프 홈** — 힘 기반 배치(force-directed)로 수백 개 글도 겹치지 않는 별자리 그래프, View Transition으로 화면 사이 제목이 이어지는 전환
+
+기술 스택 배지에 React, TypeScript, K3s, Argo CD 추가
 
 ## 이력서 bullet 후보
 
