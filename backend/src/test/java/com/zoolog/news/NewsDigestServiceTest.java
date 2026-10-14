@@ -100,6 +100,35 @@ class NewsDigestServiceTest {
         assertThat(sentText("10월 14일 아침 기사")).contains("오늘은 기사를 가져오지 못했어요");
     }
 
+    @Test
+    @DisplayName("핫이슈는 네이버에서 같은 기사를 찾으면 원문 주소·언론사·요약으로 바꾼다")
+    void replaceHotLinkWithOriginal() {
+        given(curator.pick(hot, career)).willReturn(Optional.empty());
+        given(naverNews.findSameStory("첫 기사")).willReturn(Optional.of(
+                new NewsArticle("첫 기사 [종합]", "hani.co.kr", "https://www.hani.co.kr/arti/1.html", "첫 기사 요약")));
+
+        service.sendDailyDigest();
+
+        assertThat(sentText("10월 14일 아침 기사")).startsWith("""
+                오늘의 핫이슈
+
+                - 첫 기사 (hani.co.kr)
+                  첫 기사 요약
+                  https://www.hani.co.kr/arti/1.html
+                """);
+    }
+
+    @Test
+    @DisplayName("네이버에서 같은 기사를 찾지 못하면 Google 뉴스 링크를 그대로 쓴다")
+    void keepGoogleLinkWhenNotFound() {
+        given(curator.pick(hot, career)).willReturn(Optional.empty());
+        given(naverNews.findSameStory("첫 기사")).willThrow(new IllegalStateException("네이버 오류"));
+
+        service.sendDailyDigest();
+
+        assertThat(sentText("10월 14일 아침 기사")).contains("- 첫 기사 (한겨레)\n  https://hot/1\n");
+    }
+
     private String sentText(String subject) {
         ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
         verify(mailer).send(eq(subject), text.capture());

@@ -57,9 +57,28 @@ public class NewsDigestService {
             hot.stream().limit(1).forEach((article) -> hotPicks.add(new Selected(article, article.summary())));
             NewsRanker.top(career, 2).forEach((article) -> careerPicks.add(new Selected(article, article.summary())));
         });
+        hotPicks.replaceAll(this::withOriginalLink);
         LocalDate today = LocalDate.now(clock);
         return mailer.send(today.getMonthValue() + "월 " + today.getDayOfMonth() + "일 아침 기사",
                 format(hotPicks, careerPicks, siteUrl, today));
+    }
+
+    // 핫이슈(Google 뉴스 링크)를 네이버에서 같은 기사로 찾아 원문 주소·언론사로 바꾸고, 소개가 없으면 기사 앞부분 문장
+    // 못 찾거나 실패하면 Google 뉴스 링크 그대로 (제목은 Google 쪽 유지)
+    private Selected withOriginalLink(Selected pick) {
+        if (!naverNews.isConfigured()) {
+            return pick;
+        }
+        try {
+            return naverNews.findSameStory(pick.article().title())
+                    .map((found) -> new Selected(
+                            new NewsArticle(pick.article().title(), found.source(), found.link(), found.summary()),
+                            pick.intro() == null || pick.intro().isBlank() ? found.summary() : pick.intro()))
+                    .orElse(pick);
+        } catch (RuntimeException e) {
+            log.warn("핫이슈 원문 주소를 찾지 못함: {}", e.getMessage());
+            return pick;
+        }
     }
 
     private List<NewsArticle> fetchHot() {
