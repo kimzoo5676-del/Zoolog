@@ -33,7 +33,7 @@
 - Windows 11 + WSL2(Ubuntu) + Docker Desktop + VS Code Dev Containers (윈도우 노트북은 12월 초 반납 예정)
 - `.devcontainer/compose.yaml` 서비스: `app`(작업 컨테이너), `db`(postgres:18), `storage`(seaweedfs)
 - 컨테이너 안 저장소 경로 `/workspaces/zoolog`, DB 주소 `db:5432`
-- Claude Code 로그인·설정 유지: named volume `claude-config` → `/home/vscode/.claude`, `CLAUDE_CONFIG_DIR`로 `.claude.json`도 그 안에 저장. 볼륨 소유자는 `postCreateCommand`의 `chown`으로 맞춤. 볼륨 삭제 시 재로그인 필요
+- Claude Code 로그인·설정 유지: named volume `claude-config` → `/home/vscode/.claude`, `CLAUDE_CONFIG_DIR`로 `.claude.json`도 그 안에 저장. 볼륨 소유자는 `postCreateCommand`의 `chown`으로 맞춤. 볼륨 삭제 시 재로그인 필요. Claude Code 자동 업데이트(2026-10-14): devcontainer 기능이 root로 설치해 `Auto-update failed: no write permission to npm prefix`가 떠서, `postCreateCommand`가 설치 폴더(`$(npm root -g)/@anthropic-ai`) 주인을 vscode로 바꾸고 npm 설치 후 스크립트를 이 패키지만 허용(`allow-scripts`)
 - `db`, `storage`는 `ports:` 없음(외부 비공개). `forwardPorts`는 5173(Vite)만
 - 비밀값은 `.devcontainer/.env` (gitignore 대상): `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `OWNER_EMAIL`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `ANTHROPIC_API_KEY`(메일·기사는 개발에서 발송하지 않아 비워도 됨). 키 목록은 `.env.example`에 커밋. `.env` 변경은 컨테이너를 다시 만들어야(Rebuild) 반영
 - 테스트는 `build.gradle`의 `test` 작업이 Google 관련 환경 변수를 가짜 값으로 채움 (Google과 통신 안 함)
