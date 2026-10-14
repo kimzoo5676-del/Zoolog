@@ -56,7 +56,7 @@ class ClipApiTest {
         Integer postId = JsonPath.read(response, "$.id");
         var post = postRepository.findWithCategoryById(postId.longValue()).orElseThrow();
         Category week = post.getCategory();
-        assertThat(week.getName()).isEqualTo("2026.10 3주");
+        assertThat(week.getName()).isEqualTo("2026.10 Week 3");
         assertThat(week.getParent().getName()).isEqualTo("2026.10");
         assertThat(week.getParent().getParent().getName()).isEqualTo("News Clipping");
         assertThat(post.getContent()).isEqualTo(
@@ -94,12 +94,12 @@ class ClipApiTest {
     }
 
     @Test
-    @DisplayName("주는 월요일 시작이고 1일이 들어 있는 주가 1주다")
+    @DisplayName("주는 월요일 시작이고 1일이 들어 있는 주가 Week 1이다")
     void weekName() {
-        // 2026-10-01은 목요일: 1~4일이 1주, 5일(월)부터 2주
-        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 4))).isEqualTo("2026.10 1주");
-        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 5))).isEqualTo("2026.10 2주");
-        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 31))).isEqualTo("2026.10 5주");
+        // 2026-10-01은 목요일: 1~4일이 Week 1, 5일(월)부터 Week 2
+        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 4))).isEqualTo("2026.10 Week 1");
+        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 5))).isEqualTo("2026.10 Week 2");
+        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 31))).isEqualTo("2026.10 Week 5");
     }
 
     private void clip(String date) throws Exception {

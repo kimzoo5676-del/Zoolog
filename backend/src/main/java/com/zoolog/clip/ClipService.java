@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 // 뉴스 스크랩 글 게시 (2026-10-14 소유자 결정)
-// 주제: News Clipping > 달(2026.10) > 주(2026.10 2주), 없으면 만듦. 주제 이름은 사이트 전체에서 겹치면 안 되어 주 이름에도 연월
+// 주제: News Clipping > 달(2026.10) > 주(2026.10 Week 2), 없으면 만듦. 주제 이름은 사이트 전체에서 겹치면 안 되어 주 이름에도 연월
 // 글: 제목 "10.14 기사 제목", 본문은 기사 제목 링크 + 언론사 + 코멘트만 (기사 본문 복제 금지, 저작권)
 @Service
 @Transactional(readOnly = true)
@@ -26,7 +26,7 @@ public class ClipService {
 
     static final String TOP_NAME = "News Clipping";
     private static final int TITLE_MAX = 200;
-    // 월요일 시작, 1일이 들어 있는 주가 1주 (Streak 달력과 같은 기준)
+    // 월요일 시작, 1일이 들어 있는 주가 Week 1 (Streak 달력과 같은 기준)
     private static final WeekFields WEEK = WeekFields.of(DayOfWeek.MONDAY, 1);
 
     private final CategoryRepository categoryRepository;
@@ -51,7 +51,7 @@ public class ClipService {
     }
 
     static String weekName(LocalDate date) {
-        return monthName(date) + " " + date.get(WEEK.weekOfMonth()) + "주";
+        return monthName(date) + " Week " + date.get(WEEK.weekOfMonth());
     }
 
     static String title(ClipRequest request) {
