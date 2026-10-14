@@ -56,8 +56,8 @@ public class PostService {
     @Transactional
     public void delete(Long id) {
         Post post = getPostWithCategory(id);
-        // 이미지 기록이 글을 참조(FK)하므로 먼저 연결 해제 (저장소 파일은 남김, 정리는 별도)
-        imageService.detachAll(post);
+        // 글-이미지 연결이 글을 참조(FK)하므로 먼저 연결 해제 (저장소 파일은 남김, 다른 글이 안 쓰면 정리 작업이 삭제)
+        imageService.unlinkAll(post);
         postRepository.delete(post);
     }
 

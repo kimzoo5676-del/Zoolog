@@ -22,8 +22,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
+import com.zoolog.post.Post;
 import jakarta.persistence.EntityManager;
 import java.io.ByteArrayInputStream;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -121,7 +123,7 @@ class ImageApiTest {
         Integer postId = JsonPath.read(created, "$.id");
         entityManager.flush();
         entityManager.clear();
-        assertThat(postImageRepository.findByObjectKey(key).orElseThrow().getPost().getId()).isEqualTo(postId.longValue());
+        assertThat(linkedPostIds(key)).containsExactly(postId.longValue());
 
         mockMvc.perform(put("/api/posts/{id}", postId).with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -129,7 +131,8 @@ class ImageApiTest {
                 .andExpect(status().isOk());
         entityManager.flush();
         entityManager.clear();
-        assertThat(postImageRepository.findByObjectKey(key).orElseThrow().getPost()).isNull();
+        assertThat(linkedPostIds(key)).isEmpty();
+        assertThat(postImageRepository.findByObjectKey(key).orElseThrow().getUnusedSince()).isNotNull();
 
         mockMvc.perform(put("/api/posts/{id}", postId).with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -139,7 +142,44 @@ class ImageApiTest {
                 .andExpect(status().isNoContent());
         entityManager.flush();
         entityManager.clear();
-        assertThat(postImageRepository.findByObjectKey(key).orElseThrow().getPost()).isNull();
+        assertThat(linkedPostIds(key)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("한 이미지를 두 글이 함께 쓰면, 한 글에서 빼도 다른 글과의 연결은 남아 정리 대상이 아니다")
+    void shareImageBetweenPosts() throws Exception {
+        String url = upload();
+        String key = "images/" + url.substring(url.lastIndexOf('/') + 1);
+        Category top = categoryRepository.save(new Category("테스트 큰 주제", "test-top"));
+        Category category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
+        Integer first = createPost(category.getId(), "![](" + url + ")");
+        Integer second = createPost(category.getId(), "같은 이미지 ![](" + url + ")");
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(linkedPostIds(key)).containsExactlyInAnyOrder(first.longValue(), second.longValue());
+
+        mockMvc.perform(put("/api/posts/{id}", second).with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(category.getId(), "이미지 없는 본문")))
+                .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(linkedPostIds(key)).containsExactly(first.longValue());
+        assertThat(postImageRepository.findByObjectKey(key).orElseThrow().getUnusedSince()).isNull();
+    }
+
+    private Integer createPost(Long categoryId, String content) throws Exception {
+        String created = mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(categoryId, content)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(created, "$.id");
+    }
+
+    private List<Long> linkedPostIds(String key) {
+        return postImageRepository.findByObjectKey(key).orElseThrow().getPosts().stream().map(Post::getId).toList();
     }
 
     private String upload() throws Exception {

@@ -40,14 +40,14 @@ class ImageCleanupTest {
     @MockitoBean
     ImageStorage storage;
 
-    // 저장 시각(updatedAt)은 실제 시각, 정리 기준 "지금"만 앞으로 옮김
+    // 올린 시각(unusedSince)은 실제 시각, 정리 기준 "지금"만 앞으로 옮김
     @MockitoBean
     Clock clock;
 
     @Test
     @DisplayName("글과 연결되지 않은 채 하루가 지난 이미지는 저장소 파일과 기록이 함께 삭제된다")
     void deleteOldUnusedImage() {
-        PostImage unused = save(new PostImage(newKey(), "image/png"));
+        PostImage unused = save(new PostImage(newKey(), "image/png", Instant.now()));
         nowIs(Instant.now().plus(ImageService.UNUSED_GRACE).plus(Duration.ofHours(1)));
 
         imageService.deleteUnusedImages();
@@ -61,7 +61,7 @@ class ImageCleanupTest {
     @Test
     @DisplayName("연결이 없어도 하루가 지나지 않은 이미지는 남는다")
     void keepRecentUnusedImage() {
-        PostImage recent = save(new PostImage(newKey(), "image/png"));
+        PostImage recent = save(new PostImage(newKey(), "image/png", Instant.now()));
         nowIs(Instant.now().plus(ImageService.UNUSED_GRACE).minus(Duration.ofHours(1)));
 
         imageService.deleteUnusedImages();
@@ -79,8 +79,8 @@ class ImageCleanupTest {
         Category category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
         Post post = new Post(category, "제목", "본문");
         entityManager.persist(post);
-        PostImage attached = new PostImage(newKey(), "image/png");
-        attached.attachTo(post);
+        PostImage attached = new PostImage(newKey(), "image/png", Instant.now());
+        attached.linkTo(post);
         save(attached);
         nowIs(Instant.now().plus(Duration.ofDays(365)));
 

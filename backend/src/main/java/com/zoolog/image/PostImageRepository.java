@@ -6,6 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
@@ -13,8 +15,10 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     List<PostImage> findAllByObjectKeyIn(Collection<String> objectKeys);
 
-    List<PostImage> findAllByPost(Post post);
+    // 이 글에 연결된 이미지
+    @Query("select i from PostImage i join i.posts p where p = :post")
+    List<PostImage> findAllLinkedTo(@Param("post") Post post);
 
-    // 글과 연결되지 않은 채 기준 시각 전부터 바뀌지 않은 이미지 (정리 대상)
-    List<PostImage> findAllByPostIsNullAndUpdatedAtBefore(Instant cutoff);
+    // 연결된 글 없이 기준 시각 전부터 남아 있는 이미지 (정리 대상)
+    List<PostImage> findAllByUnusedSinceBefore(Instant cutoff);
 }

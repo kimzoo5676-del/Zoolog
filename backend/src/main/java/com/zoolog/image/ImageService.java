@@ -55,11 +55,12 @@ public class ImageService {
                         HttpStatus.UNSUPPORTED_MEDIA_TYPE, "JPEG, PNG, GIF, WebP 이미지만 올릴 수 있어요"));
         String fileName = UUID.randomUUID() + "." + type.extension;
         storage.put(KEY_PREFIX + fileName, type.contentType, bytes);
-        postImageRepository.save(new PostImage(KEY_PREFIX + fileName, type.contentType));
+        postImageRepository.save(new PostImage(KEY_PREFIX + fileName, type.contentType, clock.instant()));
         return new ImageResponse(URL_PREFIX + fileName);
     }
 
-    // 글 저장 후 호출: 본문에 쓰인 이미지는 이 글과 연결, 이 글에 연결돼 있었지만 본문에서 빠진 이미지는 연결 해제
+    // 글 저장 후 호출: 본문에 쓰인 이미지는 이 글과 연결, 이 글에 연결돼 있었지만 본문에서 빠진 이미지는 이 글과의 연결만 해제
+    // 다른 글에도 쓰인 이미지는 그 글과의 연결이 남음 (한 이미지를 여러 글이 함께 사용)
     @Transactional
     public void syncImages(Post post) {
         Set<String> keys = new HashSet<>();
@@ -67,30 +68,30 @@ public class ImageService {
         while (matcher.find()) {
             keys.add(KEY_PREFIX + matcher.group(1));
         }
-        for (PostImage image : postImageRepository.findAllByPost(post)) {
+        Instant now = clock.instant();
+        for (PostImage image : postImageRepository.findAllLinkedTo(post)) {
             if (!keys.contains(image.getObjectKey())) {
-                image.detach();
+                image.unlinkFrom(post, now);
             }
         }
         if (!keys.isEmpty()) {
-            postImageRepository.findAllByObjectKeyIn(keys).forEach((image) -> image.attachTo(post));
+            postImageRepository.findAllByObjectKeyIn(keys).forEach((image) -> image.linkTo(post));
         }
     }
 
-    // 글 삭제 전 호출: 이미지 기록이 글을 참조(FK)하므로 먼저 연결 해제
+    // 글 삭제 전 호출: 연결 테이블이 글을 참조(FK)하므로 먼저 연결 해제
     @Transactional
-    public void detachAll(Post post) {
-        List<PostImage> images = postImageRepository.findAllByPost(post);
-        images.forEach(PostImage::detach);
+    public void unlinkAll(Post post) {
+        Instant now = clock.instant();
+        postImageRepository.findAllLinkedTo(post).forEach((image) -> image.unlinkFrom(post, now));
     }
 
-    // 글과 연결되지 않은 채 UNUSED_GRACE 동안 그대로인 이미지를 저장소 파일과 기록 모두 삭제
-    // 연결 해제(본문에서 빠짐, 글 삭제)도 updatedAt을 갱신하므로 해제 시점부터 기간을 셈
+    // 연결된 글 없이 UNUSED_GRACE 동안 남은 이미지를 저장소 파일과 기록 모두 삭제 (unusedSince: 마지막 연결이 끊긴 시각)
     // 파일을 먼저 지우고 기록을 지움: 도중에 실패하면 기록이 남아 다음 실행 때 다시 시도
     @Transactional
     public int deleteUnusedImages() {
         Instant cutoff = clock.instant().minus(UNUSED_GRACE);
-        List<PostImage> images = postImageRepository.findAllByPostIsNullAndUpdatedAtBefore(cutoff);
+        List<PostImage> images = postImageRepository.findAllByUnusedSinceBefore(cutoff);
         for (PostImage image : images) {
             storage.delete(image.getObjectKey());
             postImageRepository.delete(image);
