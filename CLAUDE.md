@@ -215,6 +215,8 @@ npm run build       # 결과물 build/client (SPA, 모든 경로를 index.html�
 - 기능 조각이 끝날 때마다 함께 갱신: `docs/portfolio/decisions.md`(상황 → 선택지 → 결정과 이유 → 결과), `docs/portfolio/troubleshooting.md`(증상 → 원인 → 해결 → 배운 점), 필요하면 `docs/portfolio/resume-notes.md`, `README.md`
 - 수치는 측정한 것만 측정 방법과 함께. 저장소가 공개라 비밀값 · 서버 IP · 개인 정보 금지
 - 서버 관리 명령 정리: `docs/kubectl-cheatsheet.md`
+- README 구조 그림은 Mermaid(`flowchart`, `sequenceDiagram`, `erDiagram`)로 (2026-10-14 소유자 요청, ASCII 그림 대체). 라벨에 `https://` 주소를 넣으면 링크로 해석돼 깨지고, `stateDiagram` 라벨의 `:`는 구분자라 쓰면 안 됨. 새 그림은 scratchpad Playwright + mermaid 11로 렌더링해 오류 확인
+- 학습 노트 `docs/learn/` (2026-10-14 소유자 요청): 소유자가 실제로 한 질문 하나당 글 하나. 순서는 질문 인용 → 답부터 → 그림·표로 이유 → 이 저장소에서 직접 확인하는 명령 → 출처(공식 문서) → 관련 글. 문체는 설명형 합니다체(명사형 종결 규칙의 예외, 소유자가 고른 예시 형식). 확인 명령·인용·수치는 실제로 돌려 보거나 원문에서 확인한 것만
 
 ## Git
 
