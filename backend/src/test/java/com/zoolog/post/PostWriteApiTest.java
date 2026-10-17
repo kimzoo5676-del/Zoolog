@@ -134,6 +134,41 @@ class PostWriteApiTest {
     }
 
     @Test
+    @DisplayName("'작성 예정' 글은 쓴 시각이 없다가 처음 내용을 채우면 그때가 쓴 시각이 되고, 이후 수정으로는 바뀌지 않는다")
+    void publishWhenPlaceholderFilled() throws Exception {
+        Integer id = com.jayway.jsonpath.JsonPath.read(mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(category.getId(), "IAM", "작성 예정")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.publishedAt").doesNotExist())
+                .andReturn().getResponse().getContentAsString(), "$.id");
+
+        String filled = mockMvc.perform(put("/api/posts/{id}", id).with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(category.getId(), "IAM", "AWS 계정의 출입 관리실")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String publishedAt = com.jayway.jsonpath.JsonPath.read(filled, "$.publishedAt");
+        assertThat(publishedAt).isNotNull();
+
+        mockMvc.perform(put("/api/posts/{id}", id).with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(category.getId(), "IAM", "내용을 더 고침")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.publishedAt").value(publishedAt));
+    }
+
+    @Test
+    @DisplayName("내용이 있는 새 글은 만들 때가 쓴 시각이다")
+    void publishOnCreate() throws Exception {
+        mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(category.getId(), "제목", "# 본문")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.publishedAt").exists());
+    }
+
+    @Test
     @DisplayName("수정 응답의 updatedAt은 이번 수정 시각이다")
     void updateResponseHasNewUpdatedAt() throws Exception {
         Post post = postRepository.saveAndFlush(new Post(category, "원래 제목", "원래 본문"));

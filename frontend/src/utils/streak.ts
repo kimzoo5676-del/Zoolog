@@ -57,9 +57,12 @@ export function streakOf(top: CategoryNode, posts: PostSummary[]): { posts: Stre
     }
     walk(sub)
   })
+  // 글 쓴 날 = 실제로 쓴 시각(publishedAt). 목차용으로 미리 만든 '작성 예정' 글(null)은 찍지 않음 (2026-10-16 소유자 요청)
   const mine = posts.flatMap((post) => {
     const group = groupBySlug.get(post.categorySlug)
-    return group ? [{ ...post, date: seoulDate(post.createdAt), color: group.color, groupName: group.name }] : []
+    return group && post.publishedAt
+      ? [{ ...post, date: seoulDate(post.publishedAt), color: group.color, groupName: group.name }]
+      : []
   })
   return { posts: mine, groups }
 }

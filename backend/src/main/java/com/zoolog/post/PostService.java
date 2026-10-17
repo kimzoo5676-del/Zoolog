@@ -3,6 +3,7 @@ package com.zoolog.post;
 import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
 import com.zoolog.image.ImageService;
+import java.time.Clock;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,11 +17,14 @@ public class PostService {
     private final PostRepository postRepository;
     private final CategoryRepository categoryRepository;
     private final ImageService imageService;
+    private final Clock clock;
 
-    public PostService(PostRepository postRepository, CategoryRepository categoryRepository, ImageService imageService) {
+    public PostService(PostRepository postRepository, CategoryRepository categoryRepository, ImageService imageService,
+            Clock clock) {
         this.postRepository = postRepository;
         this.categoryRepository = categoryRepository;
         this.imageService = imageService;
+        this.clock = clock;
     }
 
     public List<PostSummaryResponse> findAll(String categorySlug) {
@@ -39,7 +43,9 @@ public class PostService {
     @Transactional
     public PostDetailResponse create(PostRequest request) {
         Category category = getCategory(request.categoryId());
-        Post post = postRepository.save(new Post(category, request.title(), request.content()));
+        Post post = new Post(category, request.title(), request.content());
+        post.publishIfWritten(clock.instant());
+        postRepository.save(post);
         imageService.syncImages(post);
         return PostDetailResponse.from(post);
     }
@@ -49,6 +55,8 @@ public class PostService {
     public PostDetailResponse update(Long id, PostRequest request) {
         Post post = getPostWithCategory(id);
         post.update(getCategory(request.categoryId()), request.title(), request.content());
+        // '작성 예정' 글을 처음 채우면 지금이 쓴 날 (Streak에 그날로 찍힘)
+        post.publishIfWritten(clock.instant());
         imageService.syncImages(post);
         // 수정 시각(@LastModifiedDate)은 DB 반영(flush) 때 정해지므로 먼저 반영한 뒤 응답을 만듦 (안 하면 이전 updatedAt)
         postRepository.flush();

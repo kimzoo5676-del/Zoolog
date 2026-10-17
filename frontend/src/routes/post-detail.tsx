@@ -58,7 +58,8 @@ export default function PostDetail({ loaderData }: Route.ComponentProps) {
               </Link>
             ),
           },
-          { label: 'Date', value: <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time> },
+          // 날짜는 실제로 쓴 날 (아직 쓰지 않은 '작성 예정' 글은 만든 날)
+          { label: 'Date', value: <time dateTime={post.publishedAt ?? post.createdAt}>{formatDate(post.publishedAt ?? post.createdAt)}</time> },
         ]}
       />
       {me && (

@@ -20,9 +20,10 @@ export default function Streak({ loaderData }: Route.ComponentProps) {
   const today = seoulDate(new Date())
   const thisMonth = today.slice(0, 7)
   const [month, setMonth] = useState(thisMonth)
-  // 가장 오래된 글이 있는 달까지만 뒤로
+  // 가장 오래된 글이 있는 달까지만 뒤로 (아직 쓰지 않은 '작성 예정' 글은 제외)
   const firstMonth = posts.reduce((min, p) => {
-    const m = seoulDate(p.createdAt).slice(0, 7)
+    if (!p.publishedAt) return min
+    const m = seoulDate(p.publishedAt).slice(0, 7)
     return m < min ? m : min
   }, thisMonth)
   const [year, mon] = month.split('-')

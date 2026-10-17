@@ -6,6 +6,8 @@ export type PostSummary = {
   categoryName: string
   categorySlug: string
   createdAt: string
+  // 실제로 쓴 시각. 목차용으로 미리 만든 '작성 예정' 글은 null (Streak에 찍히지 않음)
+  publishedAt: string | null
 }
 
 export type PostDetail = {
@@ -17,6 +19,7 @@ export type PostDetail = {
   categorySlug: string
   createdAt: string
   updatedAt: string
+  publishedAt: string | null
 }
 
 type FetchPostsOptions = {

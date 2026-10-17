@@ -10,7 +10,8 @@ public record PostDetailResponse(
         String categoryName,
         String categorySlug,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        Instant publishedAt
 ) {
     public static PostDetailResponse from(Post post) {
         return new PostDetailResponse(
@@ -21,7 +22,8 @@ public record PostDetailResponse(
                 post.getCategory().getName(),
                 post.getCategory().getSlug(),
                 post.getCreatedAt(),
-                post.getUpdatedAt()
+                post.getUpdatedAt(),
+                post.getPublishedAt()
         );
     }
 }
