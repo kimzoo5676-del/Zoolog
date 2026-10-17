@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 
 import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
+import com.zoolog.support.TestCategories;
 import com.zoolog.post.Post;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
@@ -75,8 +76,7 @@ class ImageCleanupTest {
     @Test
     @DisplayName("글에 연결된 이미지는 오래돼도 남는다")
     void keepAttachedImage() {
-        Category top = categoryRepository.save(new Category("테스트 큰 주제", "test-top"));
-        Category category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
+        Category category = TestCategories.subCategory(categoryRepository);
         Post post = new Post(category, "제목", "본문");
         entityManager.persist(post);
         PostImage attached = new PostImage(newKey(), "image/png", Instant.now());

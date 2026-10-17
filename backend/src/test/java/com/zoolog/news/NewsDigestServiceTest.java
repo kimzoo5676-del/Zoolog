@@ -10,8 +10,11 @@ import static org.mockito.Mockito.verify;
 
 import com.zoolog.news.NewsPicks.Pick;
 import com.zoolog.notification.OwnerMailer;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.web.util.UriComponentsBuilder;
 
 class NewsDigestServiceTest {
 
@@ -138,13 +142,13 @@ class NewsDigestServiceTest {
     void clipLink() {
         String link = NewsDigestService.clipLink("https://zoolog.site",
                 new NewsArticle("AWS & 네이버 \"협력\"", "한겨레", "https://news.example.com/a?id=1&b=2", ""),
-                java.time.LocalDate.of(2026, 10, 14));
+                LocalDate.of(2026, 10, 14));
 
-        var params = org.springframework.web.util.UriComponentsBuilder.fromUriString(link).build().getQueryParams();
+        var params = UriComponentsBuilder.fromUriString(link).build().getQueryParams();
         assertThat(link).startsWith("https://zoolog.site/clips/new?");
-        assertThat(java.net.URLDecoder.decode(params.getFirst("title"), java.nio.charset.StandardCharsets.UTF_8))
+        assertThat(URLDecoder.decode(params.getFirst("title"), StandardCharsets.UTF_8))
                 .isEqualTo("AWS & 네이버 \"협력\"");
-        assertThat(java.net.URLDecoder.decode(params.getFirst("url"), java.nio.charset.StandardCharsets.UTF_8))
+        assertThat(URLDecoder.decode(params.getFirst("url"), StandardCharsets.UTF_8))
                 .isEqualTo("https://news.example.com/a?id=1&b=2");
         assertThat(params.getFirst("date")).isEqualTo("2026-10-14");
         assertThat(params.containsKey("q")).isFalse();

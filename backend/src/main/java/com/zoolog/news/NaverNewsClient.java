@@ -31,7 +31,7 @@ public class NaverNewsClient {
     private static final Logger log = LoggerFactory.getLogger(NaverNewsClient.class);
 
     private static final String SEARCH_URL = "https://naverapihub.apigw.ntruss.com/search/v1/news";
-    // 전날 아침 이후 기사만 (06:00 발송 기준 하루)
+    // 보내는 시각 기준 최근 24시간 기사만 (06:00 발송, 못 보낸 날은 그날 다시 보낼 때 기준)
     private static final Duration FRESH = Duration.ofHours(24);
 
     private final RestClient restClient = HttpClients.withTimeouts();

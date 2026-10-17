@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
+import com.zoolog.support.TestCategories;
 import com.zoolog.post.Post;
 import jakarta.persistence.EntityManager;
 import java.io.ByteArrayInputStream;
@@ -112,8 +113,7 @@ class ImageApiTest {
     void syncWithPost() throws Exception {
         String url = upload();
         String key = "images/" + url.substring(url.lastIndexOf('/') + 1);
-        Category top = categoryRepository.save(new Category("테스트 큰 주제", "test-top"));
-        Category category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
+        Category category = TestCategories.subCategory(categoryRepository);
 
         String created = mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -150,8 +150,7 @@ class ImageApiTest {
     void shareImageBetweenPosts() throws Exception {
         String url = upload();
         String key = "images/" + url.substring(url.lastIndexOf('/') + 1);
-        Category top = categoryRepository.save(new Category("테스트 큰 주제", "test-top"));
-        Category category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
+        Category category = TestCategories.subCategory(categoryRepository);
         Integer first = createPost(category.getId(), "![](" + url + ")");
         Integer second = createPost(category.getId(), "같은 이미지 ![](" + url + ")");
         entityManager.flush();

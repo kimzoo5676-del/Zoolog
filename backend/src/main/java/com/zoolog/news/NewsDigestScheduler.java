@@ -3,7 +3,6 @@ package com.zoolog.news;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -25,11 +24,11 @@ public class NewsDigestScheduler {
     private final CronExpression cron;
 
     public NewsDigestScheduler(NewsDigestService digestService, NewsDigestLogRepository logRepository, Clock clock,
-            @Value("${zoolog.news.cron}") String cron) {
+            NewsProperties properties) {
         this.digestService = digestService;
         this.logRepository = logRepository;
         this.clock = clock;
-        this.cron = CronExpression.parse(cron);
+        this.cron = CronExpression.parse(properties.cron());
     }
 
     @Scheduled(cron = "${zoolog.news.cron}", zone = "${zoolog.zone}")

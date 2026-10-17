@@ -10,9 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
 import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
+import com.zoolog.support.TestCategories;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,8 +47,7 @@ class PostWriteApiTest {
 
     @BeforeEach
     void setUp() {
-        Category top = categoryRepository.save(new Category("테스트 큰 주제", "test-top"));
-        category = categoryRepository.save(new Category("테스트 주제", "test-category", top));
+        category = TestCategories.subCategory(categoryRepository);
     }
 
     @Test
@@ -136,7 +138,7 @@ class PostWriteApiTest {
     @Test
     @DisplayName("'작성 예정' 글은 쓴 시각이 없다가 처음 내용을 채우면 그때가 쓴 시각이 되고, 이후 수정으로는 바뀌지 않는다")
     void publishWhenPlaceholderFilled() throws Exception {
-        Integer id = com.jayway.jsonpath.JsonPath.read(mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
+        Integer id = JsonPath.read(mockMvc.perform(post("/api/posts").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(category.getId(), "IAM", "작성 예정")))
                 .andExpect(status().isCreated())
@@ -148,7 +150,7 @@ class PostWriteApiTest {
                         .content(body(category.getId(), "IAM", "AWS 계정의 출입 관리실")))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        String publishedAt = com.jayway.jsonpath.JsonPath.read(filled, "$.publishedAt");
+        String publishedAt = JsonPath.read(filled, "$.publishedAt");
         assertThat(publishedAt).isNotNull();
 
         mockMvc.perform(put("/api/posts/{id}", id).with(oidcLogin()).with(csrf())
@@ -172,7 +174,7 @@ class PostWriteApiTest {
     @DisplayName("수정 응답의 updatedAt은 이번 수정 시각이다")
     void updateResponseHasNewUpdatedAt() throws Exception {
         Post post = postRepository.saveAndFlush(new Post(category, "원래 제목", "원래 본문"));
-        java.time.Instant before = post.getUpdatedAt();
+        Instant before = post.getUpdatedAt();
         Thread.sleep(5);
 
         String response = mockMvc.perform(put("/api/posts/{id}", post.getId()).with(oidcLogin()).with(csrf())
@@ -181,8 +183,8 @@ class PostWriteApiTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        String updatedAt = com.jayway.jsonpath.JsonPath.read(response, "$.updatedAt");
-        assertThat(java.time.Instant.parse(updatedAt)).isAfter(before);
+        String updatedAt = JsonPath.read(response, "$.updatedAt");
+        assertThat(Instant.parse(updatedAt)).isAfter(before);
     }
 
     @Test

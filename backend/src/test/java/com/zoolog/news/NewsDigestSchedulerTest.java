@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -62,6 +63,6 @@ class NewsDigestSchedulerTest {
 
     private NewsDigestScheduler schedulerAt(String time) {
         Clock clock = Clock.fixed(OffsetDateTime.parse(time).toInstant(), ZoneId.of("Asia/Seoul"));
-        return new NewsDigestScheduler(digestService, logRepository, clock, CRON);
+        return new NewsDigestScheduler(digestService, logRepository, clock, new NewsProperties(true, CRON, "claude-opus-5-5", List.of()));
     }
 }

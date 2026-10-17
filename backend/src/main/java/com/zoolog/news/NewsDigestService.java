@@ -109,7 +109,7 @@ public class NewsDigestService {
         return text.toString();
     }
 
-    // 소유자 전용 뉴스 스크랩 화면 주소: 기사 정보와 질문을 채워 둠 (로그인은 화면에서 확인)
+    // 소유자 전용 뉴스 스크랩 화면 주소: 기사 정보를 채워 둠 (로그인은 화면에서 확인)
     static String clipLink(String siteUrl, NewsArticle article, LocalDate date) {
         return UriComponentsBuilder.fromUriString(siteUrl)
                 .path("/clips/new")
@@ -122,8 +122,7 @@ public class NewsDigestService {
                 .toUriString();
     }
 
-    private static void appendAll(StringBuilder text, List<Selected> items, String siteUrl,
-            LocalDate date) {
+    private static void appendAll(StringBuilder text, List<Selected> items, String siteUrl, LocalDate date) {
         if (items.isEmpty()) {
             text.append("오늘은 기사를 가져오지 못했어요\n\n");
             return;

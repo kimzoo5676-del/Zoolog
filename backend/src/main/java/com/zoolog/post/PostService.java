@@ -81,7 +81,7 @@ public class PostService {
     private Category getCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "주제를 찾을 수 없어요"));
-        if (category.getParent() == null) {
+        if (category.isTopLevel()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "하위 주제를 골라 주세요");
         }
         return category;

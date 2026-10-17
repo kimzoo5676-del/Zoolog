@@ -15,6 +15,7 @@ import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
 import com.zoolog.post.PostRepository;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,7 +43,7 @@ class ClipApiTest {
     EntityManager entityManager;
 
     @Test
-    @DisplayName("코멘트를 게시하면 News Clipping > 달 > 주 주제 아래에 날짜 + 기사 제목 글이 생긴다")
+    @DisplayName("스크랩 글을 게시하면 News Clipping > 달 > 주 주제 아래에 날짜 + 기사 제목 글이 생긴다")
     void createClip() throws Exception {
         String response = mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -66,7 +67,7 @@ class ClipApiTest {
     }
 
     @Test
-    @DisplayName("같은 주의 두 번째 코멘트는 이미 있는 주제를 다시 쓴다")
+    @DisplayName("같은 주의 두 번째 스크랩 글은 이미 있는 주제를 다시 쓴다")
     void reuseCategories() throws Exception {
         clip("2026-10-13", "https://a.com/1");
         long before = categoryRepository.count();
@@ -109,9 +110,9 @@ class ClipApiTest {
     @DisplayName("주는 월요일 시작이고 1일이 들어 있는 주가 Week 1이다")
     void weekName() {
         // 2026-10-01은 목요일: 1~4일이 Week 1, 5일(월)부터 Week 2
-        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 4))).isEqualTo("2026.10 Week 1");
-        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 5))).isEqualTo("2026.10 Week 2");
-        assertThat(ClipService.weekName(java.time.LocalDate.of(2026, 10, 31))).isEqualTo("2026.10 Week 5");
+        assertThat(ClipService.weekName(LocalDate.of(2026, 10, 4))).isEqualTo("2026.10 Week 1");
+        assertThat(ClipService.weekName(LocalDate.of(2026, 10, 5))).isEqualTo("2026.10 Week 2");
+        assertThat(ClipService.weekName(LocalDate.of(2026, 10, 31))).isEqualTo("2026.10 Week 5");
     }
 
     @Test

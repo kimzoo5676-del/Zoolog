@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
-// 아침 기사 메일의 "코멘트 쓰기" 링크로 채워진 기사 정보 + 소유자 코멘트
+// 아침 기사 메일의 "코멘트 쓰기" 링크로 채워진 기사 정보 + 소유자가 쓴 본문(comment, 일반 글처럼 마크다운)
 // date: 기사 메일을 받은 날 (주제·글 제목의 날짜)
 public record ClipRequest(
         @NotBlank @Size(max = 300) String title,
