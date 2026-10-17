@@ -3,6 +3,7 @@ import { updatePost } from '../api/post'
 import { PostEditor } from '../components/PostEditor'
 import { RouteError } from '../components/RouteError'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
+import { clearDraft, draftKey } from '../hooks/useDraftAutosave'
 import { loadPostOr404 } from '../utils/loadPost'
 import { errorMessage, readPostInput } from '../utils/postForm'
 import { requireOwner } from '../utils/requireOwner'
@@ -16,6 +17,7 @@ export async function clientLoader({ params, request }: Route.ClientLoaderArgs) 
 export async function clientAction({ params, request }: Route.ClientActionArgs) {
   try {
     const post = await updatePost(Number(params.postId), readPostInput(await request.formData()))
+    clearDraft(draftKey('post', params.postId))
     return redirect(href('/posts/:postId', { postId: String(post.id) }))
   } catch (error) {
     return { error: errorMessage(error, '글을 수정하지 못했어요') }
@@ -35,6 +37,7 @@ export default function PostEdit({ loaderData, actionData }: Route.ComponentProp
         error={actionData?.error}
         submitLabel="저장"
         exitTo={href('/posts/:postId', { postId: String(post.id) })}
+        draftKey={draftKey('post', post.id)}
       />
     </>
   )

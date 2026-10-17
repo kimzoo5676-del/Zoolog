@@ -2,8 +2,12 @@ import { useRef, useState } from 'react'
 import { data, Form, href, Link, redirect, useNavigation } from 'react-router'
 import { createClip, findClippedPostId } from '../api/clip'
 import { MarkdownContent } from '../components/MarkdownContent'
+import { MarkdownToolbar } from '../components/MarkdownToolbar'
+import { handleToolShortcut } from '../utils/markdownTools'
 import { RouteError } from '../components/RouteError'
+import { clearDraft, draftKey, useDraftAutosave } from '../hooks/useDraftAutosave'
 import { usePreviewTip } from '../hooks/usePreviewTip'
+import { AutosaveStatus, DraftNotice } from '../components/DraftNotice'
 import { clipMarkdown, clipMonthName, clipWeekName, isHttpUrl, parseClipDate } from '../utils/clip'
 import { errorMessage } from '../utils/postForm'
 import { requireOwner } from '../utils/requireOwner'
@@ -45,6 +49,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       date: String(form.get('date') ?? ''),
       comment: String(form.get('comment') ?? ''),
     })
+    clearDraft(draftKey('clip', String(form.get('url') ?? '')))
     return redirect(href('/posts/:postId', { postId: String(post.id) }))
   } catch (error) {
     return { error: errorMessage(error, '글을 저장하지 못했어요') }
@@ -60,10 +65,22 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
   const [comment, setComment] = useState('')
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const tip = usePreviewTip(contentRef)
+  // 1분마다 브라우저에 임시 저장 (기사 주소마다 따로)
+  const draft = useDraftAutosave(draftKey('clip', url), { comment }, { comment: '' })
 
   return (
-    <Form method="post" viewTransition className="editor">
+    <Form method="post" viewTransition className="editor" onSubmit={draft.saveNow}>
       <title>뉴스 스크랩 | zoolog</title>
+      {draft.pending && clippedPostId === null && (
+        <DraftNotice
+          savedAt={draft.pending.savedAt}
+          onRestore={() => {
+            setComment(draft.pending?.values.comment ?? '')
+            draft.acceptPending()
+          }}
+          onDiscard={draft.discardPending}
+        />
+      )}
       <div className="editor-head">
         <p className="eyebrow">{path}</p>
         <h1 className="clip-title page-heading">{heading}</h1>
@@ -74,6 +91,7 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
           </a>
         </p>
       </div>
+      {clippedPostId === null && <MarkdownToolbar textareaRef={contentRef} />}
       {clippedPostId === null ? (
         <div className="editor-panes">
           <textarea
@@ -86,8 +104,8 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
             autoFocus
             value={comment}
             onChange={(event) => setComment(event.target.value)}
-            {...tip.contentProps}
-          />
+            onKeyDown={handleToolShortcut}
+            />
           <section className="editor-preview" aria-label="미리보기" {...tip.previewProps}>
             <MarkdownContent>{clipMarkdown(title, url, source, comment)}</MarkdownContent>
           </section>
@@ -113,6 +131,7 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
             미리보기
           </button>
         )}
+        <AutosaveStatus savedAt={draft.savedAt} />
         {actionData?.error && (
           <p className="form-error" role="alert">
             {actionData.error}

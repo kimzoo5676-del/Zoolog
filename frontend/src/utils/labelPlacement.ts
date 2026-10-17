@@ -44,6 +44,7 @@ export function centeredLabelRect(x: number, y: number, text: string, fontSize: 
   return { left: x - width / 2 - PAD, right: x + width / 2 + PAD, top: baseline - fontSize, bottom: baseline + 3 }
 }
 
+// 자리를 못 찾은 이름표는 결과에 없음 (그 글 별은 이름표 없이 그림)
 // labels: 이름표를 붙일 별(화면 px 좌표), obstacles: 피해야 할 점(다른 별 위치), blocks: 피해야 할 영역(주제 이름표)
 export function placeLabels(
   labels: { id: string; x: number; y: number; text: string; preferLeft: boolean }[],
@@ -59,11 +60,12 @@ export function placeLabels(
     const width = textWidth(label.text)
     // 부모 별에서 먼 쪽을 먼저 시험
     const order = label.preferLeft ? [CANDIDATES[1], CANDIDATES[0], CANDIDATES[2], CANDIDATES[3]] : CANDIDATES
-    const choice =
-      order.find((p) => {
-        const rect = rectOf(label.x, label.y, width, p)
-        return !placed.some((other) => overlaps(rect, other))
-      }) ?? order[0]
+    const choice = order.find((p) => {
+      const rect = rectOf(label.x, label.y, width, p)
+      return !placed.some((other) => overlaps(rect, other))
+    })
+    // 네 자리 모두 겹치면 이름표를 붙이지 않음 (2026-10-16: 휴대폰처럼 좁으면 겹쳐 그려졌음). 가리키면 큰 제목은 그대로
+    if (!choice) continue
     placed.push(rectOf(label.x, label.y, width, choice))
     result.set(label.id, choice)
   }

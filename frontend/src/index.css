@@ -11,7 +11,6 @@
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --page-width: 72rem; /* 격자 기둥 전체 폭 */
-  --content-width: 45rem; /* 본문 한 줄 길이를 읽기 좋은 폭으로 제한 */
   --cell-pad-x: clamp(1rem, 3vw, 2rem); /* 격자 칸 안쪽 좌우 여백 */
   --grid-line: 1px solid var(--color-accent-strong); /* 격자선 */
   --board-gap: 4px; /* 바둑판(하위 주제 칸, 글 카드) 칸 사이 세이지 선 */
@@ -515,8 +514,24 @@ a {
 
 /* ---------- 마크다운 본문 (react-markdown 출력) ---------- */
 
+/* 사진 정렬 (주소 끝 #left·#center·#right, 편집기 도구 막대). 표시가 없으면 기존처럼 왼쪽 */
+.markdown img.img-align-left {
+  display: block;
+  margin-right: auto;
+}
+
+.markdown img.img-align-center {
+  display: block;
+  margin-inline: auto;
+}
+
+.markdown img.img-align-right {
+  display: block;
+  margin-left: auto;
+}
+
+/* 본문은 칸 폭을 다 씀 (2026-10-16 소유자 요청: 45rem 제한으로 넓은 화면에서 오른쪽이 비던 문제) */
 .markdown {
-  max-width: var(--content-width);
   line-height: 1.8;
 }
 
@@ -623,11 +638,6 @@ a {
   background: none;
   border-radius: 0;
   overflow-wrap: normal;
-}
-
-.markdown img {
-  max-width: 100%;
-  height: auto;
 }
 
 .markdown hr {
@@ -1105,12 +1115,119 @@ a {
   .editor-footer .button-solid {
     padding-inline: 0.75rem;
   }
+
+  /* 휴대폰은 버튼 4개로 꽉 차서 자동 저장 시각은 숨김 (저장은 그대로 됨) */
+  .autosave-status {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .editor-preview {
     transition: none;
   }
+}
+
+/* 서식 도구 막대 (MarkdownToolbar, 2026-10-16): 머리 칸과 본문 칸 사이 한 줄, 묶음마다 세로 구분선
+   좁은 화면은 줄을 넘기지 않고 옆으로 밀어서 봄 (머리글 메뉴 줄과 같은 방식) */
+.md-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background-color: var(--color-bg);
+  border-bottom: var(--grid-line);
+}
+
+.md-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.md-toolbar-group {
+  display: flex;
+  flex: none;
+  padding: 0.375rem 0.5rem;
+  border-right: 1px solid var(--color-line);
+}
+
+.md-toolbar-group:first-child {
+  padding-left: calc(var(--cell-pad-x) - 0.5rem);
+}
+
+.md-tool {
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition:
+    color var(--dur-quick) ease,
+    background-color var(--dur-quick) ease;
+}
+
+.md-tool:hover {
+  color: var(--color-bg);
+  background-color: var(--color-accent-strong);
+}
+
+.md-tool-wide {
+  padding: 0 0.75rem;
+}
+
+.md-tool svg {
+  display: block;
+  margin: auto;
+}
+
+/* B·I·S는 글자 모양 그대로 */
+.md-tool.is-italic {
+  font-style: italic;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.md-tool.is-strike {
+  text-decoration: line-through;
+}
+
+.md-toolbar.can-scroll-right {
+  mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
+}
+
+.md-toolbar.can-scroll-left {
+  mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
+}
+
+.md-toolbar.can-scroll-left.can-scroll-right {
+  mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
+}
+
+/* 임시 저장본 안내 줄 (DraftNotice): 편집기 맨 위 */
+.draft-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem var(--cell-pad-x);
+  font-weight: 700;
+  border-bottom: var(--grid-line);
+}
+
+.draft-notice > span {
+  margin-right: auto;
+}
+
+/* 하단 바의 마지막 자동 저장 시각: 작게, 선택되지 않은 글자 색 */
+.autosave-status {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 /* 하단 고정 바: 나가기 | 오류 문구 | 게시 */
@@ -1601,6 +1718,17 @@ a {
   display: flex;
   align-items: center;
   gap: 0.375rem;
+}
+
+/* 휴대폰: 범례가 오른쪽 아래 Graph | Card 버튼 밑으로 들어가 가려지던 문제 (2026-10-16)
+   범례를 버튼 위로 올리고 좁으면 두 줄 (지도는 아래 6.25rem을 비움) */
+@media (max-width: 39.99rem) {
+  .constellation-legend {
+    right: 0;
+    bottom: 3.25rem;
+    gap: 0.25rem 0.75rem;
+    letter-spacing: 0.06em;
+  }
 }
 
 .constellation-legend svg {
@@ -2188,15 +2316,19 @@ a {
   z-index: 2;
 }
 
-@media (max-width: 40rem) {
+/* 그래프 배치 코드의 좁은 화면 기준(640px 미만)과 같게: 640px 정각에서 둘이 어긋나 별이 범례 줄에 깔리던 문제 */
+@media (max-width: 39.99rem) {
   .constellation-switch {
     top: auto;
     bottom: 0;
   }
 
-  /* 좁은 화면: 지도 아래쪽에 범례·보기 전환 자리를 비워 별이 그 밑에 깔리지 않게 */
+  /* 좁은 화면: 지도 아래쪽에 범례 줄 + 보기 전환 자리를 비워 별이 그 밑에 깔리지 않게 */
+  /* height: 100%가 있으면 bottom이 무시되어 이 여백이 비워지지 않았음 (2026-10-16 발견)
+     svg는 height: auto면 자기 비율로 높이를 정하므로 남는 높이를 직접 계산 */
   .constellation-stage > svg {
-    bottom: 3.5rem;
+    bottom: auto;
+    height: calc(100% - 6.25rem);
   }
 }
 

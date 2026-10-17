@@ -3,9 +3,12 @@ import { createPost } from '../api/post'
 import { PostEditor } from '../components/PostEditor'
 import { RouteError } from '../components/RouteError'
 import { useBlogLayoutData } from '../hooks/useBlogLayoutData'
+import { clearDraft, draftKey } from '../hooks/useDraftAutosave'
 import { errorMessage, readPostInput } from '../utils/postForm'
 import { requireOwner } from '../utils/requireOwner'
 import type { Route } from './+types/post-new'
+
+const NEW_POST_DRAFT = draftKey('post', 'new')
 
 export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   await requireOwner(request.signal)
@@ -16,6 +19,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
 export async function clientAction({ request }: Route.ClientActionArgs) {
   try {
     const post = await createPost(readPostInput(await request.formData()))
+    clearDraft(NEW_POST_DRAFT)
     return redirect(href('/posts/:postId', { postId: String(post.id) }))
   } catch (error) {
     return { error: errorMessage(error, '글을 저장하지 못했어요') }
@@ -28,7 +32,7 @@ export default function PostNew({ actionData }: Route.ComponentProps) {
   return (
     <>
       <title>글쓰기 | zoolog</title>
-      <PostEditor categories={categories} error={actionData?.error} submitLabel="게시" exitTo="/" />
+      <PostEditor categories={categories} error={actionData?.error} submitLabel="게시" exitTo="/" draftKey={NEW_POST_DRAFT} />
     </>
   )
 }

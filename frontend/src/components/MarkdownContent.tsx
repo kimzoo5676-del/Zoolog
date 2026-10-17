@@ -1,6 +1,7 @@
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { IMAGE_ALT_PLACEHOLDER } from '../utils/imageAlt'
+import { readImageAlign } from '../utils/markdownEdit'
 
 // 렌더링마다 새 객체를 만들지 않도록 모듈 범위에 고정
 const remarkPlugins = [remarkGfm]
@@ -23,8 +24,19 @@ const components: Components = {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { node, alt, ...rest } = props
     // 주소 없는 이미지(편집기의 업로드 중 표시)는 그리지 않음: 빈 src는 현재 페이지를 다시 요청함
-    if (!rest.src) return null
-    return <img {...rest} alt={alt === IMAGE_ALT_PLACEHOLDER ? '' : alt} loading="lazy" decoding="async" />
+    if (!rest.src || typeof rest.src !== 'string') return null
+    // 주소 끝 #left·#center·#right는 정렬 표시 (편집기 도구 막대, utils/markdownEdit)
+    const { src, align } = readImageAlign(rest.src)
+    return (
+      <img
+        {...rest}
+        src={src}
+        className={align ? `img-align-${align}` : undefined}
+        alt={alt === IMAGE_ALT_PLACEHOLDER ? '' : alt}
+        loading="lazy"
+        decoding="async"
+      />
+    )
   },
 }
 

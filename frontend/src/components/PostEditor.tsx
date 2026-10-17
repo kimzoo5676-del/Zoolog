@@ -3,8 +3,12 @@ import { Form, Link, useNavigation, useRevalidator } from 'react-router'
 import type { Category } from '../api/category'
 import { uploadImage } from '../api/image'
 import type { PostInput } from '../api/post'
+import { useDraftAutosave } from '../hooks/useDraftAutosave'
 import { usePreviewTip } from '../hooks/usePreviewTip'
+import { AutosaveStatus, DraftNotice } from './DraftNotice'
+import { handleToolShortcut } from '../utils/markdownTools'
 import { CategoryPicker } from './CategoryPicker'
+import { MarkdownToolbar } from './MarkdownToolbar'
 import { MarkdownContent } from './MarkdownContent'
 import { IMAGE_ALT_PLACEHOLDER } from '../utils/imageAlt'
 import { errorMessage } from '../utils/postForm'
@@ -16,11 +20,13 @@ type PostEditorProps = {
   submitLabel: string
   // 나가기 버튼이 돌아갈 주소
   exitTo: string
+  // 임시 저장 자리 (hooks/useDraftAutosave의 draftKey): 새 글·글마다 따로
+  draftKey: string
 }
 
 // 글 작성·수정 공용 편집기 (velog 구성 참고)
 // 큰 제목 입력 → 주제 칩 → 원문 | 미리보기 → 하단 고정 바(나가기, 게시)
-export function PostEditor({ categories, initial, error, submitLabel, exitTo }: PostEditorProps) {
+export function PostEditor({ categories, initial, error, submitLabel, exitTo, draftKey }: PostEditorProps) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [categoryId, setCategoryId] = useState(initial ? String(initial.categoryId) : '')
   const [content, setContent] = useState(initial?.content ?? '')
@@ -39,6 +45,25 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
 
   // 좁은 화면의 미리보기 팁 (hooks/usePreviewTip, 뉴스 스크랩 화면과 공용)
   const tip = usePreviewTip(contentRef)
+
+  // 1분마다 브라우저에 임시 저장 (로그인이 풀려도 다시 로그인한 뒤 불러올 수 있게)
+  const draft = useDraftAutosave(
+    draftKey,
+    { title, categoryId, content },
+    {
+      title: initial?.title ?? '',
+      categoryId: initial ? String(initial.categoryId) : '',
+      content: initial?.content ?? '',
+    },
+  )
+
+  function restoreDraft() {
+    if (!draft.pending) return
+    setTitle(draft.pending.values.title)
+    setCategoryId(draft.pending.values.categoryId)
+    setContent(draft.pending.values.content)
+    draft.acceptPending()
+  }
 
   // 이미지 한 장이 올라가면 "이미지 설명"을 선택해 바로 타이핑으로 바꿀 수 있게 함
   useLayoutEffect(() => {
@@ -122,7 +147,10 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
 
   return (
     // 저장 후 글 화면으로 갈 때도 화면 전환 (편집기 제목 칸 → 글 화면 제목)
-    <Form method="post" viewTransition className="editor">
+    <Form method="post" viewTransition className="editor" onSubmit={draft.saveNow}>
+      {draft.pending && (
+        <DraftNotice savedAt={draft.pending.savedAt} onRestore={restoreDraft} onDiscard={draft.discardPending} />
+      )}
       <div className="editor-head">
         {/* 제목은 한 줄 값: Enter는 줄바꿈 대신 본문으로 이동 */}
         <textarea
@@ -151,6 +179,8 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
           onCreated={handleCategoryCreated}
         />
       </div>
+      {/* 서식 도구: 사진 넣기도 여기서 (하단 바의 이미지 버튼을 옮김, 끌어놓기·붙여넣기도 그대로) */}
+      <MarkdownToolbar textareaRef={contentRef} onPickImage={() => fileRef.current?.click()} />
       <div className="editor-panes">
         <textarea
           id="editor-content"
@@ -164,8 +194,8 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
             editCountRef.current += 1
             setContent(event.target.value)
           }}
-          {...tip.contentProps}
           ref={contentRef}
+          onKeyDown={handleToolShortcut}
           onPaste={handlePaste}
           onDragOver={(event) => {
             if ([...event.dataTransfer.types].includes('Files')) {
@@ -186,10 +216,8 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
         <Link to={exitTo} viewTransition className="button-link">
           나가기
         </Link>
-        {/* 이미지 버튼: 숨은 파일 선택 칸을 엶 (끌어놓기·붙여넣기도 가능) */}
-        <button type="button" className="button-link" onClick={() => fileRef.current?.click()}>
-          {uploading > 0 ? `이미지 올리는 중 ${uploading}` : '이미지'}
-        </button>
+        {/* 올리는 중 표시 (사진은 도구 막대의 사진 버튼·끌어놓기·붙여넣기로 넣음) */}
+        {uploading > 0 && <span className="autosave-status">사진 올리는 중 {uploading}</span>}
         {/* 좁은 화면 전용: 마우스가 없는 기기(휴대폰)·키보드로 미리보기 열고 닫기 */}
         <button type="button" className="button-link editor-preview-toggle" {...tip.toggleProps}>
           미리보기
@@ -205,6 +233,7 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo }: 
             event.target.value = ''
           }}
         />
+        <AutosaveStatus savedAt={draft.savedAt} />
         {uploadError && (
           <p className="form-error" role="alert">
             {uploadError}

@@ -339,6 +339,10 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     return () => observer.disconnect()
   }, [])
 
+  // 그리는 순서: 글 별을 먼저, 주제 별(이름표 포함)을 나중에 (2026-10-16 소유자 지적: 휴대폰에서 이름 위로 점·선이 지나가 겹쳐 보임)
+  // SVG는 나중에 그린 것이 위에 오므로 주제 이름이 글 별·선을 덮음. 주제 별끼리의 순서(키보드 Tab 순서)는 그대로
+  const drawOrder = useMemo(() => [...nodes.filter((n) => n.kind === 'post'), ...nodes.filter((n) => n.kind !== 'post')], [nodes])
+
   // 많이 축소되면 작은 주제 이름은 가리킬 때만 (이름끼리 겹치지 않도록)
   const hideLabelsFrom = scale < 0.45 ? 2 : scale < 0.75 ? 3 : 4
   // 가장 깊은 단계(세부 주제)나 더 내려갈 주제가 없는 주제까지 확대하면 그 안 글 별 옆에 제목
@@ -351,22 +355,34 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
 
   // 주제 이름표 정리: 큰 주제부터 차례로 놓고, 이미 놓인 이름과 겹치는 작은 주제 이름은 숨김(가리키면 보임)
   // 큰 주제 이름은 항상 보임. 확대가 끝난 배율 기준이라 확대 중에 이름이 깜빡이지 않음
-  const crowdedLabels = useMemo(() => {
+  const { crowdedLabels, aboveLabels } = useMemo(() => {
     const hidden = new Set<string>()
+    // 아래 자리가 이미 놓인 이름과 겹치면 별 위쪽에 놓아 봄 (2026-10-16: 휴대폰에서 큰 주제 이름끼리 겹침)
+    const above = new Set<string>()
     const placed: Rect[] = []
     const categoriesInView = nodes
       .filter((n) => n.kind !== 'post' && (!focusGroup || focusGroup.has(n.id)))
       .sort((a, b) => a.depth - b.depth)
     for (const n of categoriesInView) {
       const size = starSize(n.depth)
-      const rect = centeredLabelRect(n.x * targetScale, n.y * targetScale, n.label, size.label, size.labelY)
-      if (n.depth > 1 && placed.some((other) => overlaps(rect, other))) {
+      const x = n.x * targetScale
+      const y = n.y * targetScale
+      const below = centeredLabelRect(x, y, n.label, size.label, size.labelY)
+      const top = centeredLabelRect(x, y, n.label, size.label, labelAboveY(n.depth))
+      const free = (rect: Rect) => !placed.some((other) => overlaps(rect, other))
+      if (free(below)) {
+        placed.push(below)
+      } else if (free(top)) {
+        above.add(n.id)
+        placed.push(top)
+      } else if (n.depth > 1) {
         hidden.add(n.id)
       } else {
-        placed.push(rect)
+        // 큰 주제 이름은 자리가 없어도 보임
+        placed.push(below)
       }
     }
-    return hidden
+    return { crowdedLabels: hidden, aboveLabels: above }
   }, [nodes, focusGroup, targetScale])
   const labelPlacements = useMemo(() => {
     if (!showPostLabels || !focusGroup) return new Map<string, LabelPlacement>()
@@ -388,10 +404,10 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
         .map((n) => {
           const size = starSize(n.depth)
           const p = toScreen(n)
-          return centeredLabelRect(p.x, p.y, n.label, size.label, size.labelY)
+          return centeredLabelRect(p.x, p.y, n.label, size.label, aboveLabels.has(n.id) ? labelAboveY(n.depth) : size.labelY)
         }),
     )
-  }, [showPostLabels, focusGroup, nodes, targetScale, byId])
+  }, [showPostLabels, focusGroup, nodes, targetScale, byId, aboveLabels])
 
   return (
     <div
@@ -433,7 +449,7 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
             })}
           </g>
 
-          {nodes.map((node) => (
+          {drawOrder.map((node) => (
             <Star
               key={node.id}
               node={node}
@@ -441,7 +457,8 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
               lit={lit ? lit.has(node.id) : null}
               faint={!!focusGroup && !focusGroup.has(node.id)}
               hideLabel={node.depth >= hideLabelsFrom || crowdedLabels.has(node.id)}
-              showLabel={showPostLabels && node.kind === 'post' && !!focusGroup?.has(node.id)}
+              labelAbove={aboveLabels.has(node.id)}
+              showLabel={showPostLabels && node.kind === 'post' && labelPlacements.has(node.id)}
               labelPlacement={labelPlacements.get(node.id)}
               onActivate={() => setActiveId(node.id)}
               onLeave={() => setActiveId((current) => (current === node.id ? null : current))}
@@ -584,6 +601,8 @@ type StarProps = {
   // 확대한 묶음 밖의 별
   faint: boolean
   hideLabel: boolean
+  // 주제 이름을 별 아래 대신 위에 (아래 자리가 다른 이름과 겹칠 때)
+  labelAbove?: boolean
   // 글 별 제목 표시 (가장 깊은 단계까지 확대했을 때)
   showLabel: boolean
   onActivate: () => void
@@ -604,6 +623,7 @@ function Star({
   lit,
   faint,
   hideLabel,
+  labelAbove,
   showLabel,
   labelPlacement,
   onActivate,
@@ -675,7 +695,7 @@ function Star({
         </g>
         <text
           className="star-label"
-          y={size.labelY * px}
+          y={(labelAbove ? labelAboveY(node.depth) : size.labelY) * px}
           textAnchor="middle"
           fontSize={size.label * px}
           strokeWidth={4 * px}
@@ -685,6 +705,12 @@ function Star({
       </Link>
     </g>
   )
+}
+
+// 주제 이름을 별 위에 놓을 때의 글자 기준선 (아래 자리와 별을 사이에 두고 대칭)
+function labelAboveY(depth: number) {
+  const size = starSize(depth)
+  return -(size.labelY - size.label) - 2
 }
 
 // 주제 별 큰 이름의 세로 위치 보정(화면 px): 작은 이름 글자의 윗변 높이에서 시작하도록
