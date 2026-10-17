@@ -1,3 +1,12 @@
+server:
+  servlet:
+    session:
+      # 로그인 유지 1일 (2026-10-16 소유자 요청: 기본 30분이라 글을 쓰는 도중 로그인이 풀림)
+      # 쿠키도 1일 유지해 브라우저를 닫았다 열어도 로그인 상태. 단 백엔드 배포(Recreate)로 파드가 바뀌면 세션이 사라짐
+      timeout: 1d
+      cookie:
+        max-age: 1d
+
 spring:
   application:
     name: zoolog
