@@ -14,7 +14,7 @@ resources:
 images:
   - name: zoolog-backend
     newName: ghcr.io/kimzoo5676-del/zoolog-backend
-    newTag: 2e779dd4cfa3892053dc06e3e62cb462bdc0139f
+    newTag: f769ff8168059bbf3c33c82cc644542ab439ba9a
   - name: zoolog-web
     newName: ghcr.io/kimzoo5676-del/zoolog-web
-    newTag: 2e779dd4cfa3892053dc06e3e62cb462bdc0139f
+    newTag: f769ff8168059bbf3c33c82cc644542ab439ba9a
