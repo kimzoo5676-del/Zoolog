@@ -142,3 +142,97 @@ export function readImageAlign(src: string): { src: string; align: ImageAlign | 
   const match = src.match(/^(.*)#(left|center|right)$/)
   return match ? { src: match[1], align: match[2] as ImageAlign } : { src, align: null }
 }
+
+// ---------- 노션처럼 키보드로 쓰기 (2026-10-17 소유자 요청) ----------
+
+// 목록 줄: 들여쓰기 + 표시(-, *, +, 1., - [ ], - [x]) + 내용
+const LIST_LINE = /^(\s*)([-*+] \[[ x]\] |[-*+] |(\d+)\. )(.*)$/
+
+// pos가 코드 블록(``` … ```) 안인지: 그 앞에 나온 ``` 줄 수가 홀수면 안
+function insideCodeFence(value: string, pos: number) {
+  const before = value.slice(0, value.lastIndexOf('\n', pos - 1) + 1)
+  return (before.match(/^```/gm)?.length ?? 0) % 2 === 1
+}
+
+// lineStart 위쪽에서 조건에 맞는 가장 가까운 목록 줄 (빈 줄·목록이 아닌 줄을 만나면 멈춤)
+function previousListLine(value: string, lineStart: number, accept: (indent: number) => boolean) {
+  let end = lineStart - 1
+  while (end > 0) {
+    const start = value.lastIndexOf('\n', end - 1) + 1
+    const match = value.slice(start, end).match(LIST_LINE)
+    if (!match) return null
+    if (accept(match[1].length)) return { indent: match[1].length, width: match[2].length, number: match[3] ? Number(match[3]) : null }
+    end = start - 1
+  }
+  return null
+}
+
+// Tab·Shift+Tab: 목록 줄이면 한 단계 들여쓰기·내어쓰기(하위 목록)
+// 들여쓰는 폭은 위 같은 단계 항목의 표시 폭(- 아래 2칸, 1. 아래 3칸: 마크다운 하위 목록 규칙), 위에 같은 단계 항목이 없으면 들여쓰지 않음(노션처럼)
+// 내어쓰기는 부모 항목과 같은 단계로. 코드 블록 안이면 공백 2칸(여러 줄 선택이면 줄마다)
+// 목록이 아닌 문단은 null (문단 앞 공백 4칸은 코드 블록이 되므로)
+export function indentLines(value: string, sel: Selection, outdent: boolean): Edit | null {
+  const { from, to } = lineRange(value, sel)
+  const inCode = insideCodeFence(value, sel.start)
+  if (inCode && !outdent && sel.start === sel.end) {
+    return { from: sel.start, to: sel.start, text: '  ', select: { start: sel.start + 2, end: sel.start + 2 } }
+  }
+  const lines = value.slice(from, to).split('\n')
+  let offset = from
+  const deltas = lines.map((line) => {
+    const lineStart = offset
+    offset += line.length + 1
+    const current = line.length - line.trimStart().length
+    if (inCode) return outdent ? -Math.min(2, current) : 2
+    if (!LIST_LINE.test(line)) return 0
+    if (outdent) {
+      if (current === 0) return 0
+      const parent = previousListLine(value, lineStart, (indent) => indent < current)
+      return -(current - (parent?.indent ?? 0))
+    }
+    const sibling = previousListLine(value, lineStart, (indent) => indent <= current)
+    return sibling && sibling.indent === current ? sibling.width : 0
+  })
+  const total = deltas.reduce((a, b) => a + b, 0)
+  if (deltas.every((d) => d === 0)) return null
+  // 번호 목록을 들여쓰거나 내어쓰면 새 단계에 맞게 번호를 다시 매김 (위 같은 단계 번호 + 1, 없으면 1)
+  offset = from
+  const text = lines
+    .map((line, i) => {
+      const lineStart = offset
+      offset += line.length + 1
+      const moved = deltas[i] >= 0 ? ' '.repeat(deltas[i]) + line : line.slice(-deltas[i])
+      const match = moved.match(LIST_LINE)
+      if (inCode || deltas[i] === 0 || !match?.[3]) return moved
+      const level = match[1].length
+      const above = previousListLine(value, lineStart, (indent) => indent <= level)
+      const number = above && above.indent === level && above.number !== null ? above.number + 1 : 1
+      return `${match[1]}${number}. ${match[4]}`
+    })
+    .join('\n')
+  // 선택(커서)은 글자와 함께 움직임. 단, 줄 맨 앞보다 앞으로는 가지 않음
+  const start = Math.max(from, sel.start + deltas[0])
+  return { from, to, text, select: { start, end: Math.max(start, sel.end + total) } }
+}
+
+// Enter: 목록 줄 끝(또는 내용 중간)에서 누르면 다음 줄에 같은 표시를 붙여 이어 씀 (번호는 +1, 체크리스트는 빈 칸)
+// 내용 없는 항목에서 누르면 들여쓴 항목은 한 단계 내어쓰기, 맨 바깥 항목은 표시를 지우고 목록을 끝냄
+// 목록이 아니거나 선택이 있거나 코드 블록 안이면 null (보통 줄바꿈)
+export function continueList(value: string, sel: Selection): Edit | null {
+  if (sel.start !== sel.end || insideCodeFence(value, sel.start)) return null
+  const lineStart = value.lastIndexOf('\n', sel.start - 1) + 1
+  const lineEndBreak = value.indexOf('\n', sel.start)
+  const lineEnd = lineEndBreak < 0 ? value.length : lineEndBreak
+  const match = value.slice(lineStart, lineEnd).match(LIST_LINE)
+  if (!match) return null
+  const [, indent, marker, number, content] = match
+  const contentStart = lineStart + indent.length + marker.length
+  if (sel.start < contentStart) return null
+  if (content.trim() === '') {
+    if (indent.length > 0) return indentLines(value, sel, true)
+    return { from: lineStart, to: lineEnd, text: '', select: { start: lineStart, end: lineStart } }
+  }
+  const nextMarker = number ? `${Number(number) + 1}. ` : marker.startsWith('- [') ? '- [ ] ' : marker
+  const text = `\n${indent}${nextMarker}`
+  return { from: sel.start, to: sel.start, text, select: { start: sel.start + text.length, end: sel.start + text.length } }
+}

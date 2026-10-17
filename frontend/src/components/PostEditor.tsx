@@ -6,7 +6,7 @@ import type { PostInput } from '../api/post'
 import { useDraftAutosave } from '../hooks/useDraftAutosave'
 import { usePreviewTip } from '../hooks/usePreviewTip'
 import { AutosaveStatus, DraftNotice } from './DraftNotice'
-import { handleToolShortcut } from '../utils/markdownTools'
+import { handleEditorKeyDown } from '../utils/markdownTools'
 import { CategoryPicker } from './CategoryPicker'
 import { MarkdownToolbar } from './MarkdownToolbar'
 import { MarkdownContent } from './MarkdownContent'
@@ -195,7 +195,7 @@ export function PostEditor({ categories, initial, error, submitLabel, exitTo, dr
             setContent(event.target.value)
           }}
           ref={contentRef}
-          onKeyDown={handleToolShortcut}
+          onKeyDown={handleEditorKeyDown}
           onPaste={handlePaste}
           onDragOver={(event) => {
             if ([...event.dataTransfer.types].includes('Files')) {

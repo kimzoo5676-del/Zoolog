@@ -3,7 +3,7 @@ import { data, Form, href, Link, redirect, useNavigation } from 'react-router'
 import { createClip, findClippedPostId } from '../api/clip'
 import { MarkdownContent } from '../components/MarkdownContent'
 import { MarkdownToolbar } from '../components/MarkdownToolbar'
-import { handleToolShortcut } from '../utils/markdownTools'
+import { handleEditorKeyDown } from '../utils/markdownTools'
 import { RouteError } from '../components/RouteError'
 import { clearDraft, draftKey, useDraftAutosave } from '../hooks/useDraftAutosave'
 import { usePreviewTip } from '../hooks/usePreviewTip'
@@ -111,7 +111,7 @@ function ClipForm({ loaderData, actionData }: Pick<Route.ComponentProps, 'loader
             autoFocus
             value={comment}
             onChange={(event) => setComment(event.target.value)}
-            onKeyDown={handleToolShortcut}
+            onKeyDown={handleEditorKeyDown}
             />
           <section className="editor-preview" aria-label="미리보기" {...tip.previewProps}>
             <MarkdownContent>{clipMarkdown(title, url, source, comment)}</MarkdownContent>

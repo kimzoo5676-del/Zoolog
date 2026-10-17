@@ -1,6 +1,8 @@
 import type { KeyboardEvent } from 'react'
 import {
   codeBlock,
+  continueList,
+  indentLines,
   horizontalRule,
   link,
   table,
@@ -41,6 +43,8 @@ export type Tool = {
 // 저장 형식은 그대로 마크다운: 버튼은 커서 자리에 마크다운 문법을 넣음. 단축키 Ctrl/Cmd + B·I·K
 export const GROUPS: Tool[][] = [
   [
+    // 제목(H1)은 글 제목과 같은 단계라 본문에는 보통 H2부터 (소유자 요청으로 함께 둠, 2026-10-17)
+    { label: '큰 제목', glyph: 'H1', run: (v, s) => toggleLinePrefix(v, s, '# ') },
     { label: '소제목', glyph: 'H2', run: (v, s) => toggleLinePrefix(v, s, '## ') },
     { label: '작은 소제목', glyph: 'H3', run: (v, s) => toggleLinePrefix(v, s, '### ') },
   ],
@@ -95,10 +99,40 @@ export function runTool(textarea: HTMLTextAreaElement, run: Tool['run']) {
   else textarea.focus()
 }
 
-// 본문 칸 단축키 (onKeyDown에 연결): Ctrl/Cmd + B 굵게, I 기울임, K 링크
-// 한글 입력이 조합 중이면 무시, 키 위치(KeyB 등)로 판단해 입력 언어와 상관없이 같은 키로 동작
-export function handleToolShortcut(event: KeyboardEvent<HTMLTextAreaElement>) {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.nativeEvent.isComposing) return
+// 본문 칸 키 처리 (onKeyDown에 연결)
+// - Ctrl/Cmd + B 굵게, I 기울임, K 링크 (키 위치 KeyB 등으로 판단해 입력 언어와 상관없이 같은 키)
+// - Tab·Shift+Tab 목록 들여쓰기·내어쓰기, Enter 목록 이어 쓰기 (노션처럼, 2026-10-17 소유자 요청)
+// - Esc를 누른 뒤의 Tab은 보통 Tab(다음 칸으로 이동): 키보드로 본문 칸을 빠져나갈 길
+// 한글 입력이 조합 중이면 모두 무시 (조합을 끝내는 Enter 등과 섞이지 않도록)
+export function handleEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+  if (event.nativeEvent.isComposing) return
+  const textarea = event.currentTarget
+  const released = textarea.dataset.tabRelease === 'true'
+  delete textarea.dataset.tabRelease
+  if (event.key === 'Escape') {
+    textarea.dataset.tabRelease = 'true'
+    return
+  }
+  const plain = !event.ctrlKey && !event.metaKey && !event.altKey
+  if (event.key === 'Tab' && plain && !released) {
+    // 목록·코드가 아니어도 Tab은 본문 칸 안에 머묾 (빠져나가려면 Esc 다음 Tab)
+    event.preventDefault()
+    runTool(textarea, (v, s) => indentLines(v, s, event.shiftKey))
+    return
+  }
+  if (event.key === 'Enter' && plain && !event.shiftKey) {
+    const edit = continueList(textarea.value, { start: textarea.selectionStart, end: textarea.selectionEnd })
+    if (edit) {
+      event.preventDefault()
+      applyEdit(textarea, edit)
+    }
+    return
+  }
+  handleToolShortcut(event)
+}
+
+function handleToolShortcut(event: KeyboardEvent<HTMLTextAreaElement>) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
   const key = event.code.startsWith('Key') ? event.code.slice(3).toLowerCase() : event.key.toLowerCase()
   const tool = GROUPS.flat().find((t) => t.shortcut === key)
   if (!tool) return
