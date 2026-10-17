@@ -1,4 +1,5 @@
 import { useLayoutEffect, type RefObject } from 'react'
+import { updateScrollEdges, watchScrollEdges } from './scrollEdges'
 
 // 머리글 배치 (2026-10-15 소유자 요청: 반으로 나눈 창·휴대폰에서 메뉴가 줄을 넘기며 격자선이 어긋나던 문제)
 // 한 줄에 다 들어가면 로고 칸 | 메뉴 칸 한 줄, 안 들어가면 is-stacked: 로고 줄 + 메뉴 줄 두 줄
@@ -11,28 +12,22 @@ export function useHeaderLayout(headerRef: RefObject<HTMLElement | null>, active
     const nav = header?.querySelector<HTMLElement>('.site-nav')
     if (!header || !brand || !nav) return
 
-    const updateScrollEdges = () => {
-      const max = nav.scrollWidth - nav.clientWidth
-      nav.classList.toggle('can-scroll-left', nav.scrollLeft > 1)
-      nav.classList.toggle('can-scroll-right', max - nav.scrollLeft > 1)
-    }
-
     // 한 줄 배치로 놓아 보고 메뉴가 다음 줄로 넘어가면 두 줄 배치 (그리기 전이라 깜빡임 없음)
     const measure = () => {
       header.classList.remove('is-stacked')
       const wraps = nav.offsetTop > brand.offsetTop
       header.classList.toggle('is-stacked', wraps)
-      updateScrollEdges()
+      updateScrollEdges(nav)
     }
 
     measure()
-    window.addEventListener('resize', measure)
-    nav.addEventListener('scroll', updateScrollEdges, { passive: true })
-    // 글꼴(Pretendard)이 늦게 오면 글자 폭이 바뀌므로 다시 잼
-    void document.fonts?.ready.then(measure)
+    const stopWatching = watchScrollEdges(nav, measure)
+    // 글꼴(Pretendard)이 늦게 오면 글자 폭이 바뀌므로 다시 잼 (그 전에 화면을 떠났으면 건너뜀)
+    let active = true
+    void document.fonts?.ready.then(() => active && measure())
     return () => {
-      window.removeEventListener('resize', measure)
-      nav.removeEventListener('scroll', updateScrollEdges)
+      active = false
+      stopWatching()
     }
   }, [headerRef, layoutKey])
 

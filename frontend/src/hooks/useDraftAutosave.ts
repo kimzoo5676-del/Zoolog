@@ -20,10 +20,17 @@ export function clearDraft(key: string) {
   }
 }
 
-function readDraft<T>(key: string): Draft<T> | null {
+// 저장본 모양 검사: 깨졌거나 다른 형식이면 없는 것으로 (불러오기 화면이 오류로 멈추지 않도록)
+function readDraft<T extends Record<string, string>>(key: string, fields: string[]): Draft<T> | null {
   try {
     const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as Draft<T>) : null
+    if (!raw) return null
+    const draft: unknown = JSON.parse(raw)
+    if (!draft || typeof draft !== 'object' || !('values' in draft) || !('savedAt' in draft)) return null
+    const { values, savedAt } = draft as { values: unknown; savedAt: unknown }
+    if (typeof savedAt !== 'number' || !Number.isFinite(savedAt) || !values || typeof values !== 'object') return null
+    const ok = fields.every((field) => typeof (values as Record<string, unknown>)[field] === 'string')
+    return ok ? { values: values as T, savedAt } : null
   } catch {
     return null
   }
@@ -34,23 +41,24 @@ function readDraft<T>(key: string): Draft<T> | null {
 export function useDraftAutosave<T extends Record<string, string>>(key: string, values: T, initial: T) {
   const initialJson = JSON.stringify(initial)
   const [pending, setPending] = useState<Draft<T> | null>(() => {
-    const draft = readDraft<T>(key)
+    const draft = readDraft<T>(key, Object.keys(initial))
     return draft && JSON.stringify(draft.values) !== initialJson ? draft : null
   })
   const [savedAt, setSavedAt] = useState<number | null>(null)
 
   // 타이머·이벤트에서 읽을 최신 값 (렌더링이 끝난 뒤 갱신)
-  const latest = useRef({ key, values, initialJson, pending })
+  const latest = useRef({ key, values, initialJson })
   const lastSavedRef = useRef<string | null>(null)
   useEffect(() => {
-    latest.current = { key, values, initialJson, pending }
+    latest.current = { key, values, initialJson }
   })
 
-  // 저장: 연 뒤로 바뀐 것이 있고, 마지막 저장과 다를 때만 (불러올 임시 저장본을 고르기 전에는 덮어쓰지 않음)
+  // 저장: 연 뒤로 바뀐 것이 있고, 마지막 저장과 다를 때만
+  // 불러오기를 고르지 않고 새로 쓰기 시작해도 저장함 (로그인이 풀리는 상황 대비). 예전 저장본은 안내 줄이 메모리에 들고 있어 불러오기는 그대로 됨
   const save = useCallback(() => {
-    const { key, values, initialJson, pending } = latest.current
+    const { key, values, initialJson } = latest.current
     const json = JSON.stringify(values)
-    if (pending || json === initialJson || json === lastSavedRef.current) return
+    if (json === initialJson || json === lastSavedRef.current) return
     const now = Date.now()
     try {
       localStorage.setItem(key, JSON.stringify({ values, savedAt: now }))
@@ -82,8 +90,9 @@ export function useDraftAutosave<T extends Record<string, string>>(key: string, 
     saveNow: save,
     // 불러오기: 호출한 쪽이 pending.values를 화면 값에 넣은 뒤 부름
     acceptPending: () => setPending(null),
+    // 지우기: 예전 저장본만 지움 (그사이 새로 쓴 글이 같은 자리에 저장됐으면 그것은 남김)
     discardPending: () => {
-      clearDraft(key)
+      if (pending && readDraft<T>(key, Object.keys(initial))?.savedAt === pending.savedAt) clearDraft(key)
       setPending(null)
     },
   }

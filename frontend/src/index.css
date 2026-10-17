@@ -386,16 +386,19 @@ a {
   display: none;
 }
 
-/* 가려진 메뉴가 있는 쪽 끝을 흐리게: 옆으로 밀 수 있다는 표시 */
-.site-header.is-stacked .site-nav.can-scroll-right {
+/* 가려진 쪽 끝을 흐리게: 옆으로 밀 수 있다는 표시 (머리글 메뉴 줄·편집기 도구 막대, hooks/scrollEdges가 클래스를 붙임) */
+.site-header.is-stacked .site-nav.can-scroll-right,
+.md-toolbar.can-scroll-right {
   mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
 }
 
-.site-header.is-stacked .site-nav.can-scroll-left {
+.site-header.is-stacked .site-nav.can-scroll-left,
+.md-toolbar.can-scroll-left {
   mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
 }
 
-.site-header.is-stacked .site-nav.can-scroll-left.can-scroll-right {
+.site-header.is-stacked .site-nav.can-scroll-left.can-scroll-right,
+.md-toolbar.can-scroll-left.can-scroll-right {
   mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
 }
 
@@ -1055,7 +1058,7 @@ a {
 }
 
 /* 좁은 화면(창을 반으로 나눈 경우·휴대폰)의 미리보기 팁 (2026-10-15 소유자 요청)
-   본문 칸 위에 마우스를 잠깐 멈추거나 하단 바 미리보기 버튼을 누르면 본문 칸 위에 떠오름, 타이핑·누름·Esc로 닫힘
+   하단 바 미리보기 버튼을 누르면 본문 칸 위에 떠오름, 버튼·팁 누름·Esc로 닫힘 (hooks/usePreviewTip)
    항상 그려 두고 data-open만 바꿔 열림·닫힘 모두 서서히 (Streak 팁과 같은 방식) */
 @media (max-width: 59.99rem) {
   .editor-panes {
@@ -1065,7 +1068,7 @@ a {
   .editor-preview {
     position: absolute;
     z-index: 5;
-    /* 위치·높이는 열 때 PostEditor가 보이는 화면에 맞춰 정함 (아래는 JS 전 기본값) */
+    /* 위치·높이는 열 때 usePreviewTip이 보이는 화면에 맞춰 정함 (아래는 JS 전 기본값) */
     inset: 0.75rem 0.75rem auto;
     max-height: calc(100% - 1.5rem);
     overflow-y: auto;
@@ -1105,7 +1108,7 @@ a {
   background-color: var(--color-accent-strong);
 }
 
-/* 휴대폰: 하단 바 버튼 4개(나가기·이미지·미리보기·게시)가 한 줄에 들어가도록 간격과 안쪽 여백을 줄임 */
+/* 휴대폰: 하단 바(나가기·미리보기·게시 + 오류 문구)가 한 줄에 들어가도록 간격과 안쪽 여백을 줄임 */
 @media (max-width: 30rem) {
   .editor-footer {
     gap: 0.5rem;
@@ -1116,7 +1119,7 @@ a {
     padding-inline: 0.75rem;
   }
 
-  /* 휴대폰은 버튼 4개로 꽉 차서 자동 저장 시각은 숨김 (저장은 그대로 됨) */
+  /* 휴대폰은 하단 바가 좁아 자동 저장 시각은 숨김 (저장은 그대로 됨) */
   .autosave-status {
     display: none;
   }
@@ -1194,18 +1197,6 @@ a {
 
 .md-tool.is-strike {
   text-decoration: line-through;
-}
-
-.md-toolbar.can-scroll-right {
-  mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent);
-}
-
-.md-toolbar.can-scroll-left {
-  mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent);
-}
-
-.md-toolbar.can-scroll-left.can-scroll-right {
-  mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent);
 }
 
 /* 임시 저장본 안내 줄 (DraftNotice): 편집기 맨 위 */
@@ -1353,7 +1344,7 @@ a {
   opacity: 0;
 }
 
-/* 확대 상태 막대: 지도 왼쪽 위 [← 위로 esc] 전체 / 경로 [목록으로 보기 →]
+/* 확대 상태 막대: 지도 왼쪽 위 [esc] | 경로(누르면 그 단계로)
    항상 렌더링하고 is-visible로 나타남·사라짐을 전환, 폭은 JS가 잰 내용 폭으로 지정해 부드럽게 늘고 줄어듦 */
 .constellation-bar {
   position: absolute;
@@ -1678,9 +1669,6 @@ a {
   stroke-linejoin: round;
   paint-order: stroke;
   pointer-events: none;
-}
-
-.star-label {
   font-weight: 800;
   animation: label-in 0.8s ease calc(0.4s + var(--reveal) * 0.9s) both;
 }
@@ -2184,11 +2172,6 @@ a {
 }
 
 /* 빈 칸: 색만 (가리켜도 반응 없음) */
-.category-tile.is-empty,
-.post-card.is-empty {
-  min-height: 100%;
-}
-
 .category-tile.is-empty {
   min-height: clamp(9rem, 18vw, 13rem);
 }

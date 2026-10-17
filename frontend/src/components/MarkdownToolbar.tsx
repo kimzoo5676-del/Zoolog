@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, type RefObject } from 'react'
+import { useLayoutEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
 import { alignImages } from '../utils/markdownEdit'
+import { watchScrollEdges } from '../hooks/scrollEdges'
 import { ALIGNS, GROUPS, runTool, type Tool, type ToolIconName } from '../utils/markdownTools'
 
 type MarkdownToolbarProps = {
@@ -44,21 +45,33 @@ export function MarkdownToolbar({ textareaRef, onPickImage }: MarkdownToolbarPro
   useLayoutEffect(() => {
     const bar = barRef.current
     if (!bar) return
-    const update = () => {
-      bar.classList.toggle('can-scroll-left', bar.scrollLeft > 1)
-      bar.classList.toggle('can-scroll-right', bar.scrollWidth - bar.clientWidth - bar.scrollLeft > 1)
-    }
-    update()
-    bar.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    return () => {
-      bar.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-    }
+    return watchScrollEdges(bar)
   }, [])
 
+  // 키보드: 도구 막대는 Tab 한 번에 들어오고 나감, 안에서는 ←→·Home·End로 버튼 사이 이동 (WAI-ARIA 도구 막대 방식)
+  // 마지막으로 머문 버튼만 tabIndex 0이라 다시 들어오면 그 버튼부터
+  useLayoutEffect(() => {
+    barRef.current?.querySelectorAll<HTMLButtonElement>('.md-tool').forEach((b, i) => (b.tabIndex = i === 0 ? 0 : -1))
+  }, [onPickImage])
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const buttons = [...(barRef.current?.querySelectorAll<HTMLButtonElement>('.md-tool') ?? [])]
+    const current = buttons.indexOf(document.activeElement as HTMLButtonElement)
+    if (current < 0) return
+    const next =
+      event.key === 'ArrowRight' ? (current + 1) % buttons.length
+      : event.key === 'ArrowLeft' ? (current - 1 + buttons.length) % buttons.length
+      : event.key === 'Home' ? 0
+      : event.key === 'End' ? buttons.length - 1
+      : -1
+    if (next < 0) return
+    event.preventDefault()
+    buttons[current].tabIndex = -1
+    buttons[next].tabIndex = 0
+    buttons[next].focus()
+  }
+
   return (
-    <div className="md-toolbar" role="toolbar" aria-label="서식 도구" ref={barRef}>
+    <div className="md-toolbar" role="toolbar" aria-label="서식 도구" ref={barRef} onKeyDown={handleKeyDown}>
       {GROUPS.map((group, i) => (
         <div className="md-toolbar-group" key={i}>
           {group.map((tool) => (

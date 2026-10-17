@@ -59,8 +59,15 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 // 뉴스 스크랩도 글 편집기와 같은 구성 (2026-10-15 소유자 요청): 머리 칸(경로·제목·원문 보기) → 원문 | 미리보기 → 하단 고정 바
 // 제목·주제는 메일 링크로 정해져 있어 고칠 칸이 없고, 본문은 일반 글처럼 마크다운으로 자유롭게 씀(길이 제한 없음)
 // 미리보기는 실제로 게시될 글 본문(기사 제목 링크 · 언론사 + 쓴 본문), 좁은 화면은 편집기와 같은 미리보기 팁
+// 다른 기사 링크로 바로 옮겨 가도 쓰던 글·임시 저장 자리가 섞이지 않도록 기사 주소마다 새로 그림
 export default function ClipNew({ loaderData, actionData }: Route.ComponentProps) {
+  return <ClipForm key={loaderData.url} loaderData={loaderData} actionData={actionData} />
+}
+
+function ClipForm({ loaderData, actionData }: Pick<Route.ComponentProps, 'loaderData' | 'actionData'>) {
   const { clippedPostId, title, url, source, date, path, heading } = loaderData
+  // 아직 스크랩하지 않은 기사면 쓸 수 있음
+  const canWrite = clippedPostId === null
   const submitting = useNavigation().state === 'submitting'
   const [comment, setComment] = useState('')
   const contentRef = useRef<HTMLTextAreaElement>(null)
@@ -71,7 +78,7 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
   return (
     <Form method="post" viewTransition className="editor" onSubmit={draft.saveNow}>
       <title>뉴스 스크랩 | zoolog</title>
-      {draft.pending && clippedPostId === null && (
+      {draft.pending && canWrite && (
         <DraftNotice
           savedAt={draft.pending.savedAt}
           onRestore={() => {
@@ -91,8 +98,8 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
           </a>
         </p>
       </div>
-      {clippedPostId === null && <MarkdownToolbar textareaRef={contentRef} />}
-      {clippedPostId === null ? (
+      {canWrite && <MarkdownToolbar textareaRef={contentRef} />}
+      {canWrite ? (
         <div className="editor-panes">
           <textarea
             ref={contentRef}
@@ -126,7 +133,7 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
         <Link to="/" viewTransition className="button-link">
           나가기
         </Link>
-        {clippedPostId === null && (
+        {canWrite && (
           <button type="button" className="button-link editor-preview-toggle" {...tip.toggleProps}>
             미리보기
           </button>
@@ -137,7 +144,7 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
             {actionData.error}
           </p>
         )}
-        {clippedPostId === null && (
+        {canWrite && (
           <button type="submit" className="button-solid" disabled={submitting}>
             게시
           </button>

@@ -1,27 +1,19 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useMediaQuery } from './useMediaQuery'
 
 // 나란히 보기(원문 | 미리보기)가 들어가지 않는 폭: index.css의 .editor-panes 기준(60rem)과 같게
 const NARROW_EDITOR = '(max-width: 59.99rem)'
-
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches)
-  useEffect(() => {
-    const list = window.matchMedia(query)
-    const onChange = () => setMatches(list.matches)
-    onChange()
-    list.addEventListener('change', onChange)
-    return () => list.removeEventListener('change', onChange)
-  }, [query])
-  return matches
-}
 
 // 좁은 화면(창을 반으로 나눈 경우·휴대폰)의 미리보기 팁 (2026-10-15 소유자 요청, 글 편집기·뉴스 스크랩 화면 공용)
 // 넓은 화면은 원문 | 미리보기 나란히. 좁으면 미리보기를 숨기고 하단 바 미리보기 버튼으로만 열고 닫음
 // (마우스를 올리면 뜨던 방식은 2026-10-16 소유자 결정으로 제외: 쓰는 중에 의도치 않게 떠서)
 // Esc·팁 누름(본문 칸으로 돌아감)으로도 닫힘. 돌려주는 props를 미리보기 section(previewProps)·버튼(toggleProps)에 펼쳐 씀
 export function usePreviewTip(contentRef: RefObject<HTMLTextAreaElement | null>) {
-  const narrow = useMediaQuery(NARROW_EDITOR)
   const [open, setOpen] = useState(false)
+  // 넓은 화면으로 바뀌면 닫음: 다시 좁아졌을 때 저절로 열리지 않도록
+  const narrow = useMediaQuery(NARROW_EDITOR, (matches) => {
+    if (!matches) setOpen(false)
+  })
   const previewRef = useRef<HTMLElement>(null)
   const tipOpen = narrow && open
 

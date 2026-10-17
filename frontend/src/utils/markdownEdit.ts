@@ -9,26 +9,42 @@ export type Edit = { from: number; to: number; text: string; select: Selection }
 
 // 굵게·기울임·취소선·인라인 코드: 선택한 글자를 표시로 감쌈, 이미 감싸져 있으면 벗김
 // 선택이 없으면 자리 표시 글자를 넣고 그 글자를 선택해 바로 타이핑으로 바꿀 수 있게
+// 기울임(*)은 굵게(**)의 별과 구분: **굵게** 안에서 누르면 굵게를 벗기지 않고 ***굵게+기울임*** 으로
 export function toggleWrap(value: string, sel: Selection, marker: string, placeholder: string): Edit {
   const selected = value.slice(sel.start, sel.end)
-  const before = value.slice(sel.start - marker.length, sel.start)
-  const after = value.slice(sel.end, sel.end + marker.length)
-  if (selected && before === marker && after === marker) {
-    return {
-      from: sel.start - marker.length,
-      to: sel.end + marker.length,
-      text: selected,
-      select: { start: sel.start - marker.length, end: sel.end - marker.length },
-    }
+  const m = marker.length
+  // 선택 밖 바로 옆에 표시가 있는지. 기울임은 붙은 별 개수가 홀수(* 또는 ***)일 때만 (** 는 굵게)
+  const starsLeft = () => {
+    let k = 0
+    while (value[sel.start - 1 - k] === '*') k++
+    return k
+  }
+  const starsRight = () => {
+    let k = 0
+    while (value[sel.end + k] === '*') k++
+    return k
+  }
+  const isMarkerAt = (from: number, to: number) => {
+    if (from < 0 || value.slice(from, to) !== marker) return false
+    if (marker !== '*') return true
+    return (from < sel.start ? starsLeft() : starsRight()) % 2 === 1
+  }
+  if (selected && isMarkerAt(sel.start - m, sel.start) && isMarkerAt(sel.end, sel.end + m)) {
+    return { from: sel.start - m, to: sel.end + m, text: selected, select: { start: sel.start - m, end: sel.end - m } }
+  }
+  // 표시까지 함께 선택한 경우(**굵게** 전체 선택)도 벗김
+  if (selected.length > 2 * m && selected.startsWith(marker) && selected.endsWith(marker) && (marker !== '*' || !selected.startsWith('**'))) {
+    const inner = selected.slice(m, -m)
+    return { from: sel.start, to: sel.end, text: inner, select: { start: sel.start, end: sel.start + inner.length } }
   }
   const inner = selected || placeholder
-  const start = sel.start + marker.length
+  const start = sel.start + m
   return { from: sel.start, to: sel.end, text: `${marker}${inner}${marker}`, select: { start, end: start + inner.length } }
 }
 
-// 선택이 걸친 줄 전체 범위
+// 선택이 걸친 줄 전체 범위 (선택이 줄바꿈 바로 뒤에서 끝나면 그 다음 줄은 넣지 않음)
 function lineRange(value: string, sel: Selection) {
-  const from = value.lastIndexOf('\n', sel.start - 1) + 1
+  const from = sel.start === 0 ? 0 : value.lastIndexOf('\n', sel.start - 1) + 1
   const endBreak = value.indexOf('\n', sel.end > sel.start && value[sel.end - 1] === '\n' ? sel.end - 1 : sel.end)
   const to = endBreak < 0 ? value.length : endBreak
   return { from, to }
@@ -36,17 +52,24 @@ function lineRange(value: string, sel: Selection) {
 
 // 소제목·인용·목록·체크리스트: 선택한 줄마다 앞에 표시를 붙임, 모든 줄에 이미 있으면 뗌
 // 번호 목록은 1. 2. 3. 으로 이어서 붙임. 다른 줄 표시(## , > , - )가 있으면 바꿔 끼움
+// 여러 줄을 고를 때 빈 줄은 그대로 둠, 체크리스트는 체크한 항목(- [x])도 이미 붙은 것으로 봄
 const LINE_MARKERS = /^(#{1,6} |> |- \[[ x]\] |- |\d+\. )/
 
 export function toggleLinePrefix(value: string, sel: Selection, prefix: string | 'ordered'): Edit {
   const { from, to } = lineRange(value, sel)
   const lines = value.slice(from, to).split('\n')
-  const has = (line: string) => (prefix === 'ordered' ? /^\d+\. /.test(line) : line.startsWith(prefix))
-  const allHave = lines.every(has)
-  const next = lines.map((line, i) => {
+  const multi = lines.length > 1
+  const skip = (line: string) => multi && line.trim() === ''
+  const has = (line: string) =>
+    prefix === 'ordered' ? /^\d+\. /.test(line) : prefix === '- [ ] ' ? /^- \[[ x]\] /.test(line) : line.startsWith(prefix)
+  const allHave = lines.every((line) => skip(line) || has(line))
+  let n = 0
+  const next = lines.map((line) => {
+    if (skip(line)) return line
     const bare = line.replace(LINE_MARKERS, '')
     if (allHave) return bare
-    return `${prefix === 'ordered' ? `${i + 1}. ` : prefix}${bare}`
+    n += 1
+    return `${prefix === 'ordered' ? `${n}. ` : prefix}${bare}`
   })
   const text = next.join('\n')
   // 한 줄이고 선택이 없으면 커서를 줄 끝에, 아니면 바뀐 줄 전체를 선택

@@ -31,7 +31,9 @@ export default function PostEdit({ loaderData, actionData }: Route.ComponentProp
   return (
     <>
       <title>{`수정: ${post.title} | zoolog`}</title>
+      {/* key: 다른 글 수정으로 바로 옮겨 가도 편집 상태·임시 저장 자리가 섞이지 않게 새로 그림 */}
       <PostEditor
+        key={post.id}
         categories={categories}
         initial={{ categoryId: post.categoryId, title: post.title, content: post.content }}
         error={actionData?.error}

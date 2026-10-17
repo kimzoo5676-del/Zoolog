@@ -15,7 +15,7 @@ export function shouldRevalidate({ currentUrl, nextUrl, defaultShouldRevalidate 
 }
 
 // 홈: 머리글 아래 화면 전체가 별자리 지도 (2026-10-12 소유자 결정)
-// 별을 누르면 지도 안에서 그 별자리로 확대 (?focus=slug), 글 목록은 "목록으로 보기"로 주제 화면에서
+// 별을 누르면 지도 안에서 그 별자리로 확대 (?focus=slug), 글은 오른쪽 위 Graph | Card의 Card로 주제 화면에서
 export default function Home({ loaderData }: Route.ComponentProps) {
   const { posts } = loaderData
   const { categories } = useBlogLayoutData()
