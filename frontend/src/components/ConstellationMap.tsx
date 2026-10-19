@@ -127,8 +127,9 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
   const [gathering, setGathering] = useState<{ mode: 'all' } | { mode: 'category'; topId: string } | null>(null)
   const navigate = useNavigate()
 
-  // 큰 주제 별자리는 2×2 사분면 자리, 휴대폰(640px 미만)은 1열 (utils/constellation.ts gridPositions)
-  const columns = size.width > 0 && size.width < 640 ? 1 : 2
+  // 큰 주제 별자리는 2×2 사분면 자리, 휴대폰(지도 폭 480px 미만)만 1열 (utils/constellation.ts gridPositions)
+  // 노트북 반 창은 여백을 빼면 지도 폭이 640px 아래라 1열이 됐음: 2×2로 보이도록 휴대폰 폭에서만 1열 (2026-10-19 소유자 요청)
+  const columns = size.width > 0 && size.width < 480 ? 1 : 2
   // 두 번 계산: 먼저 배치해 화면에서 얼마나 축소되는지 잰 뒤, 축소되는 만큼 이름표 자리를 넓혀 다시 배치
   // (좁은 화면에서 지도가 작아져도 화면 px 고정인 이름끼리 겹치지 않도록)
   // 창 크기를 조금 바꿀 때마다 재배치되지 않도록 크기는 80px 단위로 반올림해 반영
