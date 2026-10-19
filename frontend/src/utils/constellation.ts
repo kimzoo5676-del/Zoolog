@@ -39,7 +39,7 @@ export type Constellation = {
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5)) // 약 137.5°
 const POST_SPACING = 36 // 나선 간격: 글 별 사이 거리 (클수록 부모 별과 글을 잇는 선이 길어짐)
 const SPIRAL_START = 4.5 // 나선 시작을 바깥으로: 부모 별(마름모 등) 둘레를 비우고 주위에 흩어지게 (작으면 붙어 뭉쳐 보임)
-const CLUSTER_GAP = 96 // 별자리 사이 여백
+const CLUSTER_GAP = 96 // 별자리 사이 여백 (2열 배치의 칸 사이)
 const LABEL_ROOM = 40 // 이름표 자리
 // 흔들림: 기계적인 원·나선 대신 실제 별자리처럼 불규칙하게 (값은 주제 id로 고정돼 새로고침해도 같은 모양)
 const ANGLE_JITTER = 0.08 // 하위 주제 각도: 고른 간격의 ±8% (크면 겹침 방지 계산이 고리를 부풀려 글 별이 상대적으로 뭉쳐 보임)
@@ -218,36 +218,9 @@ function buildCluster(top: CategoryNode, postsBySlug: Map<string, PostSummary[]>
   return { id: clusterId, radius: layout.radius + LABEL_ROOM, nodes: layout.nodes, edges: layout.edges }
 }
 
-// 별자리끼리 겹치지 않게 배치: 큰 별자리부터 가운데에 두고, 나머지는 나선을 따라 바깥으로 빈자리 탐색
-// aspect(가로/세로): 화면 비율에 맞춰 나선을 늘림 → 넓은 화면은 가로로, 좁은 화면(모바일)은 세로로 퍼짐
-function packClusters(clusters: Cluster[], aspect: number): Map<string, Point> {
-  const stretchX = Math.sqrt(aspect)
-  const stretchY = 1 / stretchX
-  const placed: { c: Cluster; p: Point }[] = []
-  const positions = new Map<string, Point>()
-  for (const cluster of [...clusters].sort((a, b) => b.radius - a.radius)) {
-    let point: Point = { x: 0, y: 0 }
-    for (let k = 0; placed.length > 0; k++) {
-      const r = 10 * Math.sqrt(k)
-      const a = k * GOLDEN_ANGLE
-      const candidate = { x: r * Math.cos(a) * stretchX, y: r * Math.sin(a) * stretchY }
-      const fits = placed.every(
-        ({ c, p }) => Math.hypot(p.x - candidate.x, p.y - candidate.y) >= c.radius + cluster.radius + CLUSTER_GAP,
-      )
-      if (fits) {
-        point = candidate
-        break
-      }
-    }
-    placed.push({ c: cluster, p: point })
-    positions.set(cluster.id, point)
-  }
-  return positions
-}
-
 // 힘 기반 정리 (force-directed layout, Obsidian 그래프 뷰와 같은 방식)
-// 위 규칙으로 만든 배치를 출발점으로: 선은 스프링처럼 정해진 길이로 당기고, 모든 별은 서로 밀어내며,
-// 약한 끌림이 가운데로 모아 외딴 별자리가 화면 끝으로 밀려나지 않게 함
+// 위 규칙으로 만든 별자리 하나를 출발점으로: 선은 스프링처럼 정해진 길이로 당기고, 모든 별은 서로 밀어내며,
+// 약한 끌림이 큰 주제 별 쪽으로 모아 가지가 너무 멀리 뻗지 않게 함 (별자리마다 따로, 별자리끼리는 밀어내지 않음)
 // 출발점이 같으면 결과도 같아 새로고침해도 같은 모양
 const RELAX_STEPS = 320
 
@@ -264,16 +237,13 @@ function restLength(child: StarNode) {
   return child.depth === 2 ? 170 : 120
 }
 
-function relax(nodes: StarNode[], edges: StarEdge[], aspect: number, labelScale: number) {
+function relax(nodes: StarNode[], edges: StarEdge[], labelScale: number) {
   const index = new Map(nodes.map((n, i) => [n.id, i]))
   const radius = nodes.map((n) => sizeOf(n, labelScale))
   const mass = nodes.map((n) => (n.kind === 'post' ? 1 : n.depth === 1 ? 5 : n.depth === 2 ? 3 : 2))
   const links = edges
     .map((e) => [index.get(e.from), index.get(e.to)] as const)
     .filter((l): l is readonly [number, number] => l[0] !== undefined && l[1] !== undefined)
-  // 화면 비율만큼 가로로 덜 당겨 넓은 화면에서는 가로로 퍼지게
-  const stretch = Math.sqrt(aspect)
-
   for (let step = 0; step < RELAX_STEPS; step++) {
     const alpha = 1 - step / RELAX_STEPS
     const fx = new Float64Array(nodes.length)
@@ -317,10 +287,10 @@ function relax(nodes: StarNode[], edges: StarEdge[], aspect: number, labelScale:
       fy[b] -= (uy * pull) / mass[b]
     }
 
-    // 가운데로 약하게 끌어당김
+    // 가운데(큰 주제 별 자리)로 약하게 끌어당김
     for (let i = 0; i < nodes.length; i++) {
-      fx[i] -= (nodes[i].x * 0.012) / stretch
-      fy[i] -= nodes[i].y * 0.012 * stretch
+      fx[i] -= nodes[i].x * 0.012
+      fy[i] -= nodes[i].y * 0.012
     }
 
     // 한 번에 너무 멀리 튀지 않도록 이동 거리 제한, 반복할수록 작게(식힘)
@@ -332,10 +302,48 @@ function relax(nodes: StarNode[], edges: StarEdge[], aspect: number, labelScale:
   }
 }
 
+// 이름표까지 포함한 범위 (가장자리 별의 이름이 잘리지 않도록 가로는 주제 이름표 끝까지)
+function boxOf(nodes: StarNode[], labelScale: number) {
+  const halfLabel = (n: StarNode) => (n.kind === 'post' ? 0 : sizeOf(n, labelScale))
+  const minX = Math.min(...nodes.map((n) => n.x - halfLabel(n)))
+  const maxX = Math.max(...nodes.map((n) => n.x + halfLabel(n)))
+  const minY = Math.min(...nodes.map((n) => n.y))
+  const maxY = Math.max(...nodes.map((n) => n.y)) + LABEL_ROOM
+  return { minX, minY, width: maxX - minX, height: maxY - minY }
+}
+
+// 큰 주제 별자리를 2열 바둑판 자리에 (2026-10-19 소유자 결정: 하나의 행성계처럼 2×2 사분면
+// 왼쪽 위 Cloud Engineer · 오른쪽 위 SW Engineer · 왼쪽 아래 OPIc · 오른쪽 아래 News Clipping, 주제 id 순)
+// 이전에는 별자리끼리 밀어내 자리가 정해져, 어느 별자리가 어디 있는지 읽기 어렵고 좁은 화면에서는 서로 겹쳤음
+// 열 폭·행 높이는 그 열·행에서 가장 큰 별자리 기준, 별자리는 칸 가운데. 홀수 개면 마지막 별자리는 두 열 가운데
+// columns: 넓은 화면 2(사분면), 휴대폰 1(폭이 좁아 2열이면 모두 작아져 이름이 뭉침, 위에서 아래로 같은 순서)
+function gridPositions(boxes: ReturnType<typeof boxOf>[], columns: number): Point[] {
+  const COLUMNS = columns
+  const rows = Math.ceil(boxes.length / COLUMNS)
+  const spans = (i: number) => i === boxes.length - 1 && boxes.length % COLUMNS === 1 && boxes.length > 1
+  const colWidth = Array.from({ length: COLUMNS }, (_, c) =>
+    Math.max(0, ...boxes.filter((_, i) => i % COLUMNS === c && !spans(i)).map((b) => b.width)),
+  )
+  const rowHeight = Array.from({ length: rows }, (_, r) =>
+    Math.max(0, ...boxes.filter((_, i) => Math.floor(i / COLUMNS) === r).map((b) => b.height)),
+  )
+  const totalWidth = colWidth.reduce((sum, w) => sum + w, 0) + CLUSTER_GAP * (COLUMNS - 1)
+  return boxes.map((box, i) => {
+    const c = i % COLUMNS
+    const r = Math.floor(i / COLUMNS)
+    const cellX = spans(i)
+      ? totalWidth / 2
+      : colWidth.slice(0, c).reduce((sum, w) => sum + w, 0) + CLUSTER_GAP * c + colWidth[c] / 2
+    const cellY = rowHeight.slice(0, r).reduce((sum, h) => sum + h, 0) + CLUSTER_GAP * r + rowHeight[r] / 2
+    // 별자리 범위의 가운데를 칸 가운데에
+    return { x: cellX - (box.minX + box.width / 2), y: cellY - (box.minY + box.height / 2) }
+  })
+}
+
 export function layoutConstellation(
   categories: Category[],
   posts: PostSummary[],
-  aspect = 1.8,
+  columns = 2,
   labelScale = 1,
 ): Constellation {
   const postsBySlug = new Map<string, PostSummary[]>()
@@ -343,30 +351,29 @@ export function layoutConstellation(
     postsBySlug.set(post.categorySlug, [...(postsBySlug.get(post.categorySlug) ?? []), post])
   }
   const clusters = buildCategoryTree(categories).map((top) => buildCluster(top, postsBySlug))
-  const positions = packClusters(clusters, aspect)
+  if (clusters.length === 0) {
+    return { nodes: [], edges: [], bounds: { minX: -100, minY: -100, width: 200, height: 200 } }
+  }
+  for (const cluster of clusters) relax(cluster.nodes, cluster.edges, labelScale)
+  const positions = gridPositions(
+    clusters.map((cluster) => boxOf(cluster.nodes, labelScale)),
+    columns,
+  )
 
   const nodes: StarNode[] = []
   const edges: StarEdge[] = []
-  for (const cluster of clusters) {
-    const offset = positions.get(cluster.id) ?? { x: 0, y: 0 }
+  clusters.forEach((cluster, i) => {
+    const offset = positions[i]
     nodes.push(...cluster.nodes.map((n) => ({ ...n, x: n.x + offset.x, y: n.y + offset.y })))
     edges.push(...cluster.edges)
-  }
-
-  if (nodes.length === 0) {
-    return { nodes, edges, bounds: { minX: -100, minY: -100, width: 200, height: 200 } }
-  }
-
-  relax(nodes, edges, aspect, labelScale)
+  })
 
   const pad = 48
-  // 가로 범위는 주제 이름표 끝까지 (가장자리 별의 이름이 화면 밖으로 잘리지 않도록)
-  const halfLabel = (n: StarNode) => (n.kind === 'post' ? 0 : sizeOf(n, labelScale))
-  const minX = Math.min(...nodes.map((n) => n.x - halfLabel(n))) - pad
-  const maxX = Math.max(...nodes.map((n) => n.x + halfLabel(n))) + pad
-  const minY = Math.min(...nodes.map((n) => n.y)) - pad
-  const maxY = Math.max(...nodes.map((n) => n.y)) + pad + LABEL_ROOM
-
+  const box = boxOf(nodes, labelScale)
+  const minX = box.minX - pad
+  const minY = box.minY - pad
+  const maxX = box.minX + box.width + pad
+  const maxY = box.minY + box.height + pad
   // 등장 순서: 지도 가운데에서 가까운 별부터 바깥으로 물결처럼
   const cx = (minX + maxX) / 2
   const cy = (minY + maxY) / 2
