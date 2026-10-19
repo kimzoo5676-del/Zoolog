@@ -118,7 +118,7 @@ function useAnimatedBox(target: Box, initial: Box): Box {
 // 주제 별을 누르면 지도 안에서 그 별자리로 확대 (목록 화면으로 이동하지 않음), 목록은 오른쪽 위 "Graph | Card" 전환으로
 // 키보드·스크린 리더는 주제 별(링크)로 이동, Enter로 확대, Esc로 한 단계 축소
 export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }: ConstellationMapProps) {
-  const stageRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [activeId, setActiveId] = useState<string | null>(null)
   // 화면을 떠나기 전 별이 모여드는 연출 (2026-10-13 소유자 결정)
@@ -222,9 +222,10 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     [byId, ancestors, nodes],
   )
 
-  // 지도 칸 크기 측정: 보이는 범위가 바뀌어도 별·글자는 일정한 화면 크기를 유지하기 위해
+  // 지도 크기 측정: 보이는 범위가 바뀌어도 별·글자는 일정한 화면 크기를 유지하기 위해
+  // 무대가 아니라 svg를 잼: 좁은 화면은 아래 범례 자리만큼 svg가 짧아, 무대를 재면 배율·이름표 위치가 어긋남
   useEffect(() => {
-    const element = stageRef.current
+    const element = svgRef.current
     if (!element) return
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect
@@ -250,10 +251,10 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
     // 너무 작은 묶음은 지나치게 확대되지 않도록 최소 범위 (지도 단위 고정: 전체 지도 크기와 상관없이 같은 확대)
     const w = Math.max(maxX - minX, 300)
     const h = Math.max(maxY - minY, 220)
-    // 위쪽은 확대 상태 막대가 덮으므로 범위를 위로 14% 더 넓힘
-    const top = h * 0.14
+    // 좁은 화면은 확대 상태 막대가 지도 위쪽을 덮으므로 범위를 위로 14% 더 넓힘 (넓은 화면은 탭 옆 줄에 놓여 지도를 덮지 않음)
+    const top = narrow ? h * 0.14 : 0
     return { x: (minX + maxX) / 2 - w / 2, y: (minY + maxY) / 2 - h / 2 - top, w, h: h + top }
-  }, [focus, nodes, ancestors, fullBox])
+  }, [focus, nodes, ancestors, fullBox, narrow])
   const box = useAnimatedBox(focusBox, fullBox)
 
   // 글 별 클릭: 바로 글 화면으로. 마우스를 올려 떠 있던 큰 제목이 글 화면 제목 자리로 날아감
@@ -322,6 +323,8 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
         .sort((a, b) => a.depth - b.depth)
         .concat(focus)
     : []
+  // 지금 확대해 보고 있는 큰 주제 (왼쪽 위 탭 선택 표시)
+  const focusTop = trail[0]
   // 막대가 사라지는 동안에도 내용이 비지 않도록 마지막 경로 유지
   const [shownTrail, setShownTrail] = useState(trail)
   const trailKey = trail.map((n) => n.id).join('>')
@@ -415,9 +418,83 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
         gathering ? ` is-gathering is-gathering-${gathering.mode}` : ''
       }`}
     >
-      {/* 무대: svg와 글 카드의 공통 기준 (크기 측정, 카드 위치 계산) */}
-      <div ref={stageRef} className="constellation-stage" onPointerLeave={() => setActiveId(null)}>
+      {/* 지도 위 한 줄: 큰 주제 탭(2열) · 확대 상태 막대
+          큰 주제 탭 (2026-10-19 소유자 요청: 글이 늘어 전체 그래프가 복잡해질 때 바로 그 별자리로)
+          누르면 그 큰 주제로 확대, 이미 그 큰 주제를 보고 있으면 전체 지도로. 주제를 만들면 탭도 저절로 생김 */}
+      <div className="constellation-top">
+        <nav className="constellation-tabs" aria-label="큰 주제로 확대">
+          {topNodes.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              aria-pressed={focusTop?.id === node.id}
+              onClick={() => {
+                setActiveId(null)
+                onFocusChange(focus?.id === node.id ? null : (node.slug ?? null))
+              }}
+              // 가리키면 머리글 주제 메뉴처럼 그 별자리에 불이 들어옴
+              onPointerEnter={() => setActiveId(node.id)}
+              onPointerLeave={() => setActiveId((current) => (current === node.id ? null : current))}
+              onFocus={() => setActiveId(node.id)}
+              onBlur={() => setActiveId((current) => (current === node.id ? null : current))}
+            >
+              {node.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* 확대 상태 막대: [esc] 경로(누르면 그 단계로)
+            항상 그려 두고 확대할 때만 보이게 전환 (갑자기 생기거나 사라지지 않도록), 숨김 상태는 inert */}
+        <nav
+          className={`constellation-bar${focus ? ' is-visible' : ''}`}
+          aria-label="별자리 확대 위치"
+          inert={!focus}
+          // 테두리 좌우 1px씩 포함 (box-sizing: border-box)
+          style={barWidth ? { width: barWidth + 2 } : undefined}
+        >
+          <div ref={barInnerRef} className="bar-inner">
+            {/* 한 단계 위로: 키보드 Esc와 같은 동작, 키 모양으로 단축키를 함께 알려 줌 */}
+            <button
+              type="button"
+              className="bar-up"
+              onClick={() => focus && onFocusChange(parentSlug(focus))}
+              aria-label="한 단계 위로 (Esc)"
+              aria-keyshortcuts="Escape"
+            >
+              <kbd>esc</kbd>
+            </button>
+            <ol className="bar-trail">
+              {shownTrail.map((node, i) => (
+                <li key={node.id}>
+                  {i === shownTrail.length - 1 ? (
+                    <span aria-current="location">{node.label}</span>
+                  ) : (
+                    <button type="button" onClick={() => onFocusChange(node.slug ?? null)}>
+                      {node.label}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </nav>
+      </div>
+
+      {/* 보기 전환: 확대한 주제가 있으면 그 주제 목록, 없으면 전체 목록 */}
+      <ViewSwitch
+        current="graph"
+        graphTo={focus ? { pathname: '/', search: `?focus=${encodeURIComponent(focus.slug ?? '')}` } : '/'}
+        listTo={focus?.slug ? href('/categories/:slug', { slug: focus.slug }) : '/posts'}
+        className="view-switch constellation-switch"
+        onListClick={focus ? undefined : gatherThenOpenCards}
+        // 전체 지도의 Card 글자 → Category 화면 제목 (글자가 이동하며 Card에서 Category로 바뀜)
+        listStyle={focus ? undefined : { viewTransitionName: 'view-title' }}
+      />
+
+      {/* 무대: svg와 글 카드의 공통 기준 (카드 위치 계산) */}
+      <div className="constellation-stage" onPointerLeave={() => setActiveId(null)}>
         <svg
+          ref={svgRef}
           viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
           preserveAspectRatio="xMidYMid meet"
           role="group"
@@ -501,53 +578,6 @@ export function ConstellationMap({ categories, posts, focusSlug, onFocusChange }
             ))}
           </div>
         )}
-
-        {/* 확대 상태 막대: [esc] 경로(누르면 그 단계로)
-            항상 그려 두고 확대할 때만 보이게 전환 (갑자기 생기거나 사라지지 않도록), 숨김 상태는 inert */}
-        <nav
-          className={`constellation-bar${focus ? ' is-visible' : ''}`}
-          aria-label="별자리 확대 위치"
-          inert={!focus}
-          // 테두리 좌우 1px씩 포함 (box-sizing: border-box)
-          style={barWidth ? { width: barWidth + 2 } : undefined}
-        >
-          <div ref={barInnerRef} className="bar-inner">
-            {/* 한 단계 위로: 키보드 Esc와 같은 동작, 키 모양으로 단축키를 함께 알려 줌 */}
-            <button
-              type="button"
-              className="bar-up"
-              onClick={() => focus && onFocusChange(parentSlug(focus))}
-              aria-label="한 단계 위로 (Esc)"
-              aria-keyshortcuts="Escape"
-            >
-              <kbd>esc</kbd>
-            </button>
-            <ol className="bar-trail">
-              {shownTrail.map((node, i) => (
-                <li key={node.id}>
-                  {i === shownTrail.length - 1 ? (
-                    <span aria-current="location">{node.label}</span>
-                  ) : (
-                    <button type="button" onClick={() => onFocusChange(node.slug ?? null)}>
-                      {node.label}
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </div>
-        </nav>
-
-        {/* 보기 전환: 확대한 주제가 있으면 그 주제 목록, 없으면 전체 목록 */}
-        <ViewSwitch
-          current="graph"
-          graphTo={focus ? { pathname: '/', search: `?focus=${encodeURIComponent(focus.slug ?? '')}` } : '/'}
-          listTo={focus?.slug ? href('/categories/:slug', { slug: focus.slug }) : '/posts'}
-          className="view-switch constellation-switch"
-          onListClick={focus ? undefined : gatherThenOpenCards}
-          // 전체 지도의 Card 글자 → Category 화면 제목 (글자가 이동하며 Card에서 Category로 바뀜)
-          listStyle={focus ? undefined : { viewTransitionName: 'view-title' }}
-        />
 
         <ul className="constellation-legend">
           {LEGEND.map(({ depth, label }) => (
