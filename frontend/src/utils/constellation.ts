@@ -5,6 +5,7 @@ import { buildCategoryTree, type CategoryNode } from './categoryTree'
 // 홈 별자리 지도 배치 계산 (좌표 단위: 배율 1일 때 화면 px)
 // 큰 주제 = 별자리 하나(뭉치). 모든 단계가 같은 규칙(재귀): 자기 글은 둘레에 해바라기씨 배열(phyllotaxis), 하위 주제는 바깥 고리 위
 // 글이 수백 개여도 황금각 나선은 서로 겹치지 않고 고르게 퍼지므로 극단적인 개수에도 같은 규칙 유지
+// 큰 주제 별자리끼리는 밀어내지 않고 2×2 사분면 자리에 고정 (gridPositions, 휴대폰은 1열)
 
 export type StarKind = 'top' | 'sub' | 'post'
 
