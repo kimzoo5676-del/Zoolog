@@ -1,4 +1,5 @@
 # main에 push → 테스트 → 이미지 빌드·GHCR 업로드 → deploy/k8s 이미지 태그 커밋 → Argo CD가 서버에 반영 (GitOps)
+# 바뀐 쪽만 테스트·빌드·태그 변경 (2026-10-20): 화면만 바꾸면 백엔드 테스트를 기다리지 않고, 백엔드 태그가 그대로라 재시작(API 중단·재로그인)도 없음
 # 서버(Lightsail)는 빌드하지 않고 이미지를 받아 실행만 (CPU 크레딧 보호)
 name: deploy
 
@@ -22,7 +23,39 @@ env:
   WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/zoolog-web
 
 jobs:
+  # 지금 서버에 올라가 있는 이미지(kustomization.yaml 태그 = 그 이미지를 만든 커밋)와 비교해 바뀐 쪽을 고름
+  # push 전후(github.event.before)가 아니라 배포된 태그와 비교: 앞선 실행이 취소돼도(concurrency) 그 변경이 빠지지 않음
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.diff.outputs.backend }}
+      frontend: ${{ steps.diff.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # 배포된 커밋과 비교하려면 전체 기록 필요
+      - id: diff
+        run: |
+          # changed <이미지 이름> <폴더>: 배포된 커밋 이후 그 폴더나 이 워크플로가 바뀌었으면 true
+          # 수동 실행이거나 배포된 커밋을 찾지 못하면 true (모르면 다시 만듦)
+          changed() {
+            local tag
+            tag=$(yq "(.images[] | select(.name == \"$1\")).newTag" deploy/k8s/kustomization.yaml)
+            if [ "${{ github.event_name }}" = workflow_dispatch ] || ! git cat-file -e "$tag^{commit}" 2>/dev/null; then
+              echo true
+            elif git diff --quiet "$tag" HEAD -- "$2" .github/workflows/deploy.yml; then
+              echo false
+            else
+              echo true
+            fi
+          }
+          echo "backend=$(changed zoolog-backend backend)" >> "$GITHUB_OUTPUT"
+          echo "frontend=$(changed zoolog-web frontend)" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
   backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     # 테스트가 개발 DB·저장소를 쓰는 구조라 CI에서는 서비스 컨테이너로 같은 구성을 띄움 (테스트용 가짜 비밀값)
     services:
@@ -80,6 +113,8 @@ jobs:
           retention-days: 1
 
   frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -95,8 +130,12 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
 
+  # 건너뛴 쪽(skipped)이 있어도 실행하되, 실패·취소가 있으면 배포하지 않음
   images:
-    needs: [backend, frontend]
+    needs: [changes, backend, frontend]
+    if: >-
+      !cancelled() && !contains(needs.*.result, 'failure') &&
+      (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write # 이미지 태그 커밋
@@ -104,6 +143,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
+        if: needs.changes.outputs.backend == 'true'
         with:
           name: backend-jar
           path: backend/build/libs
@@ -115,6 +155,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       # Lightsail은 x86_64라 linux/amd64로 빌드
       - name: 백엔드 이미지
+        if: needs.changes.outputs.backend == 'true'
         uses: docker/build-push-action@v6
         with:
           context: backend
@@ -124,6 +165,7 @@ jobs:
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
       - name: 화면 이미지 (React 빌드 + Caddy)
+        if: needs.changes.outputs.frontend == 'true'
         uses: docker/build-push-action@v6
         with:
           context: frontend
@@ -133,14 +175,25 @@ jobs:
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
       # GitOps: 클러스터에 직접 배포하지 않고, 원하는 상태(이미지 태그)를 Git에 기록 → Argo CD가 맞춤
+      # 새로 만든 이미지의 태그만 바꿈: 태그가 그대로인 쪽은 Argo CD가 손대지 않아 재시작되지 않음
       - name: 이미지 태그 커밋
+        env:
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
         run: |
-          yq -i '(.images[] | select(.name == "zoolog-backend")).newName = strenv(BACKEND_IMAGE)' deploy/k8s/kustomization.yaml
-          yq -i '(.images[] | select(.name == "zoolog-backend")).newTag = strenv(GITHUB_SHA)' deploy/k8s/kustomization.yaml
-          yq -i '(.images[] | select(.name == "zoolog-web")).newName = strenv(WEB_IMAGE)' deploy/k8s/kustomization.yaml
-          yq -i '(.images[] | select(.name == "zoolog-web")).newTag = strenv(GITHUB_SHA)' deploy/k8s/kustomization.yaml
+          parts=()
+          if [ "$BACKEND_CHANGED" = true ]; then
+            yq -i '(.images[] | select(.name == "zoolog-backend")).newName = strenv(BACKEND_IMAGE)' deploy/k8s/kustomization.yaml
+            yq -i '(.images[] | select(.name == "zoolog-backend")).newTag = strenv(GITHUB_SHA)' deploy/k8s/kustomization.yaml
+            parts+=("백엔드")
+          fi
+          if [ "$FRONTEND_CHANGED" = true ]; then
+            yq -i '(.images[] | select(.name == "zoolog-web")).newName = strenv(WEB_IMAGE)' deploy/k8s/kustomization.yaml
+            yq -i '(.images[] | select(.name == "zoolog-web")).newTag = strenv(GITHUB_SHA)' deploy/k8s/kustomization.yaml
+            parts+=("화면")
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add deploy/k8s/kustomization.yaml
-          git commit -m "chore: 이미지 태그 ${GITHUB_SHA::7} 배포"
+          git commit -m "chore: 이미지 태그 ${GITHUB_SHA::7} 배포 (${parts[*]})"
           git push
