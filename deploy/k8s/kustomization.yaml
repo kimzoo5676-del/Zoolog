@@ -17,4 +17,4 @@ images:
     newTag: 91df856a0e9edcd9b29840332688728c320236d8
   - name: zoolog-web
     newName: ghcr.io/kimzoo5676-del/zoolog-web
-    newTag: 91df856a0e9edcd9b29840332688728c320236d8
+    newTag: 3ca7a92feedacda2c733ea6f80970565203c8e87
