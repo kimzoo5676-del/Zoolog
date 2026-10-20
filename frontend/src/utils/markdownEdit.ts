@@ -178,10 +178,10 @@ export function indentLines(value: string, sel: Selection, outdent: boolean): Ed
     return { from: sel.start, to: sel.start, text: '  ', select: { start: sel.start + 2, end: sel.start + 2 } }
   }
   const lines = value.slice(from, to).split('\n')
-  let offset = from
-  const deltas = lines.map((line) => {
-    const lineStart = offset
-    offset += line.length + 1
+  const lineStarts: number[] = []
+  lines.reduce((start, line) => (lineStarts.push(start), start + line.length + 1), from)
+  const deltas = lines.map((line, i) => {
+    const lineStart = lineStarts[i]
     const current = line.length - line.trimStart().length
     if (inCode) return outdent ? -Math.min(2, current) : 2
     if (!LIST_LINE.test(line)) return 0
@@ -196,16 +196,13 @@ export function indentLines(value: string, sel: Selection, outdent: boolean): Ed
   const total = deltas.reduce((a, b) => a + b, 0)
   if (deltas.every((d) => d === 0)) return null
   // 번호 목록을 들여쓰거나 내어쓰면 새 단계에 맞게 번호를 다시 매김 (위 같은 단계 번호 + 1, 없으면 1)
-  offset = from
   const text = lines
     .map((line, i) => {
-      const lineStart = offset
-      offset += line.length + 1
       const moved = deltas[i] >= 0 ? ' '.repeat(deltas[i]) + line : line.slice(-deltas[i])
       const match = moved.match(LIST_LINE)
       if (inCode || deltas[i] === 0 || !match?.[3]) return moved
       const level = match[1].length
-      const above = previousListLine(value, lineStart, (indent) => indent <= level)
+      const above = previousListLine(value, lineStarts[i], (indent) => indent <= level)
       const number = above && above.indent === level && above.number !== null ? above.number + 1 : 1
       return `${match[1]}${number}. ${match[4]}`
     })
@@ -232,7 +229,8 @@ export function continueList(value: string, sel: Selection): Edit | null {
     if (indent.length > 0) return indentLines(value, sel, true)
     return { from: lineStart, to: lineEnd, text: '', select: { start: lineStart, end: lineStart } }
   }
-  const nextMarker = number ? `${Number(number) + 1}. ` : marker.startsWith('- [') ? '- [ ] ' : marker
+  // 체크리스트는 체크한 항목(- [x], * [x])에서 이어 써도 같은 기호의 빈 칸으로
+  const nextMarker = number ? `${Number(number) + 1}. ` : marker.replace('[x]', '[ ]')
   const text = `\n${indent}${nextMarker}`
   return { from: sel.start, to: sel.start, text, select: { start: sel.start + text.length, end: sel.start + text.length } }
 }

@@ -318,19 +318,18 @@ function boxOf(nodes: StarNode[], labelScale: number) {
 // 열 폭·행 높이는 그 열·행에서 가장 큰 별자리 기준, 별자리는 칸 가운데. 홀수 개면 마지막 별자리는 두 열 가운데
 // columns: 넓은 화면 2(사분면), 휴대폰 1(폭이 좁아 2열이면 모두 작아져 이름이 뭉침, 위에서 아래로 같은 순서)
 function gridPositions(boxes: ReturnType<typeof boxOf>[], columns: number): Point[] {
-  const COLUMNS = columns
-  const rows = Math.ceil(boxes.length / COLUMNS)
-  const spans = (i: number) => i === boxes.length - 1 && boxes.length % COLUMNS === 1 && boxes.length > 1
-  const colWidth = Array.from({ length: COLUMNS }, (_, c) =>
-    Math.max(0, ...boxes.filter((_, i) => i % COLUMNS === c && !spans(i)).map((b) => b.width)),
+  const rows = Math.ceil(boxes.length / columns)
+  const spans = (i: number) => i === boxes.length - 1 && boxes.length % columns === 1 && boxes.length > 1
+  const colWidth = Array.from({ length: columns }, (_, c) =>
+    Math.max(0, ...boxes.filter((_, i) => i % columns === c && !spans(i)).map((b) => b.width)),
   )
   const rowHeight = Array.from({ length: rows }, (_, r) =>
-    Math.max(0, ...boxes.filter((_, i) => Math.floor(i / COLUMNS) === r).map((b) => b.height)),
+    Math.max(0, ...boxes.filter((_, i) => Math.floor(i / columns) === r).map((b) => b.height)),
   )
-  const totalWidth = colWidth.reduce((sum, w) => sum + w, 0) + CLUSTER_GAP * (COLUMNS - 1)
+  const totalWidth = colWidth.reduce((sum, w) => sum + w, 0) + CLUSTER_GAP * (columns - 1)
   return boxes.map((box, i) => {
-    const c = i % COLUMNS
-    const r = Math.floor(i / COLUMNS)
+    const c = i % columns
+    const r = Math.floor(i / columns)
     const cellX = spans(i)
       ? totalWidth / 2
       : colWidth.slice(0, c).reduce((sum, w) => sum + w, 0) + CLUSTER_GAP * c + colWidth[c] / 2
