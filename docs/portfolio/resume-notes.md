@@ -32,6 +32,7 @@
 - Caddy 자동 HTTPS, 리버스 프록시 뒤 Spring의 https 인식(forwarded headers) 구성
 - Flyway로 스키마 버전 관리, `ddl-auto: validate`로 엔티티 · DB 불일치 조기 발견
 - 매일 pg_dump 백업 CronJob + 서버 스냅샷 이중 백업
+- 바뀐 구성 요소만 테스트 · 빌드 · 교체하도록 CI를 바꿔 화면 배포 시간 약 132초 → 77초, 배포 중 API 중단 약 57초 → 0초 (1초 간격 측정)
 
 ## 자소서 소재 (상황 → 행동 → 결과 → 배운 점)
 
