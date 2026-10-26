@@ -14,7 +14,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -138,11 +137,10 @@ class NewsDigestServiceTest {
     }
 
     @Test
-    @DisplayName("코멘트 쓰기 링크에는 기사 제목·주소·언론사·날짜가 주소 형식에 맞게 들어가고 질문은 없다")
+    @DisplayName("코멘트 쓰기 링크에는 기사 제목·주소·언론사가 주소 형식에 맞게 들어가고 질문·날짜는 없다")
     void clipLink() {
         String link = NewsDigestService.clipLink("https://zoolog.site",
-                new NewsArticle("AWS & 네이버 \"협력\"", "한겨레", "https://news.example.com/a?id=1&b=2", ""),
-                LocalDate.of(2026, 10, 14));
+                new NewsArticle("AWS & 네이버 \"협력\"", "한겨레", "https://news.example.com/a?id=1&b=2", ""));
 
         var params = UriComponentsBuilder.fromUriString(link).build().getQueryParams();
         assertThat(link).startsWith("https://zoolog.site/clips/new?");
@@ -150,7 +148,7 @@ class NewsDigestServiceTest {
                 .isEqualTo("AWS & 네이버 \"협력\"");
         assertThat(URLDecoder.decode(params.getFirst("url"), StandardCharsets.UTF_8))
                 .isEqualTo("https://news.example.com/a?id=1&b=2");
-        assertThat(params.getFirst("date")).isEqualTo("2026-10-14");
+        assertThat(params.containsKey("date")).isFalse();
         assertThat(params.containsKey("q")).isFalse();
     }
 }

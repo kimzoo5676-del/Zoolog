@@ -6,7 +6,6 @@ type ClipInput = {
   title: string
   url: string
   source: string
-  date: string
   comment: string
 }
 

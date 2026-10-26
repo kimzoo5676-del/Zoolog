@@ -57,7 +57,7 @@ public class NewsDigestService {
         hotPicks.replaceAll(this::withOriginalLink);
         LocalDate today = LocalDate.now(clock);
         return mailer.send(today.getMonthValue() + "월 " + today.getDayOfMonth() + "일 아침 기사",
-                format(hotPicks, careerPicks, siteUrl, today));
+                format(hotPicks, careerPicks, siteUrl));
     }
 
     // 핫이슈(Google 뉴스 링크)를 네이버에서 같은 기사로 찾아 원문 주소·언론사로 바꾸고, 소개가 없으면 기사 앞부분 문장
@@ -100,29 +100,29 @@ public class NewsDigestService {
         }
     }
 
-    static String format(List<Selected> hot, List<Selected> career, String siteUrl, LocalDate date) {
+    static String format(List<Selected> hot, List<Selected> career, String siteUrl) {
         StringBuilder text = new StringBuilder();
         text.append("오늘의 핫이슈\n\n");
-        appendAll(text, hot, siteUrl, date);
+        appendAll(text, hot, siteUrl);
         text.append("IT · 취업\n\n");
-        appendAll(text, career, siteUrl, date);
+        appendAll(text, career, siteUrl);
         return text.toString();
     }
 
     // 소유자 전용 뉴스 스크랩 화면 주소: 기사 정보를 채워 둠 (로그인은 화면에서 확인)
-    static String clipLink(String siteUrl, NewsArticle article, LocalDate date) {
+    // 날짜는 넣지 않음: 스크랩 글의 날짜는 게시한 날로 서버가 정함
+    static String clipLink(String siteUrl, NewsArticle article) {
         return UriComponentsBuilder.fromUriString(siteUrl)
                 .path("/clips/new")
                 .queryParam("title", article.title())
                 .queryParam("url", article.link())
                 .queryParam("source", article.source())
-                .queryParam("date", date.toString())
                 .encode()
                 .build()
                 .toUriString();
     }
 
-    private static void appendAll(StringBuilder text, List<Selected> items, String siteUrl, LocalDate date) {
+    private static void appendAll(StringBuilder text, List<Selected> items, String siteUrl) {
         if (items.isEmpty()) {
             text.append("오늘은 기사를 가져오지 못했어요\n\n");
             return;
@@ -138,7 +138,7 @@ public class NewsDigestService {
                 text.append("  ").append(item.intro().strip()).append('\n');
             }
             text.append("  ").append(article.link()).append('\n');
-            text.append("  코멘트 쓰기: ").append(clipLink(siteUrl, article, date)).append("\n\n");
+            text.append("  코멘트 쓰기: ").append(clipLink(siteUrl, article)).append("\n\n");
         }
     }
 

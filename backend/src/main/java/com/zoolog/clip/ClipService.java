@@ -9,6 +9,7 @@ import com.zoolog.post.PostRequest;
 import com.zoolog.post.PostService;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
@@ -23,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 // 뉴스 스크랩 글 게시 (2026-10-14 소유자 결정)
 // 주제: News Clipping > 달(2026.10) > 주(2026.10 Week 2), 없으면 만듦. 주제 이름은 사이트 전체에서 겹치면 안 되어 주 이름에도 연월
 // 글: 제목 "10.14 기사 제목", 본문은 기사 제목 링크 + 언론사 + 소유자가 쓴 글만 (기사 본문 복제 금지, 저작권)
+// 날짜(제목·달·주)는 게시한 날 (2026-10-27 소유자 결정: 이전에는 메일 링크의 날짜라, 다음 날 쓰면 전날 주제·제목으로 들어갔음)
 @Service
 @Transactional(readOnly = true)
 public class ClipService {
@@ -36,13 +38,15 @@ public class ClipService {
     private final PostService postService;
     private final PostRepository postRepository;
     private final NewsClipRepository clipRepository;
+    private final Clock clock;
 
     public ClipService(CategoryRepository categoryRepository, PostService postService, PostRepository postRepository,
-            NewsClipRepository clipRepository) {
+            NewsClipRepository clipRepository, Clock clock) {
         this.categoryRepository = categoryRepository;
         this.postService = postService;
         this.postRepository = postRepository;
         this.clipRepository = clipRepository;
+        this.clock = clock;
     }
 
     // 같은 기사(주소가 같음)를 이미 스크랩했으면 409 (2026-10-14 소유자 결정)
@@ -52,10 +56,12 @@ public class ClipService {
         if (clipRepository.findByUrl(url.toString()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 스크랩한 기사예요");
         }
+        LocalDate today = LocalDate.now(clock);
         Category top = findOrCreate(TOP_NAME, null);
-        Category month = findOrCreate(monthName(request.date()), top);
-        Category week = findOrCreate(weekName(request.date()), month);
-        PostDetailResponse created = postService.create(new PostRequest(week.getId(), title(request), content(request, url)));
+        Category month = findOrCreate(monthName(today), top);
+        Category week = findOrCreate(weekName(today), month);
+        PostDetailResponse created = postService.create(
+                new PostRequest(week.getId(), title(request, today), content(request, url)));
         try {
             clipRepository.save(new NewsClip(url.toString(), postRepository.getReferenceById(created.id())));
         } catch (DataIntegrityViolationException e) {
@@ -78,8 +84,8 @@ public class ClipService {
         return monthName(date) + " Week " + date.get(WEEK.weekOfMonth());
     }
 
-    static String title(ClipRequest request) {
-        String title = request.date().getMonthValue() + "." + request.date().getDayOfMonth() + " " + request.title().strip();
+    static String title(ClipRequest request, LocalDate date) {
+        String title = date.getMonthValue() + "." + date.getDayOfMonth() + " " + request.title().strip();
         return title.length() <= TITLE_MAX ? title : title.substring(0, TITLE_MAX - 1) + "…";
     }
 

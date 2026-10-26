@@ -8,7 +8,7 @@ import { RouteError } from '../components/RouteError'
 import { clearDraft, draftKey, useDraftAutosave } from '../hooks/useDraftAutosave'
 import { usePreviewTip } from '../hooks/usePreviewTip'
 import { AutosaveStatus, DraftNotice } from '../components/DraftNotice'
-import { clipMarkdown, clipMonthName, clipWeekName, isHttpUrl, parseClipDate } from '../utils/clip'
+import { clipMarkdown, clipMonthName, clipWeekName, isHttpUrl } from '../utils/clip'
 import { errorMessage } from '../utils/postForm'
 import { requireOwner } from '../utils/requireOwner'
 import type { Route } from './+types/clip-new'
@@ -18,21 +18,21 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url)
   await requireOwner(request.signal, url.pathname + url.search)
   const params = url.searchParams
-  const date = parseClipDate(params.get('date'))
   const title = params.get('title')?.trim()
   const articleUrl = params.get('url')
-  if (!title || !date || !isHttpUrl(articleUrl)) {
+  if (!title || !isHttpUrl(articleUrl)) {
     // RouteError는 404일 때 문구를 그대로 보여 줌
     throw data('기사 정보가 없어요. 메일의 링크로 다시 들어와 주세요', { status: 404 })
   }
   // 같은 기사를 두 번 스크랩하지 않도록: 이미 썼으면 코멘트 칸 대신 그 글로 가는 링크 (서버도 409로 막음)
   const clippedPostId = await findClippedPostId(articleUrl as string, request.signal)
+  // 날짜(제목·달·주)는 게시하는 날 (2026-10-27 소유자 결정, 서버도 게시한 날로 정함). 옛 메일 링크의 date는 무시
+  const date = new Date()
   return {
     clippedPostId,
     title,
     url: articleUrl as string,
     source: params.get('source')?.trim() ?? '',
-    date: params.get('date') as string,
     path: `News Clipping / ${clipMonthName(date)} / ${clipWeekName(date)}`,
     heading: `${date.getMonth() + 1}.${date.getDate()} ${title}`,
   }
@@ -46,7 +46,6 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       title: String(form.get('title') ?? ''),
       url: String(form.get('url') ?? ''),
       source: String(form.get('source') ?? ''),
-      date: String(form.get('date') ?? ''),
       comment: String(form.get('comment') ?? ''),
     })
     clearDraft(draftKey('clip', String(form.get('url') ?? '')))
@@ -65,7 +64,7 @@ export default function ClipNew({ loaderData, actionData }: Route.ComponentProps
 }
 
 function ClipForm({ loaderData, actionData }: Pick<Route.ComponentProps, 'loaderData' | 'actionData'>) {
-  const { clippedPostId, title, url, source, date, path, heading } = loaderData
+  const { clippedPostId, title, url, source, path, heading } = loaderData
   // 아직 스크랩하지 않은 기사면 쓸 수 있음
   const canWrite = clippedPostId === null
   const submitting = useNavigation().state === 'submitting'
@@ -128,7 +127,6 @@ function ClipForm({ loaderData, actionData }: Pick<Route.ComponentProps, 'loader
       <input type="hidden" name="title" value={title} />
       <input type="hidden" name="url" value={url} />
       <input type="hidden" name="source" value={source} />
-      <input type="hidden" name="date" value={date} />
       <div className="editor-footer">
         <Link to="/" viewTransition className="button-link">
           나가기

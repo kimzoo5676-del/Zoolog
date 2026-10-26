@@ -1,6 +1,7 @@
 package com.zoolog.clip;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -15,13 +16,17 @@ import com.zoolog.category.Category;
 import com.zoolog.category.CategoryRepository;
 import com.zoolog.post.PostRepository;
 import jakarta.persistence.EntityManager;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,12 +47,23 @@ class ClipApiTest {
     @Autowired
     EntityManager entityManager;
 
+    // 스크랩 글의 날짜는 게시한 날: 테스트마다 "오늘"을 정해 둠
+    @MockitoBean
+    Clock clock;
+
+    static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+
+    @BeforeEach
+    void setUp() {
+        today("2026-10-14");
+    }
+
     @Test
-    @DisplayName("스크랩 글을 게시하면 News Clipping > 달 > 주 주제 아래에 날짜 + 기사 제목 글이 생긴다")
+    @DisplayName("스크랩 글을 게시하면 News Clipping > 달 > 주 주제 아래에 게시한 날짜 + 기사 제목 글이 생긴다")
     void createClip() throws Exception {
         String response = mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("AWS [서울] 리전 확장", "https://news.example.com/a?id=1", "한겨레", "2026-10-14",
+                        .content(body("AWS [서울] 리전 확장", "https://news.example.com/a?id=1", "한겨레",
                                 "클라우드 수요가 늘고 있다는 신호.")))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", org.hamcrest.Matchers.startsWith("/api/posts/")))
@@ -67,12 +83,29 @@ class ClipApiTest {
     }
 
     @Test
+    @DisplayName("예전 화면이 보낸 날짜는 무시하고 게시한 날의 제목·주제로 들어간다")
+    void usePostingDate() throws Exception {
+        // 10월 25일(일, Week 4) 메일 기사를 26일(월)에 게시
+        today("2026-10-26");
+        mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title": "기사", "url": "https://a.com/late", "source": "", "date": "2026-10-25", "comment": "코멘트"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("10.26 기사"))
+                .andExpect(jsonPath("$.categoryId").value(categoryRepository.findBySlug("2026-10-week-5").orElseThrow().getId()));
+    }
+
+    @Test
     @DisplayName("같은 주의 두 번째 스크랩 글은 이미 있는 주제를 다시 쓴다")
     void reuseCategories() throws Exception {
-        clip("2026-10-13", "https://a.com/1");
+        today("2026-10-13");
+        clip("https://a.com/1");
         long before = categoryRepository.count();
 
-        clip("2026-10-18", "https://a.com/2");
+        today("2026-10-18");
+        clip("https://a.com/2");
 
         assertThat(categoryRepository.count()).isEqualTo(before);
     }
@@ -83,7 +116,7 @@ class ClipApiTest {
         String longText = "긴 본문 ".repeat(1000);
         mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("기사", "https://a.com/long", "", "2026-10-15", longText)))
+                        .content(body("기사", "https://a.com/long", "", longText)))
                 .andExpect(status().isCreated());
     }
 
@@ -92,7 +125,7 @@ class ClipApiTest {
     void rejectNonHttpUrl() throws Exception {
         mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("제목", "javascript:alert(1)", "", "2026-10-14", "코멘트")))
+                        .content(body("제목", "javascript:alert(1)", "", "코멘트")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("기사 주소를 확인해 주세요"));
     }
@@ -102,7 +135,7 @@ class ClipApiTest {
     void requiresLogin() throws Exception {
         mockMvc.perform(post("/api/clips").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("제목", "https://a.com", "", "2026-10-14", "코멘트")))
+                        .content(body("제목", "https://a.com", "", "코멘트")))
                 .andExpect(status().isUnauthorized());
     }
 
@@ -118,11 +151,11 @@ class ClipApiTest {
     @Test
     @DisplayName("같은 기사를 다시 스크랩하면 409를 받고, 조회하면 먼저 쓴 글 번호가 나온다")
     void rejectDuplicate() throws Exception {
-        Integer postId = clip("2026-10-14", "https://a.com/dup");
+        Integer postId = clip("https://a.com/dup");
 
         mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("기사", "https://a.com/dup", "", "2026-10-15", "또 코멘트")))
+                        .content(body("기사", "https://a.com/dup", "", "또 코멘트")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value("이미 스크랩한 기사예요"));
         mockMvc.perform(get("/api/clips").param("url", "https://a.com/dup").with(oidcLogin()))
@@ -135,27 +168,33 @@ class ClipApiTest {
     @Test
     @DisplayName("스크랩 글을 지우면 같은 기사를 다시 스크랩할 수 있다")
     void clipAgainAfterDelete() throws Exception {
-        Integer postId = clip("2026-10-14", "https://a.com/again");
+        Integer postId = clip("https://a.com/again");
         mockMvc.perform(delete("/api/posts/{id}", postId).with(oidcLogin()).with(csrf()))
                 .andExpect(status().isNoContent());
         entityManager.flush();
         entityManager.clear();
 
-        clip("2026-10-14", "https://a.com/again");
+        clip("https://a.com/again");
     }
 
-    private Integer clip(String date, String url) throws Exception {
+    private Integer clip(String url) throws Exception {
         String response = mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("기사", url, "", date, "코멘트")))
+                        .content(body("기사", url, "", "코멘트")))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(response, "$.id");
     }
 
-    private static String body(String title, String url, String source, String date, String comment) {
+    private static String body(String title, String url, String source, String comment) {
         return """
-                {"title": "%s", "url": "%s", "source": "%s", "date": "%s", "comment": "%s"}
-                """.formatted(title, url, source, date, comment);
+                {"title": "%s", "url": "%s", "source": "%s", "comment": "%s"}
+                """.formatted(title, url, source, comment);
+    }
+
+    // 그날 낮 12시(서울)를 "지금"으로
+    private void today(String date) {
+        when(clock.instant()).thenReturn(LocalDate.parse(date).atTime(12, 0).atZone(SEOUL).toInstant());
+        when(clock.getZone()).thenReturn(SEOUL);
     }
 }
