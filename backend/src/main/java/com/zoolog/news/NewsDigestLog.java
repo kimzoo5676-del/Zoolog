@@ -25,8 +25,4 @@ public class NewsDigestLog extends BaseTimeEntity {
     public NewsDigestLog(LocalDate sentOn) {
         this.sentOn = sentOn;
     }
-
-    public LocalDate getSentOn() {
-        return sentOn;
-    }
 }

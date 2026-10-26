@@ -29,7 +29,7 @@ export function categoryPath(categories: Category[], id: number): Category[] {
 }
 
 // 주제 아래 모든 단계의 주제 id (자기 자신 포함)
-export function descendantIds(categories: Category[], id: number): Set<number> {
+function descendantIds(categories: Category[], id: number): Set<number> {
   const ids = new Set([id])
   let grew = true
   while (grew) {

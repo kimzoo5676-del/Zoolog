@@ -195,5 +195,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add deploy/k8s/kustomization.yaml
-          git commit -m "chore: 이미지 태그 ${GITHUB_SHA::7} 배포 (${parts[*]})"
+          label="${parts[0]}"
+          if [ "${#parts[@]}" -gt 1 ]; then label="${label}·${parts[1]}"; fi
+          git commit -m "chore: 이미지 태그 ${GITHUB_SHA::7} 배포 (${label})"
           git push

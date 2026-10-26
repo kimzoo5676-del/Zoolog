@@ -76,7 +76,7 @@ export const ALIGNS: { align: ImageAlign; label: string; icon: ToolIconName }[] 
 
 // 고친 부분만 브라우저 입력으로 바꿈: React onChange가 그대로 불리고, Ctrl+Z로 되돌릴 수 있음
 // (execCommand가 안 되는 환경은 값을 직접 바꾸고 input 이벤트를 보냄. 이때는 되돌리기 기록이 남지 않음)
-export function applyEdit(textarea: HTMLTextAreaElement, edit: Edit) {
+function applyEdit(textarea: HTMLTextAreaElement, edit: Edit) {
   textarea.focus()
   // 바꿀 것이 없는 편집(빈 범위에 빈 글자)은 건너뜀: delete 명령이 커서 앞 글자를 지우지 않도록
   if (!edit.text && edit.from === edit.to) {
