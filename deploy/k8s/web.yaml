@@ -63,11 +63,12 @@ spec:
           ports:
             - containerPort: 80
             - containerPort: 443
-          # 443을 받을 수 있을 때만 요청을 보냄
+          # 443을 받을 수 있을 때만 요청을 보냄. 서버가 잠깐 멈춰도 빠지지 않게 응답 대기 3초 (2026-10-31 장애)
           readinessProbe:
             tcpSocket:
               port: 443
             periodSeconds: 5
+            timeoutSeconds: 3
           # 종료 신호 전에 몇 초 기다려 서비스 목록에서 빠질 시간을 줌 (그사이 들어온 요청도 처리)
           lifecycle:
             preStop:

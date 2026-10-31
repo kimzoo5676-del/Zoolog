@@ -33,10 +33,13 @@ spec:
                 name: zoolog-env
           ports:
             - containerPort: 5432
+          # 서버가 잠깐 멈춰도 "응답 없음"으로 빠지지 않게 응답 대기 5초, 6번 연속 실패 (2026-10-31 장애, backend.yaml 참고)
           readinessProbe:
             exec:
               command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests:
               memory: 128Mi

@@ -46,11 +46,16 @@ spec:
             tcpSocket:
               port: 8080
             periodSeconds: 5
+            timeoutSeconds: 5
             failureThreshold: 24
+          # 2026-10-31 장애: 메모리 부족·스왑으로 서버가 몇 초씩 멈추면 기본 1초 대기에 걸려 "응답 없음" 판정, 요청 명단에서 빠져 502
+          # 응답 대기 5초, 6번 연속(약 1분) 실패해야 명단에서 뺌: 잠깐 멈추는 정도로는 빠지지 않게
           readinessProbe:
             tcpSocket:
               port: 8080
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           resources:
             requests:
               memory: 384Mi
