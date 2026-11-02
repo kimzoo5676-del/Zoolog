@@ -46,7 +46,7 @@
 
 노트북 + Tailscale Funnel 셀프 호스팅에서 AWS Lightsail로 변경 (노트북이 꺼지면 사이트·06:00 메일이 멈추는 문제 해결)
 
-- 서버: Lightsail 서울 리전(ap-northeast-2) Linux $12 플랜(2GB 메모리, 2 vCPU, SSD 60GB) 1대 + 고정 IP
+- 서버: Lightsail 서울 리전(ap-northeast-2) Linux $24 플랜(4GB 메모리, 2 vCPU, SSD 80GB) 1대 + 고정 IP. 2026-11-03 $12(2GB)에서 이전(메모리 부족·스왑 장애, 결정 #24): 인스턴스 이름 `zoolog-4gb`, 호스트명은 바뀌었지만 k3s는 `/etc/rancher/k3s/config.yaml`의 `node-name: ip-172-26-13-151`로 옛 노드 이름 유지(local-path PVC가 이 이름에 묶여 있어 지우면 DB·저장소가 안 붙음), 절차 `deploy/README.md`. 옛 2GB 인스턴스·스냅샷 `zoolog-before-4gb`는 확인 후 삭제 예정
 - 주소: `zoolog.site`(가비아, 네임서버 가비아 기본값, A 레코드 `@`만. `www`는 Caddyfile에 없어 넣지 않음) → 고정 IP. HTTPS 인증서는 Caddy가 Let's Encrypt로 자동 발급·갱신
 - 서버 정보(IP, Tailscale 이름 등)와 진행 기록은 `NOTES.local.md`(Git 제외)
 - Argo CD core 설치에는 `argocd-server`가 없어 `default` AppProject를 직접 만들어야 함 (`deploy/README.md`, 없으면 앱이 `InvalidSpecError`로 Unknown)
