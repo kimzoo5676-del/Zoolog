@@ -22,14 +22,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 // 뉴스 스크랩 글 게시 (2026-10-14 소유자 결정)
-// 주제: News Clipping > 달(2026.10) > 주(2026.10 Week 2), 없으면 만듦. 주제 이름은 사이트 전체에서 겹치면 안 되어 주 이름에도 연월
+// 주제: Tech Clipping(2026-11-10 News Clipping에서 변경, V10) > 달(2026.10) > 주(2026.10 Week 2), 없으면 만듦. 주제 이름은 사이트 전체에서 겹치면 안 되어 주 이름에도 연월
 // 글: 제목 "10.14 기사 제목", 본문은 기사 제목 링크 + 언론사 + 소유자가 쓴 글만 (기사 본문 복제 금지, 저작권)
 // 날짜(제목·달·주)는 게시한 날 (2026-10-27 소유자 결정: 이전에는 메일 링크의 날짜라, 다음 날 쓰면 전날 주제·제목으로 들어갔음)
 @Service
 @Transactional(readOnly = true)
 public class ClipService {
 
-    static final String TOP_NAME = "News Clipping";
+    static final String TOP_NAME = "Tech Clipping";
     private static final int TITLE_MAX = 200;
     // 월요일 시작, 1일이 들어 있는 주가 Week 1 (Streak 달력과 같은 기준)
     private static final WeekFields WEEK = WeekFields.of(DayOfWeek.MONDAY, 1);

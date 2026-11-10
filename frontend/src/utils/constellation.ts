@@ -314,7 +314,7 @@ function boxOf(nodes: StarNode[], labelScale: number) {
 }
 
 // 큰 주제 별자리를 2열 바둑판 자리에 (2026-10-19 소유자 결정: 하나의 행성계처럼 2×2 사분면
-// 왼쪽 위 Cloud Engineer · 오른쪽 위 SW Engineer · 왼쪽 아래 OPIc · 오른쪽 아래 News Clipping, 주제 id 순)
+// 왼쪽 위 Cloud Engineer · 오른쪽 위 SW Engineer · 왼쪽 아래 OPIc · 오른쪽 아래 Tech Clipping, 주제 id 순)
 // 이전에는 별자리끼리 밀어내 자리가 정해져, 어느 별자리가 어디 있는지 읽기 어렵고 좁은 화면에서는 서로 겹쳤음
 // 열 폭·행 높이는 그 열·행에서 가장 큰 별자리 기준, 별자리는 칸 가운데. 홀수 개면 마지막 별자리는 두 열 가운데
 // columns: 넓은 화면 2(사분면), 휴대폰 1(폭이 좁아 2열이면 모두 작아져 이름이 뭉침, 위에서 아래로 같은 순서)

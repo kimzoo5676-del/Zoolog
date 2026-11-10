@@ -1,7 +1,7 @@
 import { sendJson } from './http'
 import type { PostDetail } from './post'
 
-// 뉴스 스크랩: 아침 기사 메일의 기사 정보 + 소유자 코멘트 → News Clipping > 달 > 주 아래 글
+// 뉴스 스크랩: 아침 기사 메일의 기사 정보 + 소유자 코멘트 → Tech Clipping > 달 > 주 아래 글
 type ClipInput = {
   title: string
   url: string

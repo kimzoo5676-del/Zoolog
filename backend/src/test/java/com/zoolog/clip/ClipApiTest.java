@@ -59,7 +59,7 @@ class ClipApiTest {
     }
 
     @Test
-    @DisplayName("스크랩 글을 게시하면 News Clipping > 달 > 주 주제 아래에 게시한 날짜 + 기사 제목 글이 생긴다")
+    @DisplayName("스크랩 글을 게시하면 Tech Clipping > 달 > 주 주제 아래에 게시한 날짜 + 기사 제목 글이 생긴다")
     void createClip() throws Exception {
         String response = mockMvc.perform(post("/api/clips").with(oidcLogin()).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,7 +77,7 @@ class ClipApiTest {
         Category week = post.getCategory();
         assertThat(week.getName()).isEqualTo("2026.10 Week 3");
         assertThat(week.getParent().getName()).isEqualTo("2026.10");
-        assertThat(week.getParent().getParent().getName()).isEqualTo("News Clipping");
+        assertThat(week.getParent().getParent().getName()).isEqualTo("Tech Clipping");
         assertThat(post.getContent()).isEqualTo(
                 "[AWS \\[서울\\] 리전 확장](<https://news.example.com/a?id=1>) · 한겨레\n\n클라우드 수요가 늘고 있다는 신호.\n");
     }

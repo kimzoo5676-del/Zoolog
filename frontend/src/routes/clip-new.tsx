@@ -33,7 +33,7 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     title,
     url: articleUrl as string,
     source: params.get('source')?.trim() ?? '',
-    path: `News Clipping / ${clipMonthName(date)} / ${clipWeekName(date)}`,
+    path: `Tech Clipping / ${clipMonthName(date)} / ${clipWeekName(date)}`,
     heading: `${date.getMonth() + 1}.${date.getDate()} ${title}`,
   }
 }
