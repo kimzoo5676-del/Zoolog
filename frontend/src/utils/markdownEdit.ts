@@ -78,17 +78,20 @@ export function toggleLinePrefix(value: string, sel: Selection, prefix: string |
 }
 
 // 코드 블록: 선택한 줄을 ``` 로 감쌈 (선택이 없으면 빈 블록을 만들고 안에 커서)
+// 줄이 들여써져 있으면(목록 항목 아래 Shift+Enter 줄 등) 울타리(```)도 같은 칸에서 시작: 목록 안 코드 블록
 export function codeBlock(value: string, sel: Selection): Edit {
   const { from, to } = lineRange(value, sel)
   const body = value.slice(from, to)
   const lead = from > 0 && value[from - 1] !== '\n' ? '\n' : ''
+  const indent = body.match(/^[ \t]*/)?.[0] ?? ''
   if (!body.trim()) {
-    const text = `${lead}\`\`\`\n\n\`\`\``
-    const cursor = from + lead.length + 4
+    const text = `${lead}${indent}\`\`\`\n${indent}\n${indent}\`\`\``
+    const cursor = from + lead.length + indent.length * 2 + 4
     return { from, to, text, select: { start: cursor, end: cursor } }
   }
-  const text = `\`\`\`\n${body}\n\`\`\``
-  return { from, to, text, select: { start: from + 4, end: from + 4 + body.length } }
+  const text = `${indent}\`\`\`\n${body}\n${indent}\`\`\``
+  const start = from + indent.length + 4
+  return { from, to, text, select: { start, end: start + body.length } }
 }
 
 // 링크: [선택한 글자](주소) 를 만들고 주소 자리를 선택해 바로 붙여 넣을 수 있게
@@ -148,10 +151,13 @@ export function readImageAlign(src: string): { src: string; align: ImageAlign | 
 // 목록 줄: 들여쓰기 + 표시(-, *, +, 1., - [ ], - [x]) + 내용
 const LIST_LINE = /^(\s*)([-*+] \[[ x]\] |[-*+] |(\d+)\. )(.*)$/
 
+// 코드 블록 울타리 줄: 목록 안 코드 블록은 들여써져 있어 앞 공백도 허용
+const FENCE_LINE = /^[ \t]*```/gm
+
 // pos가 코드 블록(``` … ```) 안인지: 그 앞에 나온 ``` 줄 수가 홀수면 안
 function insideCodeFence(value: string, pos: number) {
   const before = value.slice(0, value.lastIndexOf('\n', pos - 1) + 1)
-  return (before.match(/^```/gm)?.length ?? 0) % 2 === 1
+  return (before.match(FENCE_LINE)?.length ?? 0) % 2 === 1
 }
 
 // lineStart 위쪽에서 조건에 맞는 가장 가까운 목록 줄 (빈 줄·목록이 아닌 줄을 만나면 멈춤)
@@ -214,13 +220,17 @@ export function indentLines(value: string, sel: Selection, outdent: boolean): Ed
 
 // Enter: 목록 줄 끝(또는 내용 중간)에서 누르면 다음 줄에 같은 표시를 붙여 이어 씀 (번호는 +1, 체크리스트는 빈 칸)
 // 내용 없는 항목에서 누르면 들여쓴 항목은 한 단계 내어쓰기, 맨 바깥 항목은 표시를 지우고 목록을 끝냄
-// 목록이 아니거나 선택이 있거나 코드 블록 안이면 null (보통 줄바꿈)
+// 코드 블록 안·울타리 줄은 지금 줄의 들여쓰기를 이어 줌(들여쓰기가 없으면 null)
+// 목록이 아니거나 선택이 있으면 null (보통 줄바꿈)
 export function continueList(value: string, sel: Selection): Edit | null {
-  if (sel.start !== sel.end || insideCodeFence(value, sel.start)) return null
+  if (sel.start !== sel.end) return null
   const lineStart = value.lastIndexOf('\n', sel.start - 1) + 1
   const lineEndBreak = value.indexOf('\n', sel.start)
   const lineEnd = lineEndBreak < 0 ? value.length : lineEndBreak
-  const match = value.slice(lineStart, lineEnd).match(LIST_LINE)
+  const line = value.slice(lineStart, lineEnd)
+  // 코드 블록 안·울타리 줄: 지금 줄의 들여쓰기를 다음 줄에 그대로 (목록 안 코드를 줄마다 공백으로 맞추지 않게)
+  if (insideCodeFence(value, sel.start) || /^[ \t]*```/.test(line)) return newLineWithIndent(sel.start, leadingSpace(line))
+  const match = line.match(LIST_LINE)
   if (!match) return null
   const [, indent, marker, number, content] = match
   const contentStart = lineStart + indent.length + marker.length
@@ -233,4 +243,27 @@ export function continueList(value: string, sel: Selection): Edit | null {
   const nextMarker = number ? `${Number(number) + 1}. ` : marker.replace('[x]', '[ ]')
   const text = `\n${indent}${nextMarker}`
   return { from: sel.start, to: sel.start, text, select: { start: sel.start + text.length, end: sel.start + text.length } }
+}
+
+function leadingSpace(line: string) {
+  return line.match(/^[ \t]*/)?.[0] ?? ''
+}
+
+function newLineWithIndent(pos: number, indent: string): Edit | null {
+  if (!indent) return null
+  const text = `\n${indent}`
+  return { from: pos, to: pos, text, select: { start: pos + text.length, end: pos + text.length } }
+}
+
+// Shift+Enter: 목록 항목 안에서 줄을 바꿔 그 항목의 글자 칸(표시 다음 칸)에서 이어 씀 (노션의 Shift+Enter처럼)
+// 목록 항목 아래 문단·코드 블록을 쓸 때 공백을 세어 넣지 않도록 (2026-11-23 소유자 요청)
+// 목록이 아니어도 들여쓴 줄이면 같은 들여쓰기, 들여쓰기가 없으면 null (보통 줄바꿈)
+export function softBreak(value: string, sel: Selection): Edit | null {
+  if (sel.start !== sel.end) return null
+  const lineStart = value.lastIndexOf('\n', sel.start - 1) + 1
+  const lineEndBreak = value.indexOf('\n', sel.start)
+  const line = value.slice(lineStart, lineEndBreak < 0 ? value.length : lineEndBreak)
+  const match = insideCodeFence(value, sel.start) ? null : line.match(LIST_LINE)
+  const indent = match ? ' '.repeat(match[1].length + match[2].length) : leadingSpace(line)
+  return newLineWithIndent(sel.start, indent)
 }

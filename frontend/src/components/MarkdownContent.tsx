@@ -1,10 +1,14 @@
 import Markdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { rehypeHighlightCode } from '../utils/highlightCode'
 import { IMAGE_ALT_PLACEHOLDER } from '../utils/imageAlt'
 import { readImageAlign } from '../utils/markdownEdit'
 
 // 렌더링마다 새 객체를 만들지 않도록 모듈 범위에 고정
 const remarkPlugins = [remarkGfm]
+
+// 코드 블록 문법 강조 (utils/highlightCode)
+const rehypePlugins = [rehypeHighlightCode]
 
 const components: Components = {
   // 넓은 표는 감싼 요소에서 가로 스크롤 (table 자체를 display: block으로 바꾸면 일부 스크린 리더에서 표 의미가 사라짐)
@@ -48,7 +52,7 @@ type MarkdownContentProps = {
 export function MarkdownContent({ children }: MarkdownContentProps) {
   return (
     <div className="markdown">
-      <Markdown remarkPlugins={remarkPlugins} components={components}>
+      <Markdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
         {children}
       </Markdown>
     </div>

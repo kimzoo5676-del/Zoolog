@@ -2,6 +2,7 @@ import type { KeyboardEvent } from 'react'
 import {
   codeBlock,
   continueList,
+  softBreak,
   indentLines,
   horizontalRule,
   link,
@@ -102,6 +103,7 @@ export function runTool(textarea: HTMLTextAreaElement, run: Tool['run']) {
 // 본문 칸 키 처리 (onKeyDown에 연결)
 // - Ctrl/Cmd + B 굵게, I 기울임, K 링크 (키 위치 KeyB 등으로 판단해 입력 언어와 상관없이 같은 키)
 // - Tab·Shift+Tab 목록 들여쓰기·내어쓰기, Enter 목록 이어 쓰기 (노션처럼, 2026-10-17 소유자 요청)
+// - Shift+Enter 목록 항목 글자 칸에서 줄바꿈, 코드 블록 안 Enter는 들여쓰기 유지 (2026-11-23 소유자 요청)
 // - Esc를 누른 뒤의 Tab은 보통 Tab(다음 칸으로 이동): 키보드로 본문 칸을 빠져나갈 길
 // 한글 입력이 조합 중이면 모두 무시 (조합을 끝내는 Enter 등과 섞이지 않도록)
 export function handleEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -120,8 +122,9 @@ export function handleEditorKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     runTool(textarea, (v, s) => indentLines(v, s, event.shiftKey))
     return
   }
-  if (event.key === 'Enter' && plain && !event.shiftKey) {
-    const edit = continueList(textarea.value, { start: textarea.selectionStart, end: textarea.selectionEnd })
+  if (event.key === 'Enter' && plain) {
+    const sel = { start: textarea.selectionStart, end: textarea.selectionEnd }
+    const edit = event.shiftKey ? softBreak(textarea.value, sel) : continueList(textarea.value, sel)
     if (edit) {
       event.preventDefault()
       applyEdit(textarea, edit)

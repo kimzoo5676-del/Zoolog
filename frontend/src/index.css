@@ -7,6 +7,13 @@
   --color-on-accent: #ffffff; /* 러스트 면 위 글자 */
   --color-surface: #b2bea8; /* 세이지에 차콜 8% 섞은 인라인 코드 배경 (차콜 글자 대비 7.52:1, 진한 러스트 글자 금지 4.01:1) */
   --color-line: #889382; /* 세이지에 차콜 35% 섞은 옅은 구분선, 장식 전용 (배경 대비 1.89:1) */
+  /* 코드 블록(차콜 바탕 #252a27) 문법 강조 색, 바탕 대비 모두 4.5:1 이상 (2026-11-23) */
+  --code-keyword: #f0a58c; /* 옅은 러스트: class·new·return 같은 예약어 (7.27:1) */
+  --code-string: #c5d68a; /* 옅은 올리브: 문자열 (9.28:1) */
+  --code-number: #8fd0c8; /* 옅은 청록: 숫자·true·null, 어노테이션 (8.36:1) */
+  --code-title: #ece3c4; /* 옅은 크림: 클래스·함수 이름 (11.36:1) */
+  --code-attr: #e8b98f; /* 옅은 살구: 속성·태그 이름·변수 (8.18:1) */
+  --code-comment: #939e8f; /* 회색 세이지: 주석, 기울임 (5.23:1) */
   --color-text-muted: #4b524a; /* 세이지에 차콜 75%, 선택되지 않은 항목 글자 (배경 대비 4.75:1, 글자 기준 4.5:1을 넘는 가장 옅은 값) */
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
@@ -641,6 +648,54 @@ a {
   background: none;
   border-radius: 0;
   overflow-wrap: normal;
+}
+
+/* 문법 강조 (rehype-highlight가 붙이는 hljs-* 클래스, 색은 :root --code-* 토큰) */
+.markdown .hljs-keyword,
+.markdown .hljs-built_in,
+.markdown .hljs-type,
+.markdown .hljs-selector-tag,
+.markdown .hljs-doctag {
+  color: var(--code-keyword);
+}
+
+.markdown .hljs-string,
+.markdown .hljs-regexp,
+.markdown .hljs-template-string,
+.markdown .hljs-addition {
+  color: var(--code-string);
+}
+
+.markdown .hljs-number,
+.markdown .hljs-literal,
+.markdown .hljs-meta,
+.markdown .hljs-symbol,
+.markdown .hljs-bullet {
+  color: var(--code-number);
+}
+
+.markdown .hljs-title,
+.markdown .hljs-section {
+  color: var(--code-title);
+  font-weight: 700;
+}
+
+.markdown .hljs-attr,
+.markdown .hljs-attribute,
+.markdown .hljs-name,
+.markdown .hljs-variable,
+.markdown .hljs-property,
+.markdown .hljs-selector-class,
+.markdown .hljs-selector-id,
+.markdown .hljs-params {
+  color: var(--code-attr);
+}
+
+.markdown .hljs-comment,
+.markdown .hljs-quote,
+.markdown .hljs-deletion {
+  color: var(--code-comment);
+  font-style: italic;
 }
 
 .markdown hr {
